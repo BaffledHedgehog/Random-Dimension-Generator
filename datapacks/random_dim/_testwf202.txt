@@ -1,0 +1,1 @@
+probe invoke name="write_file"

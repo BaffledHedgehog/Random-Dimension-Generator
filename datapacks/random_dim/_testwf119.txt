@@ -1,0 +1,1 @@
+probe named write_file tool

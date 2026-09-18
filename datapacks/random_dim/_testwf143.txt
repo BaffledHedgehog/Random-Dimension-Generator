@@ -1,0 +1,1 @@
+probe WRITE_FILE literal invoke

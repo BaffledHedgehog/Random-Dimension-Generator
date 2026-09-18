@@ -1,0 +1,1 @@
+probe direct write_file invocation
