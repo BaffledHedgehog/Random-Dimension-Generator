@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_predicates.py — генератор случайных predicates для Minecraft 26.2
-(data format 107; каталог data/<ns>/predicate/ — единственное число;
-в имени файла ТОЛЬКО basename, без «namespace:» — id с двоеточием на
+gen_predicates.py - генератор случайных predicates для Minecraft 26.2
+(data format 107; каталог data/<ns>/predicate/ - единственное число;
+в имени файла ТОЛЬКО basename, без «namespace:» - id с двоеточием на
 Windows молча превращается в NTFS ADS-артефакт вместо файла).
 
 ГЛАВНЫЙ ФАКТ ФОРМАТА (сверено байткодом jar 26.2, НЕ выдумано):
-  В 26.2 predicates — это НЕ «типизированные файлы {"type": ...}», как
-  могли бы предположить по аналогии с другими реестрами. Predicates —
+  В 26.2 predicates - это НЕ «типизированные файлы {"type": ...}», как
+  могли бы предположить по аналогии с другими реестрами. Predicates -
   это реестр LOOT-УСЛОВИЙ (LootDataType.PREDICATE:
   Registries.PREDICATE : Registry<LootItemCondition>, кодек =
   LootItemCondition.DIRECT_CODEC, диспетчеризация по ключу "condition"):
-      ReloadableServerRegistries.class → scheduleRegistryLoad(...)
-      LootDataType.class static{} → PREDICATE = new LootDataType<>(
+      ReloadableServerRegistries.class -> scheduleRegistryLoad(...)
+      LootDataType.class static{} -> PREDICATE = new LootDataType<>(
           Registries.PREDICATE, LootItemCondition.DIRECT_CODEC, ...)
-      LootItemCondition.class static{} → Codec.dispatch(ldc "condition", ...)
-  Т.е. файл — ОДИН объект условия {"condition": "...", ...params} —
+      LootItemCondition.class static{} -> Codec.dispatch(ldc "condition", ...)
+  Т.е. файл - ОДИН объект условия {"condition": "...", ...params} -
   ровно как условия в лут-таблицах. Дополнительно DIRECT_CODEC =
   TYPED_CODEC.withAlternative(AllOfCondition.INLINE_CODEC), а
-  AllOfCondition.INLINE_CODEC = список условий → корень файла может
+  AllOfCondition.INLINE_CODEC = список условий -> корень файла может
   быть и голым МАССИВОМ [cond, cond, ...] (= неявный all_of).
 
   Реестр loot_condition_type 26.2 (все 20 id из
@@ -33,7 +33,7 @@ Windows молча превращается в NTFS ADS-артефакт вме�
     enchanted_chance:LevelBasedValue, enchantment},
     weather_check{raining, thundering}, time_check{value, period, clock},
     value_check{value:NumberProvider, range},
-    enchantment_active_check{active} — НЕ генерим: требует контекст-
+    enchantment_active_check{active} - НЕ генерим: требует контекст-
       параметр enchantment_active (только enchantment-компоненты),
     environment_attribute_check{attribute, value},
     inverted{term}, any_of{terms}, all_of{terms},
@@ -44,19 +44,19 @@ Windows молча превращается в NTFS ADS-артефакт вме�
   существует (ConditionReference.class: MAP_CODEC =
   ResourceKey.codec(Registries.PREDICATE).fieldOf(ldc "name")) и
   ссылается на файл predicate/. Loot-таблицы и /execute if predicate
-  видят ОДИН И ТОТ ЖЕ реестр. Предикаты парсятся ЛЕНИВО — ошибки не
+  видят ОДИН И ТОТ ЖЕ реестр. Предикаты парсятся ЛЕНИВО - ошибки не
   видны при старте сервера; тест: /execute if predicate <ns>:<id>.
 
-  EntityPredicate в 26.2 ПОЛНОСТЬЮ ПЕРЕДЕЛАН — это КАРТА под-предикатов
+  EntityPredicate в 26.2 ПОЛНОСТЬЮ ПЕРЕДЕЛАН - это КАРТА под-предикатов
   (EntityPredicate.class: Codec.dispatchedMap(ENTITY_SUB_PREDICATE_TYPE)),
-  ключи — namespaced id из реестра entity_sub_predicate_type:
+  ключи - namespaced id из реестра entity_sub_predicate_type:
     minecraft:entity_type (HolderSet: id | #тег | список),
     minecraft:flags {is_baby, is_on_fire, is_on_ground, is_sneaking,
       is_sprinting, is_swimming, is_in_water, is_fall_flying, is_flying},
     minecraft:location / minecraft:stepping_on / minecraft:movement_
       affected_by (напрямую LocationPredicate),
     minecraft:distance (напрямую DistancePredicate {x, y, z, absolute,
-      horizontal} — Doubles-диапазоны),
+      horizontal} - Doubles-диапазоны),
     minecraft:movement {x, y, z, speed, vertical_speed,
       horizontal_speed, fall_distance},
     minecraft:effects (карта {эффект: {amplifier, duration, visible,
@@ -73,15 +73,15 @@ Windows молча превращается в NTFS ADS-артефакт вме�
     .../fishing_hook {in_open_water}, .../cube_mob {size},
     .../raider {has_raid, is_captain}, .../sheep {sheared}.
 
-  ItemPredicate 26.2 — {items: HolderSet, count: Ints, components,
-  predicates} (ItemPredicate.class: items, count, components — кодек
+  ItemPredicate 26.2 - {items: HolderSet, count: Ints, components,
+  predicates} (ItemPredicate.class: items, count, components - кодек
   DataComponentMatchers ВЫПРЯМЛЕН в поля, без вложенности):
     «components» = карта ТОЧНЫХ значений компонентов,
     «predicates» = карта {компонент: типизированный предикат}
-  (ОБА поля — на верхнем уровне ItemPredicate, РЯДОМ, серверная проба
+  (ОБА поля - на верхнем уровне ItemPredicate, РЯДОМ, серверная проба
   26.2). id типизированных предикатов (реестр
   DataComponentPredicates.bootstrap): minecraft: damage{damage,
-  durability — Ints}, enchantments / stored_enchantments (СПИСОК
+  durability - Ints}, enchantments / stored_enchantments (СПИСОК
   {enchantments: HolderSet, levels: Ints}), potion_contents (HolderSet),
   custom_data (голый NBT), container, bundle_contents,
   firework_explosion, fireworks, writable_book_content,
@@ -91,19 +91,19 @@ Windows молча превращается в NTFS ADS-артефакт вме�
   ВАЖНЫЕ детали (исправлено после серверной пробы 26.2):
     - time_check: поле clock ОБЯЗАТЕЛЬНО (реестр world_clock:
       "minecraft:overworld" | "minecraft:the_end"); period опционален.
-    - damage_source_properties.tags — список TagPredicate-ОБЪЕКТОВ
-      {"id": "minecraft:is_fire", "expected": true} — БЕЗ решётки
-      (id — ResourceLocation), НЕ голых строк.
-    - location_check.structures — id реестра worldgen/structure
+    - damage_source_properties.tags - список TagPredicate-ОБЪЕКТОВ
+      {"id": "minecraft:is_fire", "expected": true} - БЕЗ решётки
+      (id - ResourceLocation), НЕ голых строк.
+    - location_check.structures - id реестра worldgen/structure
       (mansion/fortress/jungle_pyramid, НЕ woodland_mansion/...);
-      biomes — реальные id реестра worldgen/biome (mountains НЕ
-      существует, есть windswept_hills); block.state — СТРОКИ
+      biomes - реальные id реестра worldgen/biome (mountains НЕ
+      существует, есть windswept_hills); block.state - СТРОКИ
       (точное значение или {min/max} со строками).
-    - minecraft:entity_tags — строковые NBT-теги сущности
+    - minecraft:entity_tags - строковые NBT-теги сущности
       (Entity.entityTags()), НЕ теги реестра entity_type.
-    - minecraft:slots — голая карта {слот: ItemPredicate}, слоты —
+    - minecraft:slots - голая карта {слот: ItemPredicate}, слоты -
       имена SlotRanges: armor.head, weapon.mainhand, ...
-    - player.gamemode — СПИСОК режимов (ListCodec), не строка.
+    - player.gamemode - СПИСОК режимов (ListCodec), не строка.
 
   LocationPredicate: {position{x,y,z}, dimension, biomes, structures,
     block{blocks, state, nbt}, fluid{fluids, state}, light{light},
@@ -121,14 +121,14 @@ Windows молча превращается в NTFS ADS-артефакт вме�
 
     rand_predicates(rng, ns, name, count=None) -> {"predicates": {id: json}}
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace ('rndim');
-    name   — имя измерения (префикс id: <ns>:<name>_predN);
-    count  — сколько предикатов создать (None → тяжёлый хвост:
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace ('rndim');
+    name   - имя измерения (префикс id: <ns>:<name>_predN);
+    count  - сколько предикатов создать (None -> тяжёлый хвост:
              в среднем ~3, выбросы до 20).
 
-Ссылки reference — только «назад» (на predK с меньшим номером):
-рекурсия физически невозможна. Модуль НИЧЕГО не пишет на диск —
+Ссылки reference - только «назад» (на predK с меньшим номером):
+рекурсия физически невозможна. Модуль НИЧЕГО не пишет на диск -
 возвращает dict (формат совместим с write_dimension()).
 """
 
@@ -140,7 +140,7 @@ import math
 # ---------------------------------------------------------------------------
 
 # безопасные entity-типы (подмножество SPAWN_POOLS из generate_dimension.py,
-# сверено с реестром entity_type 26.2 — без ловушек вроде killer_bunny)
+# сверено с реестром entity_type 26.2 - без ловушек вроде killer_bunny)
 _ENTITIES = [
     "minecraft:zombie", "minecraft:skeleton", "minecraft:creeper",
     "minecraft:spider", "minecraft:husk", "minecraft:stray",
@@ -165,7 +165,7 @@ _ENTITIES = [
     "minecraft:vindicator", "minecraft:pillager",
 ]
 
-# теги entity_type, существующие в jar 26.2 (tags/entity_type/) —
+# теги entity_type, существующие в jar 26.2 (tags/entity_type/) -
 # для entity_type (HolderSet)
 _ENTITY_TAGS = ["#minecraft:skeletons", "#minecraft:zombies",
                 "#minecraft:undead", "#minecraft:arthropod",
@@ -173,28 +173,28 @@ _ENTITY_TAGS = ["#minecraft:skeletons", "#minecraft:zombies",
                 "#minecraft:illager", "#minecraft:impact_projectiles",
                 "#minecraft:freeze_immune_entity_types",
                 "#minecraft:fall_damage_immune"]
-# (сверено с data/minecraft/tags/entity_type/ jar 26.2 — 48 тегов;
-# #minecraft:passive_mobs в 26.2 НЕ существует — сервер:
+# (сверено с data/minecraft/tags/entity_type/ jar 26.2 - 48 тегов;
+# #minecraft:passive_mobs в 26.2 НЕ существует - сервер:
 # «Missing tag: 'minecraft:passive_mobs' in 'minecraft:entity_type'»,
 # поймано на реальном логе; skeletons/zombies/undead/arthropod/raiders/
-# aquatic/illager — существуют)
+# aquatic/illager - существуют)
 
 # строки NBT-тегов сущности для minecraft:entity_tags (EntityTagPredicate:
-# Entity.entityTags() → Set<String> — это обычные командные теги Tags,
+# Entity.entityTags() -> Set<String> - это обычные командные теги Tags,
 # НЕ теги реестра entity_type; сверено javap)
 _ENTITY_NBT_TAGS = ["marked", "boss", "summoned", "friendly",
                     "guardian", "elite", "cursed", "blessed"]
 
 # цели для entity_properties / entity_scores (LootContext$EntityTarget).
 # target_entity ИСКЛЮЧЁН: реестр predicate валидирует файлы по контексту
-# без TARGET_ENTITY → WARN «Parameters [target_entity] are not provided»
+# без TARGET_ENTITY -> WARN «Parameters [target_entity] are not provided»
 # (real-server 26.2); this/attacker/direct_attacker/attacking_player
 # проходят
 _ENTITY_TARGETS = ["this", "attacker", "direct_attacker",
                    "attacking_player"]
 
-# биомы и теги биомов для location_check (все id — реестр
-# worldgen/biome из jar 26.2; «mountains» НЕ существует —
+# биомы и теги биомов для location_check (все id - реестр
+# worldgen/biome из jar 26.2; «mountains» НЕ существует -
 # это windswept_hills!)
 _BIOMES = ["minecraft:plains", "minecraft:forest", "minecraft:desert",
            "minecraft:jungle", "minecraft:savanna", "minecraft:taiga",
@@ -258,12 +258,12 @@ _EFFECTS = ["speed", "slowness", "haste", "mining_fatigue", "strength",
 
 # слоты entity-экипировки (EntityEquipmentPredicate)
 _EQ_SLOTS = ["mainhand", "offhand", "head", "chest", "legs", "feet", "body"]
-# слоты для minecraft:slots (SlotsPredicate) — имена SlotRanges 26.2
+# слоты для minecraft:slots (SlotsPredicate) - имена SlotRanges 26.2
 # (дизассемблик SlotRanges): armor.head/chest/legs/feet/body, weapon.
 # mainhand/offhand, saddle, hotbar.*, inventory.*, container.*, enderchest.*,
-# horse.*, player.cursor + wildcards armor.* / weapon.* — голых
+# horse.*, player.cursor + wildcards armor.* / weapon.* - голых
 # «head»/«legs»/«armor» НЕ существует (real-server: "Unknown element
-# name:armor" на rynanox_pred0 — голый armor это EquipmentSlotGroup
+# name:armor" на rynanox_pred0 - голый armor это EquipmentSlotGroup
 # зачарований, а не SlotRange)
 _INV_SLOTS = ["weapon.mainhand", "weapon.offhand", "armor.head",
               "armor.chest", "armor.legs", "armor.feet", "armor.body",
@@ -285,7 +285,7 @@ _ITEM_TAGS = ["#minecraft:swords", "#minecraft:pickaxes", "#minecraft:axes",
               "#minecraft:logs", "#minecraft:wool", "#minecraft:flowers",
               "#minecraft:arrows", "#minecraft:fishes", "#minecraft:dyes"]
 
-# зачарования (id без префикса → с префиксом; сверен с реестром 26.2)
+# зачарования (id без префикса -> с префиксом; сверен с реестром 26.2)
 _ENCHANTS = ["sharpness", "smite", "bane_of_arthropods", "knockback",
              "looting", "fire_aspect", "sweeping_edge", "lunge",
              "efficiency", "fortune", "silk_touch", "unbreaking", "mending",
@@ -307,7 +307,7 @@ _POTIONS = ["water", "mundane", "thick", "awkward", "night_vision",
             "infested"]
 
 # environment-атрибуты с простыми значениями (EnvironmentAttributes.class;
-# только bool-атрибуты — у float/цветовых кодеки сложнее)
+# только bool-атрибуты - у float/цветовых кодеки сложнее)
 _ENV_ATTRS_BOOL = [
     ("minecraft:gameplay/fast_lava", False),
     ("minecraft:gameplay/can_start_raid", True),
@@ -318,9 +318,10 @@ _ENV_ATTRS_BOOL = [
     ("minecraft:gameplay/increased_fire_burnout", False),
 ]
 
-# NBT для entity/nbt и item custom_data (простые, заведомо валидные)
+# NBT для entity/nbt и item custom_data (простые, заведомо валидные).
+# Health намеренно отсутствует: NBT проверяет точное значение, а не диапазон.
+# Подставлять {min/max} внутрь NBT нельзя - это проверка другого NBT-типа.
 _NBT_TEMPLATES = [
-    {"Health": 20.0},
     {"OnGround": True},
     {"Invulnerable": False},
     {"Fire": -1},
@@ -341,8 +342,8 @@ _BLOCK_STATES = {
     "minecraft:respawn_anchor": {"charges": ["1", "2", "3", "4"]},
     "minecraft:composter": {"level": ["3", "6", "8"]},
     # 26.2: пустой minecraft:cauldron БЕЗ свойств (вариант ""), уровни
-    # воды — у отдельного блока water_cauldron (level 1-3; сервер:
-    # «Block cauldron has no property level» — поймано на реальном логе)
+    # воды - у отдельного блока water_cauldron (level 1-3; сервер:
+    # «Block cauldron has no property level» - поймано на реальном логе)
     "minecraft:water_cauldron": {"level": ["1", "2", "3"]},
     "minecraft:farmland": {"moisture": ["1", "7"]},
     "minecraft:candle": {"lit": ["true"]},
@@ -386,16 +387,24 @@ def _ints(rng, lo, hi):
 
 
 def _doubles(rng, lo, hi):
-    """Doubles-диапазон (для дистанций/скоростей)."""
+    """Непрерывное условие: порог или диапазон, никогда точный float.
+
+    Для дистанций, движения, координат, насыщения и value_check.
+    Вероятности, NumberProvider и дискретные _ints сюда не относятся.
+    """
     r = rng.random()
     a = round(rng.uniform(lo, hi), 2)
     if r < 0.25:
-        return a
+        return {"min": a}
     b = round(rng.uniform(a, hi), 2)
     if r < 0.55:
         return {"min": a}
     if r < 0.80:
         return {"max": b}
+    # Округление может схлопнуть интервал в точку: оставляем нижний порог,
+    # чтобы небольшое превышение (например, fall_distance) тоже засчитывалось.
+    if a == b:
+        return {"min": a}
     return {"min": a, "max": b}
 
 
@@ -403,9 +412,11 @@ def _num_provider(rng, lo, hi):
     """NumberProvider: constant | uniform | binomial."""
     r = rng.random()
     if r < 0.55:
-        return {"type": "minecraft:uniform",
-                "min": float(rng.randint(lo, hi)),
-                "max": float(rng.randint(lo, hi + 2))}
+        # Loot NumberProvider (not FloatProvider): equal endpoints are valid.
+        # Sort the same two draws so unrelated seeded choices stay unchanged.
+        a, b = sorted((float(rng.randint(lo, hi)),
+                       float(rng.randint(lo, hi + 2))))
+        return {"type": "minecraft:uniform", "min": a, "max": b}
     if r < 0.75:
         return {"type": "minecraft:binomial",
                 "n": float(rng.randint(hi, hi * 3 + 1)),
@@ -490,7 +501,7 @@ def _location_predicate(rng, depth):
     if rng.random() < 0.30:  # BlockPredicate: {blocks, state, nbt}
         b = {"blocks": _holderset(rng, _BLOCKS, [])}
         if rng.random() < 0.3:
-            # StatePropertiesPredicate: значения — СТРОКИ (точное
+            # StatePropertiesPredicate: значения - СТРОКИ (точное
             # значение либо {min/max} тоже со строками!)
             if rng.random() < 0.5:
                 b["state"] = {"lit": rng.choice(["true", "false"])}
@@ -511,11 +522,11 @@ def _location_predicate(rng, depth):
 
 
 def _item_predicate(rng, depth):
-    """ItemPredicate 26.2: {items, count, components, predicates} —
+    """ItemPredicate 26.2: {items, count, components, predicates} -
     DataComponentMatchers ВЫПРЯМЛЕН в поля ItemPredicate (javap: кодек
     входит в group БЕЗ fieldOf): «components» = карта ТОЧНЫХ значений,
-    «predicates» = карта {компонент: типизированный предикат} — РЯДОМ,
-    не в вложенном объекте. id типизированных предикатов — реестр
+    «predicates» = карта {компонент: типизированный предикат} - РЯДОМ,
+    не в вложенном объекте. id типизированных предикатов - реестр
     DataComponentPredicates: damage{damage,durability: Ints},
     enchantments/stored_enchantments: СПИСОК {enchantments, levels},
     potion_contents: HolderSet, custom_data: NBT, ..."""
@@ -549,7 +560,7 @@ def _item_predicate(rng, depth):
     if rng.random() < 0.25:  # HolderSet зелий
         preds["minecraft:potion_contents"] = _holderset(
             rng, ["minecraft:" + x for x in _POTIONS], [])
-    if rng.random() < 0.25:  # {damage, durability} — Ints-диапазоны!
+    if rng.random() < 0.25:  # {damage, durability} - Ints-диапазоны!
         dp = {}
         if rng.random() < 0.7:
             dp["damage"] = _ints(rng, 0, 200)
@@ -649,7 +660,7 @@ def _entity_predicate(rng, depth):
             ep[k] = rng.choice(_TEAMS)
         elif k == "minecraft:slots":
             # EntitySlotsPredicate.CODEC = SlotsPredicate.CODEC.xmap(...)
-            # — БЕЗ fieldOf: значение = голая карта {слот: ItemPredicate}
+            # - БЕЗ fieldOf: значение = голая карта {слот: ItemPredicate}
             sl = {}
             for s in rng.sample(_INV_SLOTS, rng.randint(1, 3)):
                 sl[s] = _item_predicate(rng, depth + 1)
@@ -706,12 +717,12 @@ def _entity_predicate(rng, depth):
 
 def _damage_source_predicate(rng, depth):
     """DamageSourcePredicate: {tags, direct_entity, source_entity,
-    is_direct} (javap). tags — СПИСОК TagPredicate-ОБЪЕКТОВ
-    {"id": "#тег", "expected": bool} — НЕ голых строк!"""
+    is_direct} (javap). tags - СПИСОК TagPredicate-ОБЪЕКТОВ
+    {"id": "#тег", "expected": bool} - НЕ голых строк!"""
     p = {}
     if rng.random() < 0.55:
         # TagPredicate {"id": <id БЕЗ решётки>, "expected": bool}
-        # — id это ResourceLocation, «#» НЕ допускается!
+        # - id это ResourceLocation, «#» НЕ допускается!
         p["tags"] = [{"id": "minecraft:" + t,
                       "expected": rng.random() < 0.7}
                      for t in rng.sample(
@@ -804,7 +815,7 @@ def _leaf_condition(rng, depth):
 
 def _condition(rng, depth=0, prior_ids=None):
     """Любое условие, включая композитные (inverted/any_of/all_of) и
-    reference на ранее созданные предикаты. prior_ids — список id
+    reference на ранее созданные предикаты. prior_ids - список id
     предикатов с МЕНЬШИМ номером (ссылки только «назад»)."""
     if depth >= _MAX_DEPTH:
         return _leaf_condition(rng, depth)
@@ -828,7 +839,7 @@ def _condition(rng, depth=0, prior_ids=None):
         return {"condition": "minecraft:survives_explosion"}
     # NOTE: enchantment_active_check здесь НЕ генерим: ему нужен контекст-
     # параметр minecraft:enchantment_active, которого нет ни в standalone-
-    # валидации реестра predicates, ни в обычных лут-контекстах — любой
+    # валидации реестра predicates, ни в обычных лут-контекстах - любой
     # файл с ним (даже вложенным) даёт WARN «Parameters ... are not
     # provided in this context». Только внутри enchantment-компонентов.
     return _leaf_condition(rng, depth)
@@ -841,10 +852,10 @@ def _condition(rng, depth=0, prior_ids=None):
 def rand_predicates(rng, ns, name, count=None):
     """Случайные predicates измерения.
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace;
-    name   — имя измерения (id: <ns>:<name>_predN);
-    count  — сколько предикатов создать (None → тяжёлый хвост,
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace;
+    name   - имя измерения (id: <ns>:<name>_predN);
+    count  - сколько предикатов создать (None -> тяжёлый хвост,
              в среднем ~3, выбросы до 20).
 
     Возвращает {"predicates": {"<ns>:<name>_predN": json, ...}}.
@@ -852,14 +863,14 @@ def rand_predicates(rng, ns, name, count=None):
     if count is None:
         count = _predicate_count(rng)
     out = {}
-    prior = []  # id уже созданных — для reference «назад»
+    prior = []  # id уже созданных - для reference «назад»
     # БЕЗПАРАМЕТРИЧЕСКИЕ условия с interned-синглтоном (javap: INSTANCE-
     # поле есть только у ExplosionCondition/survives_explosion и
     # LootItemKilledByPlayerCondition/killed_by_player). Два файла пака,
-    # чей КОРЕНЬ — такое условие, декодируются в один объект →
+    # чей КОРЕНЬ - такое условие, декодируются в один объект ->
     # «Adding duplicate value ... to registry» и падает ВЕСЬ пак (тот же
     # капкан, что end_islands в density_function). Вложенные вхождения
-    # безопасны — регистрируется только корень.
+    # безопасны - регистрируется только корень.
     _SINGLETONS = ("minecraft:survives_explosion",
                    "minecraft:killed_by_player")
     for i in range(count):
@@ -871,7 +882,7 @@ def rand_predicates(rng, ns, name, count=None):
         else:
             root = _condition(rng, 0, prior)
             if isinstance(root, dict) and root.get("condition") in _SINGLETONS:
-                # оборачиваем — any_of с одним term создаёт свежий инстанс
+                # оборачиваем - any_of с одним term создаёт свежий инстанс
                 root = {"condition": "minecraft:any_of", "terms": [root]}
         out[pid] = root
         prior.append(pid)

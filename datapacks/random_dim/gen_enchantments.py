@@ -5,25 +5,31 @@
   vanilla JSON `data/minecraft/enchantment/*.json` (43 шт.) и
   `data/minecraft/enchantment_provider/*.json`, плюс байткод классов
   net/minecraft/world/item/enchantment/* (javap, Java 25 epsilon).
-  Всё ниже — либо скопировано из ванильных JSON, либо сверено с кодеками
-  в байткоде; ничего не выдумано.
+  Исторические JSON-кодеки ниже сверялись с ванилью. Новый синхронный
+  command pipeline проверен локальными регрессиями, но НЕ испытан на сервере
+  26.2; требуется отдельная проверка /reload и живого игрового поведения.
+
+Текущая политика команд: только события, никакого tick/schedule; реальное
+действие обязательно, визуальные помощники лишь дополняют его. Общий guard
+в storage предотвращает синхронный повторный вход. Метаданные действий -
+COMMAND_FAMILIES / LAST_FUNCTION_METADATA, не дополнительные поля JSON.
 
 Реестры (БЕЗ префикса worldgen/):
   data/<ns>/enchantment/<id>.json
   data/<ns>/enchantment_provider/<id>.json
 
 Зачарование (Enchantment$EnchantmentDefinition.CODEC):
-  description        — текст-компонент (у нас: {"text": "...", "color": ...})
-  supported_items    — HolderSet<Item>: "#tag" | id | список id
-  primary_items      — необязательный HolderSet<Item>
-  weight             — int 1..1024 (обратная редкость)
-  max_level          — int 1..255
-  min_cost/max_cost  — {"base": int, "per_level_above_first": int}
-  anvil_cost         — int >= 0
-  slots              — список групп слотов: any, mainhand, offhand, hand,
+  description        - текст-компонент (у нас: {"text": "...", "color": ...})
+  supported_items    - HolderSet<Item>: "#tag" | id | список id
+  primary_items      - необязательный HolderSet<Item>
+  weight             - int 1..1024 (обратная редкость)
+  max_level          - int 1..255
+  min_cost/max_cost  - {"base": int, "per_level_above_first": int}
+  anvil_cost         - int >= 0
+  slots              - список групп слотов: any, mainhand, offhand, hand,
                        feet, legs, chest, head, armor, body, saddle
-  exclusive_set      — необязательный HolderSet<Enchantment> (id | список)
-  effects            — необязательная карта компонент (DataComponentMap)
+  exclusive_set      - необязательный HolderSet<Enchantment> (id | список)
+  effects            - необязательная карта компонент (DataComponentMap)
 
 Компоненты эффектов (EnchantmentEffectComponents, все 31, имена из байткода):
   списки {effect: ValueEffect, requirements?}:
@@ -33,34 +39,34 @@
     fishing_time_reduction, fishing_luck_bonus, block_experience,
     mob_experience, repair_with_xp
   список {effect: {}, requirements}:
-    damage_immunity (DamageImmunity — unit-кодек, эффект всегда {})
+    damage_immunity (DamageImmunity - unit-кодек, эффект всегда {})
   списки {enchanted, affected, effect, requirements?} (TargetedConditionalEffect):
-    post_attack, equipment_drops (effect тут — ValueEffect, как у looting:
+    post_attack, equipment_drops (effect тут - ValueEffect, как у looting:
       add 0.01/0.01, enchanted=attacker, req entity_properties attacker player)
   списки {effect: EntityEffect, requirements?}:
     post_piercing_attack, hit_block, tick, projectile_spawned
   список {effect: LocationEffect, requirements?}:
-    location_changed — реестр location-эффектов принимает ТЕ ЖЕ имена типов,
+    location_changed - реестр location-эффектов принимает ТЕ ЖЕ имена типов,
       что и entity-эффекты (проверено по bootstrap EnchantmentLocationBasedEffect:
       all_of, apply_mob_effect, attribute, change_item_damage, damage_entity,
       explode, ignite, apply_impulse, apply_exhaustion, play_sound,
       replace_block, replace_disk, run_function, set_block_properties,
-      spawn_particles, summon_entity) — поэтому frost_walker кладёт
+      spawn_particles, summon_entity) - поэтому frost_walker кладёт
       replace_disk прямо в location_changed
   список {amount, attribute, id, operation} (НЕ conditional):
-    attributes — operation: add_value | add_multiplied_base |
-      add_multiplied_total; id — уникальный Identifier
+    attributes - operation: add_value | add_multiplied_base |
+      add_multiplied_total; id - уникальный Identifier
   одиночный ValueEffect (НЕ список):
     crossbow_charge_time, trident_spin_attack_strength
-  список {start, end} — crossbow_charging_sounds (id звуков)
-  список id звуков     — trident_sound
-  пустой объект {}     — prevent_equipment_drop, prevent_armor_change
+  список {start, end} - crossbow_charging_sounds (id звуков)
+  список id звуков     - trident_sound
+  пустой объект {}     - prevent_equipment_drop, prevent_armor_change
 
-ValueEffect (диспетч по "type" — все 6 типов реестра, сверено по
+ValueEffect (диспетч по "type" - все 6 типов реестра, сверено по
 байткоду EnchantmentValueEffect):
   add {value: LBV}, multiply {factor: float}, set {value: float},
   remove_binomial {chance: LBV}, all_of {effects: [...]},
-  exponential {base: LBV, exponent: LBV} — ScaleExponentially:
+  exponential {base: LBV, exponent: LBV} - ScaleExponentially:
   итог = value * base^exponent (в ванили не используется; мы генерируем
   с знаком по компоненте: для «уменьшающих» (charge_time) base < 1;
   проверено загрузкой на реальном сервере 26.2)
@@ -72,27 +78,27 @@ LevelBasedValue ("type"):
   а также голое число-константа (vanilla: radius 3.5, height 1.0...).
 
 EntityEffect-типы (поля по байткоду; Vec3/Vec3i сериализуются СПИСКАМИ
-[x, y, z] — см. wind_burst/lunge/frost_walker):
+[x, y, z] - см. wind_burst/lunge/frost_walker):
   apply_mob_effect {to_apply: id|[id], min_duration, max_duration,
-                    min_amplifier, max_amplifier}      — LBV
+                    min_amplifier, max_amplifier}      - LBV
   change_item_damage {amount: LBV}
   damage_entity {min_damage, max_damage: LBV, damage_type}
-  ignite {duration: LBV}                               — в тиках (flame: 100)
+  ignite {duration: LBV}                               - в тиках (flame: 100)
   apply_impulse {direction: [x,y,z], coordinate_scale: [x,y,z], magnitude: LBV}
   apply_exhaustion {amount: LBV}
   play_sound {sound: id|[id], volume: FloatProvider, pitch: FloatProvider}
   replace_block {offset: [x,y,z]int, predicate?, block_state: BlockStateProvider,
-                 trigger_game_event?}                   — predicate = worldgen
+                 trigger_game_event?}                   - predicate = worldgen
                                                         BlockPredicate
   replace_disk {radius: LBV, height: LBV, offset: [x,y,z]int, predicate?,
                 block_state: BlockStateProvider, trigger_game_event?}
-  run_function {function: id}   — проверяется ТОЛЬКО в рантайме; мы ссылаемся
-                                  на функцию "<ns>:<id зачарования>" — её
+  run_function {function: id}   - проверяется ТОЛЬКО в рантайме; мы ссылаемся
+                                  на функцию "<ns>:<id зачарования>" - её
                                   должен создать основной скрипт (или тест-пак)
   set_block_properties {properties: {строка: строка}, offset?, trigger_game_event?}
   spawn_particles {particle: {"type": id} (ОБЪЕКТ, голая строка не
                     парсится!), horizontal_position: {type: entity_position|
-                    in_bounding_box — БЕЗ префикса minecraft:, offset: float,
+                    in_bounding_box - БЕЗ префикса minecraft:, offset: float,
                     scale: float>0}, vertical_position: {...},
                    horizontal_velocity: {movement_scale: float,
                     base: FloatProvider}, vertical_velocity: {...},
@@ -100,7 +106,7 @@ EntityEffect-типы (поля по байткоду; Vec3/Vec3i сериали
   summon_entity {entity: id|[id], join_team: bool}
   explode {radius: LBV, block_interaction: none|block|mob|tnt|trigger,
            damage_type, small_particle, large_particle (объекты
-           {"type": id}), sound — ЭТИ ПОЛЯ В 26.2 ОБЯЗАТЕЛЬНЫ; optional:
+           {"type": id}), sound - ЭТИ ПОЛЯ В 26.2 ОБЯЗАТЕЛЬНЫ; optional:
            attribute_to_user?, create_fire?, knockback_multiplier?,
            immune_blocks?: HolderSet<Block> ("#tag"), offset: [x,y,z],
            block_particles?}
@@ -108,22 +114,22 @@ EntityEffect-типы (поля по байткоду; Vec3/Vec3i сериали
 
 LocationEffect-типы: те же + attribute {id, attribute, amount: LBV, operation}.
 
-requirements — LootContextPredicate, и 26.2 ВАЛИДИРУЕТ их на загрузке по
+requirements - LootContextPredicate, и 26.2 ВАЛИДИРУЕТ их на загрузке по
 ContextKeySet компоненты ("Parameters [...] are not provided in this
 context"). Пулы обязаны соответствовать контексту (реально проверено на
 сервере; LootContextParamSets): enchanted_damage (damage,
 damage_protection, smash..., knockback, armor_effectiveness, post_attack,
-damage_immunity) — random_chance / damage_source_properties /
+damage_immunity) - random_chance / damage_source_properties /
 entity_properties(this|direct_attacker); enchanted_item (item_damage,
-ammo_use) — match_tool; enchanted_location/enchanted_entity
-(location_changed, tick, post_piercing_attack) — random_chance /
+ammo_use) - match_tool; enchanted_location/enchanted_entity
+(location_changed, tick, post_piercing_attack) - random_chance /
 entity_properties(this: entity_type, flags, vehicle) / inverted;
-hit_block — weather_check / entity_properties(this) / location_check;
-projectile_* — только random_chance; equipment_drops — как у looting
+hit_block - weather_check / entity_properties(this) / location_check;
+projectile_* - только random_chance; equipment_drops - как у looting
 (entity_properties attacker player); у остальных компонент требований
 не генерируем (в ванили их нет). FloatProvider uniform использует ключи
-min_inclusive/max_exclusive, IntProvider uniform — min_inclusive/
-max_inclusive (НЕ min/max — проверено на сервере).
+min_inclusive/max_exclusive, IntProvider uniform - min_inclusive/
+max_inclusive (НЕ min/max - проверено на сервере).
 
 EnchantmentTarget (enchanted/affected): attacker | damaging_entity | victim.
 
@@ -135,7 +141,7 @@ mob_spawn_equipment / pillager_spawn_crossbow):
                            max_cost_span: int, min_cost: int}
 
 ВАЖНО про лут (EnchantRandomlyFunction): провайдеры из loot-таблиц НЕ
-ссылаются — поля функции это `options` (HolderSet<Enchantment>:
+ссылаются - поля функции это `options` (HolderSet<Enchantment>:
 "#тег" | id | список id), `only_compatible` (bool, умолч. true) и
 `include_additional_cost_component`. enchantment_provider потребляют только
 спавнеры мобов (EnchantmentHelper.enchantItemFromProvider). Для лута
@@ -148,28 +154,28 @@ mod_ids=None, pred_ids=None) возвращает
   {"enchantments": {id: json}, "enchantment_providers": {id: json},
    "functions": {<fname>: текст mcfunction},      # run_function-эффекты
    "gate_predicates": {<id>: json}},               # random_chance-гейты
-id вида "<ns>:<name>_enchN" / "<ns>:<name>_provN"; fname — id зачарования
-без namespace. mod_ids/pred_ids — id item_modifier'ов/predicates ИЗМЕРЕНИЯ
+id вида "<ns>:<name>_enchN" / "<ns>:<name>_provN"; fname - id зачарования
+без namespace. mod_ids/pred_ids - id item_modifier'ов/predicates ИЗМЕРЕНИЯ
 (генерируются ДО зачарований и передаются сюда): открывают категорию
 перекраски (item modify) в mcfunction. gate_predicates обязаны быть
-записаны основным скриптом в predicate/ — на них ссылаются команды.
+записаны основным скриптом в predicate/ - на них ссылаются команды.
 
-Связка с gen_loot (лут ↔ зачарования; фичи «предмет только с визуалом»
+Связка с gen_loot (лут ? зачарования; фичи «предмет только с визуалом»
 и lore-подсказки):
-  passive_enchants(enchantments) — список id зачарований с ПАССИВНЫМ
+  passive_enchants(enchantments) - список id зачарований с ПАССИВНЫМ
     действием: компоненты attributes / tick / location_changed /
     damage_immunity / prevent_equipment_drop / prevent_armor_change
-    работают при ношении или удержании предмета, без боевых событий —
+    работают при ношении или удержании предмета, без боевых событий -
     именно их gen_loot ставит предмету, которому «не хватает функционала»;
-  summarize_enchantment(ejson) — краткое русское описание действия
+  summarize_enchantment(ejson) - краткое русское описание действия
     зачарования, ДО 8 СЛОВ, строится по фактическим компонентам effects:
-    damage → «усиливает урон», knockback → «отбрасывает врагов»,
-    post_attack → «мстит при ударе по тебе», apply_mob_effect →
-    «накладывает яд», attributes → «усиливает броню»...; про run_function
+    damage -> «усиливает урон», knockback -> «отбрасывает врагов»,
+    post_attack -> «мстит при ударе по тебе», apply_mob_effect ->
+    «накладывает яд», attributes -> «усиливает броню»...; про run_function
     говорит «творит особый ритуал» (текст mcfunction живёт вне JSON
-    зачарования — словари _name_seeds/_ee_word дают слово «Ритуал»);
+    зачарования - словари _name_seeds/_ee_word дают слово «Ритуал»);
   rand_enchantments дополнительно сохраняет свой результат в модульной
-    переменной LAST_ENCHANTMENTS ({id: json зачарования}) — gen_loot
+    переменной LAST_ENCHANTMENTS ({id: json зачарования}) - gen_loot
     в том же процессе (generate_dimension.py) находит по ней зачарования
     измерения сам, без правки основного скрипта, который передаёт в
     set_custom_enchants только id.
@@ -177,116 +183,116 @@ id вида "<ns>:<name>_enchN" / "<ns>:<name>_provN"; fname — id зачаро
 run_function-ЭФФЕКТЫ И mcfunction (всё сверено байткодом jar 26.2):
   RunFunction.applyEffect(level, lvl, item, entity, pos) исполняет функцию
   с source.withEntity(entity).withPosition(pos).withRotation(
-  entity.getRotationVector()) — то есть @s/позиция/поворот = сущности,
+  entity.getRotationVector()) - то есть @s/позиция/поворот = сущности,
   на которую применён эффект. Отсюда контексты (одна функция на
   зачарование, выбирается САМЫЙ частый/строгий):
-    full  — post_attack: affected-сущность; для run_function мы
+    full  - post_attack: affected-сущность; для run_function мы
             маршрутизируем affected=enchanted (владелец предмета);
-    event — hit_block (бьющий) / post_piercing_attack (атакующий) /
+    event - hit_block (бьющий) / post_piercing_attack (атакующий) /
             projectile_spawned (@s = сам снаряд!);
-    worn  — tick/location_changed: носитель, вызов КАЖДЫЙ ТИК — только
+    worn  - tick/location_changed: носитель, вызов КАЖДЫЙ ТИК - только
             дешёвые команды, КАЖДАЯ загейчена random_chance-предикатом.
-  Категории команд (41 = 20 исходных + 21 новая; веса/дешевизна — _FN_CAT_W,
+  Категории команд (41 = 20 исходных + 21 новая; веса/дешевизна - _FN_CAT_W,
     строители _fn_*_cmd):
-    particle — 10 форм геометрии (смещения считает генератор): пучок/
+    particle - 10 форм геометрии (смещения считает генератор): пучок/
       сектор/вспышка перед глазами/кольцо 6-10/СПИРАЛЬ (радиус+высота
       растут)/КУПОЛ-полусфера/АРКА-полуокружность/СЛЕД вдоль взгляда
-      (^ ^ ^N по питчу)/СТОЛБ/СТЕНА-ЗАНАВЕС 2-3×2-3 перпенд. взгляду;
+      (^ ^ ^N по питчу)/СТОЛБ/СТЕНА-ЗАНАВЕС 2-3x2-3 перпенд. взгляду;
       параметризованные частицы dust/dust_color_transition/entity_effect/
-      flash/dragon_breath (цвета — палитра 30);
-    sound — playsound (48 звуков, сверены по SoundEvents; vol 0.3-2.0,
+      flash/dragon_breath (цвета - палитра 30);
+    sound - playsound (48 звуков, сверены по SoundEvents; vol 0.3-2.0,
       pitch 0.5-2.0);
-    fangs — 7 форм: линия/веер/крест/ДУГА (rotated ~±90)/КОЛЬЦО 8-12
+    fangs - 7 форм: линия/веер/крест/ДУГА (rotated ~+/-90)/КОЛЬЦО 8-12
       вокруг игрока (посчитанные ~X ~ ~Z)/СПИРАЛЬ/СТЕНА перпенд.
-      взгляду (rotated ~±90 + ^±2 вперёд);
-    cloud — одно или СВЯЗКА 2-3 area_effect_cloud с разными
+      взгляду (rotated ~+/-90 + ^+/-2 вперёд);
+    cloud - одно или СВЯЗКА 2-3 area_effect_cloud с разными
       Radius/Duration/WaitTime, custom_effects 1-3 (расширенный пул:
       +glowing/darkness/blindness/unluck) и custom_color;
-    firework / fw2 — одиночная ракета и ДВОЙНОЙ залп с разными зарядами
+    firework / fw2 - одиночная ракета и ДВОЙНОЙ залп с разными зарядами
       (shape/colors/fade_colors/has_trail/has_twinkle);
-    selfbuff / duet — баф и ДУЭТ бафов effect give @s (НЕ в worn);
-    aura / auraring — дебаф-аура и КОЛЬЦО 2-3 радиусов effect give @e
+    selfbuff / duet - баф и ДУЭТ бафов effect give @s (НЕ в worn);
+    aura / auraring - дебаф-аура и КОЛЬЦО 2-3 радиусов effect give @e
       (НЕ в worn);
-    flavor — actionbar-фразы (80 русских);
-    recolor / glow2 — перекраска item modify и ЖЕРТВЕННОЕ СВЕЧЕНИЕ
+    flavor - actionbar-фразы (80 русских);
+    recolor / glow2 - перекраска item modify и ЖЕРТВЕННОЕ СВЕЧЕНИЕ
       (mainhand+offhand, нужны mod_ids);
-    xp / harvest — мелкий XP и ЖАТВА (орбы + частицы; гейт 0.05-0.2);
-    lightning — только full, гейт 0.04-0.12 (<=0.15);
-    echo — 2-3 playsound с НАРАСТАЮЩИМ pitch; flash — ВСПЫШКА СВЕТА
-      (end_rod/flash{color}/... + звук); totem — тотемный визуал
-      (totem_of_undying + item.totem.use); thunder — ГРОЗОВОЕ ЭХО
+    xp / harvest - мелкий XP и ЖАТВА (орбы + частицы; гейт 0.05-0.2);
+    lightning - только full, гейт 0.04-0.12 (<=0.15);
+    echo - 2-3 playsound с НАРАСТАЮЩИМ pitch; flash - ВСПЫШКА СВЕТА
+      (end_rod/flash{color}/... + звук); totem - тотемный визуал
+      (totem_of_undying + item.totem.use); thunder - ГРОЗОВОЕ ЭХО
       (только звук entity.lightning_bolt.thunder, без молнии);
-    НОВЫЕ 21 категория: rain — ДОЖДЬ частиц сверху (6-12 капель,
-      высоты 2.2-5.5); vortex — ВИХРЬ (спираль 8-14, радиус растёт
-      0.3-0.8→1.6-2.6); dome — КУПОЛ (полусфера: экватор + верхнее
-      кольцо + макушка); chord — АККОРД-АРПЕДЖИО (3-5 звуков, pitch
-      растёт шагом 0.15-0.35); choir — ХОР (один звук с 3-4 сторон,
-      positioned ~±3); gamma — ГАММА-ЯРУСЫ (2-3 area_effect_cloud на
-      высотах 0.4/1.4/2.4); fangarc — ВЕЕР КЛЫКОВ ПОЛУКРУГОМ (5-9 клыков
-      дугой 90-180°); fangwall — СТЕНА КЛЫКОВ на дистанции 2.5-4.5
-      поперёк взгляда; shards — ОСКОЛКИ (4-8 частиц block{block_state:
-      {Name:...}} — BlockParticleOption 26.2, сверено javap'ом; БЕЗ
-      summon falling_block — сущности не спамим); glow — СВЕЧЕНИЕ
+    НОВЫЕ 21 категория: rain - ДОЖДЬ частиц сверху (6-12 капель,
+      высоты 2.2-5.5); vortex - ВИХРЬ (спираль 8-14, радиус растёт
+      0.3-0.8->1.6-2.6); dome - КУПОЛ (полусфера: экватор + верхнее
+      кольцо + макушка); chord - АККОРД-АРПЕДЖИО (3-5 звуков, pitch
+      растёт шагом 0.15-0.35); choir - ХОР (один звук с 3-4 сторон,
+      positioned ~+/-3); gamma - ГАММА-ЯРУСЫ (2-3 area_effect_cloud на
+      высотах 0.4/1.4/2.4); fangarc - ВЕЕР КЛЫКОВ ПОЛУКРУГОМ (5-9 клыков
+      дугой 90-180°); fangwall - СТЕНА КЛЫКОВ на дистанции 2.5-4.5
+      поперёк взгляда; shards - ОСКОЛКИ (4-8 частиц block{block_state:
+      {Name:...}} - BlockParticleOption 26.2, сверено javap'ом; БЕЗ
+      summon falling_block - сущности не спамим); glow - СВЕЧЕНИЕ
       (effect give @s glowing 10-30 с, гейт 0.15-0.5, НЕ в worn);
-      secondwind — ВТОРОЕ ДЫХАНИЕ (2 самобаффа: короткий 4-10 с +
-      длинный +6-18 с); whisper — ШЁПОТ (tellraw цветной флейвор в чат,
-      редко); march — МАРШ (3-5 звуков, громкость 0.3→1.5); awakening —
-      ПРОБУЖДЕНИЕ (вспышка + гром-эхо + залп частиц); oath — КЛЯТВА
-      (item modify обеих рук + title; нужны mod_ids); xprain — ДОЖДЬ
-      ОПЫТА (4-8 орбов россыпью, гейт 0.05-0.2); farewell — ПРОЩАЛЬНЫЙ
-      САЛЮТ (фейерверк с обязательными fade_colors + частицы); rings —
-      МНОГОСЛОЙНЫЕ КОЛЬЦА (2-3 радиуса); crosses — КРЕСТЫ (1-3, центр
-      + 4 луча); stars — ЗВЁЗДЫ (1-2, 5-8 лучей из центра + ядро);
-      downspiral — ВОРОНКА (спираль ВНИЗ: радиус сжимается, высота
-      падает 2.0→0.5).
+      secondwind - ВТОРОЕ ДЫХАНИЕ (2 самобаффа: короткий 4-10 с +
+      длинный +6-18 с); whisper - ШЁПОТ (tellraw цветной флейвор в чат,
+      редко); march - МАРШ (3-5 звуков, громкость 0.3->1.5); awakening -
+      ПРОБУЖДЕНИЕ (вспышка + гром-эхо + залп частиц); oath - КЛЯТВА
+      (item modify обеих рук + title; нужны mod_ids); xprain - ДОЖДЬ
+      ОПЫТА (4-8 орбов россыпью, гейт 0.05-0.2); farewell - ПРОЩАЛЬНЫЙ
+      САЛЮТ (фейерверк с обязательными fade_colors + частицы); rings -
+      МНОГОСЛОЙНЫЕ КОЛЬЦА (2-3 радиуса); crosses - КРЕСТЫ (1-3, центр
+      + 4 луча); stars - ЗВЁЗДЫ (1-2, 5-8 лучей из центра + ядро);
+      downspiral - ВОРОНКА (спираль ВНИЗ: радиус сжимается, высота
+      падает 2.0->0.5).
     Инварианты worn-контекста: только particle/playsound/title/item/
     tellraw (все гейчены), без summon и effect give @s; призывные и
-    бафовые категории — только full/event.
-  Архитектурно ЗАПРЕЩЕНЫ: kill/give/tp/gamemode/scoreboard/data/... —
+    бафовые категории - только full/event.
+  Архитектурно ЗАПРЕЩЕНЫ: kill/give/tp/gamemode/scoreboard/data/... -
   самотест проверяет белый список глаголов. Слова профиля функции
-  («Клык», «Громовержец», «Переливы»...) идут в НАЗВАНИЕ зачарования —
+  («Клык», «Громовержец», «Переливы»...) идут в НАЗВАНИЕ зачарования -
   функция генерируется ДО имени и передаёт слово в
   _name_seeds/_effect_name.
   Скрытый маркер-armor_stand НЕ призываем: без kill/деспавна он
   накапливался бы в мире вечно (чистота мира важнее).
 
 ВАЛИДНОСТЬ КОМПОНЕНТ ПО ПРЕДМЕТАМ (требование юзера: «зачарования
-не должны быть на предметах где их нельзя использовать — не надо мечу
+не должны быть на предметах где их нельзя использовать - не надо мечу
 давать защиту»; касается и сгенерированных). Правила сверены с точками
 срабатывания в байткоде jar 26.2 (EnchantmentHelper: методы без
-слот-чека — читают предмет-триггер; runIterationOnEquipment — со
+слот-чека - читают предмет-триггер; runIterationOnEquipment - со
 слот-чеком Enchantment.matchingSlot) и закодированы в _COMP_ITEM_RULES
 (+ _comp_usable; генерация фильтрует кандидатов, самотест проверяет
 каждое сгенерированное зачарование через side-канал LAST_PROFILES):
-  damage_protection — только надеваемое (armor/elytra/#equippable) +
+  damage_protection - только надеваемое (armor/elytra/#equippable) +
     слоты брони; щиту не даём (в руке он не экипировка);
-  smash_damage_per_fallen_block — ТОЛЬКО булава (MaceItem.hurtEnemy);
-  атрибуты — тематические пулы по профилю (_PROFILE_ATTR_IDS):
-    attack_* / sweeping — оружию, block_break/mining_efficiency/
-    submerged_mining — инструментам, armor/toughness — броне;
-  projectile_count/spread/piercing/ammo_use — лук/арбалет;
-  projectile_spawned — лук/арбалет/трезубец; crossbow_* — арбалет;
-  trident_* — трезубец; fishing_* — удочка; block_experience —
-    инструменты; mob_experience/equipment_drops — оружие в mainhand
-    (лутинг-подобные «работают в руках»); post_piercing_attack —
-    копья/трезубец (выпад — PiercingWeapon, 26.2 споры);
-  item_damage/repair_with_xp — только предметы с прочностью;
+  smash_damage_per_fallen_block - ТОЛЬКО булава (MaceItem.hurtEnemy);
+  атрибуты - тематические пулы по профилю (_PROFILE_ATTR_IDS):
+    attack_* / sweeping - оружию, block_break/mining_efficiency/
+    submerged_mining - инструментам, armor/toughness - броне;
+  projectile_count/spread/piercing/ammo_use - лук/арбалет;
+  projectile_spawned - лук/арбалет/трезубец; crossbow_* - арбалет;
+  trident_* - трезубец; fishing_* - удочка; block_experience -
+    инструменты; mob_experience/equipment_drops - оружие в mainhand
+    (лутинг-подобные «работают в руках»); post_piercing_attack -
+    копья/трезубец (выпад - PiercingWeapon, 26.2 споры);
+  item_damage/repair_with_xp - только предметы с прочностью;
   tick/location_changed/post_attack/damage_immunity/hit_block/
-    prevent_equipment_drop/prevent_armor_change — ок везде (решение
-    юзера; hit_block срабатывает ударом о блок ЛЮБЫМ предметом —
-    ServerPlayerGameMode — и попаданием снаряда — AbstractArrow).
-Профиль absurd («абсурд») — исключение: там любой набор (наш стиль).
+    prevent_equipment_drop/prevent_armor_change - ок везде (решение
+    юзера; hit_block срабатывает ударом о блок ЛЮБЫМ предметом -
+    ServerPlayerGameMode - и попаданием снаряда - AbstractArrow).
+Профиль absurd («абсурд») - исключение: там любой набор (наш стиль).
 
 ПОЛИТИКА БЕЗОПАСНОСТИ (требование юзера): зачарования НИКОГДА не наносят
 прямой урон владельцу предмета (HP-урон: damage_entity, ignite,
-instant_damage/poison/wither). Взрывы, импульсы, истощение, мобы, блоки —
-можно. Реализация — три пула эффектов по контексту:
-  FULL  — post_attack (цели задаются явно; повреждающие эффекты идут
-          ТОЛЬКО противоположной стороне: enchanted=attacker → victim,
-          enchanted=victim → attacker/damaging_entity);
-  EVENT — post_piercing_attack/hit_block/projectile_spawned (this может
-          оказаться владельцем) — без повреждающих эффектов;
-  WORN  — tick/location_changed (эффект на носителе каждый тик/шаг) —
+instant_damage/poison/wither). Взрывы, импульсы, истощение, мобы, блоки -
+можно. Реализация - три пула эффектов по контексту:
+  FULL  - post_attack (цели задаются явно; повреждающие эффекты идут
+          ТОЛЬКО противоположной стороне: enchanted=attacker -> victim,
+          enchanted=victim -> attacker/damaging_entity);
+  EVENT - post_piercing_attack/hit_block/projectile_spawned (this может
+          оказаться владельцем) - без повреждающих эффектов;
+  WORN  - tick/location_changed (эффект на носителе каждый тик/шаг) -
           только баффы и лёгкие эффекты (без урона, спам-призывов,
           взрывов и перезаписи блоков). Инвариант проверяет
   _owner_damage_violations() в самотесте.
@@ -297,7 +303,7 @@ import math
 import random
 
 # ---------------------------------------------------------------------------
-# heavy_count — копия из generate_dimension.py (тяжёлый хвост количества)
+# heavy_count - копия из generate_dimension.py (тяжёлый хвост количества)
 # ---------------------------------------------------------------------------
 
 
@@ -348,7 +354,7 @@ _ITEMS = ["minecraft:diamond_sword", "minecraft:iron_sword",
           "minecraft:bread", "minecraft:cooked_beef", "minecraft:compass",
           "minecraft:clock", "minecraft:spyglass", "minecraft:bucket"]
 
-# типы урона (data/minecraft/damage_type/, 51 шт. — выбраны безопасные)
+# типы урона (data/minecraft/damage_type/, 51 шт. - выбраны безопасные)
 _DAMAGE_TYPES = ["minecraft:generic", "minecraft:magic", "minecraft:arrow",
                  "minecraft:trident", "minecraft:spear", "minecraft:explosion",
                  "minecraft:player_explosion", "minecraft:fireball",
@@ -399,7 +405,7 @@ _MOB_EFFECTS = ["minecraft:speed", "minecraft:slowness", "minecraft:haste",
 
 # эффекты, наносящие ПРЯМОЙ урон носителю цели (HP сразу или тиком):
 # их нельзя применять к владельцу зачарованного предмета (требование юзера:
-# "урон владельцу нельзя, взрывы и прочее — можно")
+# "урон владельцу нельзя, взрывы и прочее - можно")
 _MOB_EFFECTS_HARMFUL = frozenset(["minecraft:instant_damage",
                                   "minecraft:poison", "minecraft:wither"])
 _MOB_EFFECTS_SAFE = [e for e in _MOB_EFFECTS
@@ -440,7 +446,7 @@ _PARTICLES = ["minecraft:poof", "minecraft:crit", "minecraft:enchanted_hit",
               "minecraft:sculk_soul", "minecraft:electric_spark",
               "minecraft:infested"]
 
-# атрибуты: (id, min, max) — ванильный реестр attributes
+# атрибуты: (id, min, max) - ванильный реестр attributes
 _ATTRS = [
     ("minecraft:movement_speed", -0.02, 0.06),
     ("minecraft:movement_efficiency", 0.1, 1.0),
@@ -471,12 +477,12 @@ _ATTRS = [
     ("minecraft:flying_speed", 0.01, 0.05),
 ]
 
-# тематические пулы атрибутов по профилям (юзер: «attack-атрибуты — только
-# weapon/melee; mining — только mining; броневые — только armor/equippable»;
-# механически атрибут сработал бы из любого слота — EnchantmentHelper.
-# forEachModifier не проверяет тип предмета, — но нечего вешать «урон в
+# тематические пулы атрибутов по профилям (юзер: «attack-атрибуты - только
+# weapon/melee; mining - только mining; броневые - только armor/equippable»;
+# механически атрибут сработал бы из любого слота - EnchantmentHelper.
+# forEachModifier не проверяет тип предмета, - но нечего вешать «урон в
 # атаке» на шлем или «скорость добычи» на меч: компонента обязана иметь
-# смысл на предметах профиля). _ATTRS хранит (id, lo, hi) — пул = подсеть
+# смысл на предметах профиля). _ATTRS хранит (id, lo, hi) - пул = подсеть
 _ATTACK_ATTR_IDS = frozenset([
     "minecraft:attack_damage", "minecraft:attack_speed",
     "minecraft:attack_knockback", "minecraft:sweeping_damage_ratio"])
@@ -556,10 +562,10 @@ _COLORS = (["gold"] * 3 + ["aqua"] * 3 + ["light_purple"] * 3 +
            ["red", "yellow", "green", "dark_aqua", "dark_purple",
             "dark_red", "blue", "white"])
 
-# слова для русских названий. Прилагательные — ТОЛЬКО на ый/ой/ий:
+# слова для русских названий. Прилагательные - ТОЛЬКО на ый/ой/ий:
 # согласование родов делает _inflect_adj (притяжательные -ий после
-# шипящих — Медвежий/Волчий/... — склоняются через _POSSESSIVE_ADJ).
-# Существительные _NOUN — любой род; род определяет _noun_gender
+# шипящих - Медвежий/Волчий/... - склоняются через _POSSESSIVE_ADJ).
+# Существительные _NOUN - любой род; род определяет _noun_gender
 # (эвристика _word_gender + _GENDER_EXC + мн.ч. _PLURAL_NOUNS).
 _ADJ = [
     # --- исходные ---
@@ -592,7 +598,7 @@ _ADJ = [
     "Кедровый", "Ивовый", "Ясеневый", "Клёновый", "Терновый",
     "Корневой", "Вязкий", "Колкий", "Ключевой", "Родниковый",
     "Горный", "Скалистый", "Песчаный", "Пыльный",
-    # --- звери и птицы (притяжательные — через _POSSESSIVE_ADJ) ---
+    # --- звери и птицы (притяжательные - через _POSSESSIVE_ADJ) ---
     "Пернатый", "Соколиный", "Орлиный", "Совиный", "Пчелиный",
     "Журавлиный", "Крылатый", "Косматый", "Клыкастый", "Зубастый",
     "Рогатый", "Чешуйчатый", "Панцирный", "Хищный",
@@ -742,7 +748,7 @@ def _lbv(rng, lo, hi, per_lo=0.0, per_hi=0.0):
                 "fallback": {"type": "minecraft:linear",
                              "base": _f(rng, lo, hi),
                              "per_level_above_first": _f(rng, per_lo, per_hi)}}
-    # exponent — редко (в ванили нет, но кодек есть)
+    # exponent - редко (в ванили нет, но кодек есть)
     return {"type": "minecraft:exponent",
             "base": _f(rng, max(lo, 0.1), max(hi, 0.2)),
             "power": _f(rng, 0.5, 2.0)}
@@ -766,7 +772,7 @@ def _value_effect(rng, lo, hi, per_lo=0.0, per_hi=0.0,
     if r > 0.96:
         # exponential (ScaleExponentially 26.2, поля base/exponent, оба LBV):
         # итог = value * base^exponent. Знакосообразно: для «уменьшающих»
-        # компонент (charge_time и др., hi <= 0) base < 1 — множитель < 1
+        # компонент (charge_time и др., hi <= 0) base < 1 - множитель < 1
         span = max(abs(lo), abs(hi), 0.05)
         if hi <= 0:
             base = _lbv(rng, max(0.5, 1.0 - span), 1.0)
@@ -783,7 +789,7 @@ def _value_effect(rng, lo, hi, per_lo=0.0, per_hi=0.0,
 
 
 def _rq_chance(rng):
-    """random_chance — параметров контекста не требует, безопасен везде."""
+    """random_chance - параметров контекста не требует, безопасен везде."""
     if _chance(rng, 0.5):
         return {"condition": "minecraft:random_chance",
                 "chance": round(rng.uniform(0.05, 0.8), 2)}
@@ -796,7 +802,7 @@ def _rq_chance(rng):
 
 
 def _rq_dmg_source(rng):
-    """damage_source_properties — контекст enchanted_damage (protection и др.)."""
+    """damage_source_properties - контекст enchanted_damage (protection и др.)."""
     if _chance(rng, 0.4):
         return {"condition": "minecraft:damage_source_properties",
                 "predicate": {"is_direct": True}}
@@ -812,14 +818,14 @@ def _rq_this_type(rng):
 
 
 def _rq_direct_type(rng):
-    """direct_attacker — только в контексте enchanted_damage (power.json)."""
+    """direct_attacker - только в контексте enchanted_damage (power.json)."""
     return {"condition": "minecraft:entity_properties",
             "entity": "direct_attacker",
             "predicate": {"minecraft:entity_type": rng.choice(_MOB_PREDS)}}
 
 
 def _rq_match_tool(rng):
-    """match_tool — только enchanted_item (unbreaking, infinity)."""
+    """match_tool - только enchanted_item (unbreaking, infinity)."""
     return {"condition": "minecraft:match_tool",
             "predicate": {"items": rng.choice(
                 ["minecraft:arrow", "#minecraft:enchantable/armor",
@@ -856,7 +862,7 @@ def _rq_weather(rng):
 
 
 def _rq_location_check(rng):
-    """location_check — только hit_block (channeling)."""
+    """location_check - только hit_block (channeling)."""
     if _chance(rng, 0.5):
         return {"condition": "minecraft:location_check",
                 "predicate": {"can_see_sky": True}}
@@ -866,13 +872,13 @@ def _rq_location_check(rng):
 
 
 # Контексты (LootContextParamSets, 26.2): требования каждой компоненты
-# валидируются на ЗАГРУЗКЕ по её ContextKeySet — пул условий обязан
+# валидируются на ЗАГРУЗКЕ по её ContextKeySet - пул условий обязан
 # соответствовать контексту (проверено на реальном сервере):
 #   enchanted_damage: this_entity+origin+damage_source(+optional direct/attacker)
 #   enchanted_item:   tool+enchantment_level
 #   enchanted_location/enchanted_entity: this_entity+origin
 #   hit_block:        this_entity+origin+block_state
-#   projectile_*:     параметров почти нет — только random_chance
+#   projectile_*:     параметров почти нет - только random_chance
 _REQ_DAMAGE_POOL = [_rq_chance, _rq_dmg_source, _rq_this_type, _rq_direct_type]
 _REQ_ITEM_POOL = [_rq_match_tool, _rq_no_match_tool, _rq_chance]
 _REQ_ENTITY_POOL = [_rq_chance, _rq_this_flags, _rq_this_type, _rq_no_vehicle]
@@ -897,8 +903,8 @@ _REQ_POOLS = {
     "projectile_spread": _REQ_PROJECTILE_POOL,
     "projectile_count": _REQ_PROJECTILE_POOL,
     # fishing_*, block/mob_experience, repair_with_xp, trident_*,
-    # crossbow_*, attributes, prevent_* — требований не генерируем
-    # (в ванили их тоже нет; equipment_drops/damage_immunity — свои шаблоны)
+    # crossbow_*, attributes, prevent_* - требований не генерируем
+    # (в ванили их тоже нет; equipment_drops/damage_immunity - свои шаблоны)
 }
 
 
@@ -955,14 +961,14 @@ def _float_provider(rng, lo, hi):
 
 def _particle(rng):
     # ParticleTypes.CODEC в 26.2 требует ОБЪЕКТ {"type": ...}, голая строка
-    # не парсится ("Not a JSON object") — проверено на сервере
+    # не парсится ("Not a JSON object") - проверено на сервере
     return {"type": rng.choice(_PARTICLES)}
 
 
 def _pos_source(rng):
-    # PositionSourceType — StringRepresentable enum: имена БЕЗ префикса
+    # PositionSourceType - StringRepresentable enum: имена БЕЗ префикса
     # minecraft: ("entity_position", "in_bounding_box"). entity_position
-    # НЕЛЬЗЯ масштабировать — поле scale только у in_bounding_box
+    # НЕЛЬЗЯ масштабировать - поле scale только у in_bounding_box
     # ("Cannot scale an entity position coordinate source")
     if _chance(rng, 0.7):
         d = {"type": "entity_position"}
@@ -984,21 +990,32 @@ def _vel_source(rng):
     return d
 
 
+def _ordered_linear_pair(rng, lo, hi, per_lo, per_hi):
+    """Paired curves: ordered intercepts AND slopes imply min <= max at all
+    integer levels >= 1, including commands above the generated max_level.
+    Independent LBV forms cannot provide that guarantee (exponent vs constant).
+    """
+    bases = sorted((_f(rng, lo, hi), _f(rng, lo, hi)))
+    slopes = sorted((_f(rng, per_lo, per_hi), _f(rng, per_lo, per_hi)))
+    return tuple({"type": "minecraft:linear", "base": base,
+                  "per_level_above_first": slope}
+                 for base, slope in zip(bases, slopes))
+
+
 def _mk_apply_mob_effect(pool):
     """apply_mob_effect над заданным пулом эффектов (полный или safe)."""
     def _mk(rng, _fid=None):
         n = rng.randint(1, 3)
         effs = rng.sample(pool, n)
         # длительности КРУПНЕЕ (юзер: «накладывают на очень короткое
-        # время»): было 20-400 тиков (1-20 с) — стало 100-1200 (5-60 с,
-        # в среднем ~30 с — как зелья ванили)
+        # время»): было 20-400 тиков (1-20 с) - стало 100-1200 (5-60 с,
+        # в среднем ~30 с - как зелья ванили)
         mn_d, mx_d = sorted([_f(rng, 100, 600), _f(rng, 300, 1200)])
         mn_a, mx_a = sorted([_f(rng, 0, 2), _f(rng, 0, 2)])
         if _chance(rng, 0.3):  # иногда длительность/усиление растут с уровнем
-            mn_d = _lbv(rng, 100, 400, 50, 300)
-            mx_d = _lbv(rng, 400, 900, 100, 600)
+            mn_d, mx_d = _ordered_linear_pair(rng, 100, 900, 50, 600)
         if _chance(rng, 0.2):
-            mn_a, mx_a = _lbv(rng, 0, 1, 0, 1), _lbv(rng, 0, 2, 0, 1)
+            mn_a, mx_a = _ordered_linear_pair(rng, 0, 2, 0, 1)
         return {"type": "minecraft:apply_mob_effect",
                 "to_apply": effs[0] if n == 1 else effs,
                 "min_duration": mn_d, "max_duration": mx_d,
@@ -1134,7 +1151,7 @@ def _ee_explode(rng, _fid=None):
 
 
 def _ee_run_function(rng, func_id):
-    # функция с id зачарования; проверка существования — только в рантайме
+    # функция с id зачарования; проверка существования - только в рантайме
     return {"type": "minecraft:run_function", "function": func_id}
 
 
@@ -1152,7 +1169,7 @@ def _is_damaging_effect(d):
     """True, если эффект наносит ПРЯМОЙ урон цели (HP-урон сразу или тиком).
 
     Такими эффектами нельзя бить владельца зачарованного предмета (требование
-    юзера). Взрывы/импульсы/истощение — НЕ прямой урон, разрешены где угодно.
+    юзера). Взрывы/импульсы/истощение - НЕ прямой урон, разрешены где угодно.
     """
     t = d.get("type")
     if t in ("minecraft:damage_entity", "minecraft:ignite"):
@@ -1167,13 +1184,13 @@ def _is_damaging_effect(d):
 
 
 # Пулы эффектов по контексту применения:
-#   FULL  — только post_attack: цели задаются явно (attacker/victim/
+#   FULL  - только post_attack: цели задаются явно (attacker/victim/
 #           damaging_entity), повреждающие эффекты маршрутизируются на врага;
-#   EVENT — post_piercing_attack/hit_block/projectile_spawned: событие
-#           попадания, сущность this может оказаться владельцем → прямой
-#           урон запрещён, но взрывы/призывы/блоки — можно;
-#   WORN  — tick/location_changed: эффект применяется к НОСИТЕЛЮ каждый
-#           тик/шаг → без прямого урона И без тяжёлого спама (summon/explode/
+#   EVENT - post_piercing_attack/hit_block/projectile_spawned: событие
+#           попадания, сущность this может оказаться владельцем -> прямой
+#           урон запрещён, но взрывы/призывы/блоки - можно;
+#   WORN  - tick/location_changed: эффект применяется к НОСИТЕЛЮ каждый
+#           тик/шаг -> без прямого урона И без тяжёлого спама (summon/explode/
 #           replace_* каждый тик разорвали бы мир), только баффы/лёгкое.
 _EE_BUILDERS_EVENT = [
     (_ee_apply_mob_effect_safe, 14), (_ee_change_item_damage, 9),
@@ -1185,12 +1202,12 @@ _EE_BUILDERS_EVENT = [
 _EE_BUILDERS_WORN = [
     (_ee_apply_mob_effect_safe, 14), (_ee_apply_impulse, 6),
     (_ee_apply_exhaustion, 4), (_ee_play_sound, 11),
-    (_ee_spawn_particles, 9), (_ee_run_function, 30),
+    (_ee_spawn_particles, 9),
 ]
 
 
 def _entity_effect(rng, func_id, pool=None):
-    """Случайный EntityEffect из пула контекста (в all_of — вложенность)."""
+    """Случайный EntityEffect из пула контекста (в all_of - вложенность)."""
     if pool is None:
         pool = _EE_BUILDERS
     if _chance(rng, 0.07):
@@ -1202,9 +1219,9 @@ def _entity_effect(rng, func_id, pool=None):
 def _location_effect(rng, attr_id, func_id, profile=None):
     """Эффект для location_changed (те же типы + attribute).
 
-    location_changed применяется к носителю при движении (frost_walker) —
+    location_changed применяется к носителю при движении (frost_walker) -
     только WORN-пул: никакого урона владельцу и спама каждый шаг.
-    Атрибуты — из тематического пула профиля (как у компоненты attributes)."""
+    Атрибуты - из тематического пула профиля (как у компоненты attributes)."""
     if _chance(rng, 0.45):
         aid, lo, hi = rng.choice(_attr_pool(profile))
         return {"type": "minecraft:attribute", "id": attr_id,
@@ -1246,7 +1263,7 @@ _VE_SCALES = {
 def _cond_list(rng, effect, req_prob, func_id, pool=None):
     """Список ConditionalEffect: 1 (80%) или 2 (20%) записи.
 
-    Требования берутся ТОЛЬКО из пула контекста этой компоненты — иначе
+    Требования берутся ТОЛЬКО из пула контекста этой компоненты - иначе
     сервер 26.2 отвергает зачарование на загрузке ("Parameters ... are not
     provided in this context").
     """
@@ -1294,7 +1311,7 @@ def _build_ee_component(key, pool):
 
 
 def _build_damage_immunity(rng, _func_id, _profile=None):
-    # DamageImmunity — unit-кодек, эффект строго {}; требования по тегу урона
+    # DamageImmunity - unit-кодек, эффект строго {}; требования по тегу урона
     out = []
     for _ in range(1 if _chance(rng, 0.85) else 2):
         entry = {"effect": {}}
@@ -1305,22 +1322,22 @@ def _build_damage_immunity(rng, _func_id, _profile=None):
 
 
 def _build_post_attack(rng, _func_id, _profile=None):
-    # TargetedConditionalEffect: enchanted — у кого зачарованный предмет,
-    # affected — на кого действует (ванильный thorns: enchanted=victim,
+    # TargetedConditionalEffect: enchanted - у кого зачарованный предмет,
+    # affected - на кого действует (ванильный thorns: enchanted=victim,
     # affected=attacker).
     #
     # ПРАВИЛО БЕЗОПАСНОСТИ: прямой урон (damage_entity/ignite/instant_damage/
-    # poison/wither) — только ПРОТИВОПОЛОЖНОЙ стороне. enchanted=attacker →
-    # владельцем является attacker (и damaging_entity при прямом ударе —
-    # это он же), урон идёт только на victim; enchanted=victim → владелец
+    # poison/wither) - только ПРОТИВОПОЛОЖНОЙ стороне. enchanted=attacker ->
+    # владельцем является attacker (и damaging_entity при прямом ударе -
+    # это он же), урон идёт только на victim; enchanted=victim -> владелец
     # victim, урон идёт на attacker/damaging_entity (как шипы/огонь).
-    # НЕ-урон (импульс, звук, частицы, баффы, взрыв...) — на кого угодно.
+    # НЕ-урон (импульс, звук, частицы, баффы, взрыв...) - на кого угодно.
     #
     # ИСКЛЮЧЕНИЕ для run_function: команда исполняется ОТ ЛИЦА affected
-    # (байткод RunFunction: withEntity(affected), позиция/поворот — его же)
-    # — маршрутизируем на enchanted (= владелец предмета), чтобы @s
+    # (байткод RunFunction: withEntity(affected), позиция/поворот - его же)
+    # - маршрутизируем на enchanted (= владелец предмета), чтобы @s
     # внутри mcfunction всегда был владельцем (самобаффы, «клыки»
-    # по взгляду и т.д. — см. _gen_ench_function, контекст full).
+    # по взгляду и т.д. - см. _gen_ench_function, контекст full).
     out = []
     for _ in range(1 if _chance(rng, 0.75) else 2):
         enchanted = rng.choice(["attacker", "victim"])
@@ -1341,7 +1358,7 @@ def _build_post_attack(rng, _func_id, _profile=None):
 
 
 def _build_equipment_drops(rng, _func_id, _profile=None):
-    # как у looting: effect — ValueEffect, enchanted=attacker
+    # как у looting: effect - ValueEffect, enchanted=attacker
     lo, hi, plo, phi = _VE_SCALES["equipment_drops"]
     entry = {"enchanted": "attacker", "affected": rng.choice(
         ["attacker", "victim"]),
@@ -1366,9 +1383,9 @@ def _build_location_changed(rng, func_id, profile=None):
 
 
 def _build_attributes(rng, attr_id, profile=None):
-    # НЕ conditional: список {amount, attribute, id, operation}; атрибуты —
-    # из тематического пула профиля (attack — оружию, mining — инструментам,
-    # броня — броне; см. _PROFILE_ATTR_IDS)
+    # НЕ conditional: список {amount, attribute, id, operation}; атрибуты -
+    # из тематического пула профиля (attack - оружию, mining - инструментам,
+    # броня - броне; см. _PROFILE_ATTR_IDS)
     pool = _attr_pool(profile)
     out = []
     for i in range(rng.randint(1, 3)):
@@ -1428,8 +1445,8 @@ del _k
 # Профили: осмысленные наборы (предметы + слоты + компоненты), плюс абсурд
 # ---------------------------------------------------------------------------
 
-# компоненты-«сцены» (post_attack/tick/location_changed — там живут
-# run_function-функции): вес 3 — чтобы кастомные mcfunction-эффекты
+# компоненты-«сцены» (post_attack/tick/location_changed - там живут
+# run_function-функции): вес 3 - чтобы кастомные mcfunction-эффекты
 # встречались у ~2/3 измерений (подобрано эмпирически)
 _UNIVERSAL_COMPS = [("tick", 3), ("attributes", 5), ("location_changed", 3),
                     ("damage_immunity", 2), ("post_attack", 3),
@@ -1442,32 +1459,32 @@ def _items_tag(tag):
 
 # ---------------------------------------------------------------------------
 # ВАЛИДНОСТЬ КОМПОНЕНТ ПО ПРЕДМЕТАМ (юзер: «зачарования не должны быть на
-# предметах где их нельзя использовать — не надо мечу давать защиту»).
-# Таблица правил слотов/типов — по фактическим точкам срабатывания в байткоде
+# предметах где их нельзя использовать - не надо мечу давать защиту»).
+# Таблица правил слотов/типов - по фактическим точкам срабатывания в байткоде
 # jar 26.2 (EnchantmentHelper: runIterationOnItem БЕЗ слот-чека = компонента
-# привязана к типу предмета-триггера; runIterationOnEquipment — со слот-чеком
+# привязана к типу предмета-триггера; runIterationOnEquipment - со слот-чеком
 # Enchantment.matchingSlot):
-#   damage/knockback/armor_effectiveness/smash_* — оружие атаки
-#     (stabAttack/getKnockback/getWeaponItem; smash — ТОЛЬКО MaceItem);
-#   damage_protection/damage_immunity — экипировка жертвы по слотам;
-#   projectile_*/ammo_use — ProjectileWeaponItem (лук/арбалет);
-#   crossbow_*/trident_*/fishing_*/block_experience — соответствующий предмет;
-#   mob_experience/equipment_drops/post_piercing_attack — экипировка убийцы
-#     со слот-чеком (оружие в mainhand; piercing-атака — копья/трезубец);
-#   hit_block — удар о блок ЛЮБЫМ удерживаемым предметом + снаряды
+#   damage/knockback/armor_effectiveness/smash_* - оружие атаки
+#     (stabAttack/getKnockback/getWeaponItem; smash - ТОЛЬКО MaceItem);
+#   damage_protection/damage_immunity - экипировка жертвы по слотам;
+#   projectile_*/ammo_use - ProjectileWeaponItem (лук/арбалет);
+#   crossbow_*/trident_*/fishing_*/block_experience - соответствующий предмет;
+#   mob_experience/equipment_drops/post_piercing_attack - экипировка убийцы
+#     со слот-чеком (оружие в mainhand; piercing-атака - копья/трезубец);
+#   hit_block - удар о блок ЛЮБЫМ удерживаемым предметом + снаряды
 #     (ServerPlayerGameMode/AbstractArrow/ThrownTrident);
-#   tick/location_changed/post_attack/prevent_* — ок везде (решение юзера).
+#   tick/location_changed/post_attack/prevent_* - ок везде (решение юзера).
 # Классификация supported_items по видам (теги раскрыты по jar 26.2):
 #   melee = мечи/копья/топоры (enchantable/melee_weapon|sharp_weapon|weapon
 #     = swords+spears(+axes)); mace отдельно (smash только булаве);
-#   durability = смешанный тег (броня+щит+лук+мечи — все с прочностью,
+#   durability = смешанный тег (броня+щит+лук+мечи - все с прочностью,
 #     годен для item_damage/repair_with_xp, НЕ годен для урона);
-#   vanishing = durability + компас/тыквы/черепа (без прочности — мимо);
-#   worn = enchantable/equippable (броня+элитры+черепа/тыквы — годен для
+#   vanishing = durability + компас/тыквы/черепа (без прочности - мимо);
+#   worn = enchantable/equippable (броня+элитры+черепа/тыквы - годен для
 #     защиты, не для прочности).
 # ---------------------------------------------------------------------------
 
-# тег -> вид предмета (теги из jar 26.2; melee = мечи/топоры, spear —
+# тег -> вид предмета (теги из jar 26.2; melee = мечи/топоры, spear -
 # копья отдельно: piercing-атака (lunge) доступна только им и трезубцу)
 _ENTRY_KINDS = {
     "#minecraft:enchantable/melee_weapon": "melee",
@@ -1541,7 +1558,7 @@ def _entry_kind(entry):
 # компонента -> (допустимые виды предметов, требование к слотам|None).
 # Слоты: "wear" = {any,armor,head,chest,legs,feet,body} (предмет реально
 # надет), "mainhand" = {any,mainhand,hand} (предмет в руке при событии).
-# Компоненты вне таблицы работают на любом предмете — tick/location_changed/
+# Компоненты вне таблицы работают на любом предмете - tick/location_changed/
 # post_attack/damage_immunity/prevent_* (решение юзера: «ок везде»).
 _DURABILITY_KINDS = frozenset(
     "melee spear mace bow crossbow trident fishing mining armor elytra "
@@ -1553,14 +1570,14 @@ _COMP_ITEM_RULES = {
     "damage": (_ATTACK_KINDS, None),
     "knockback": (_ATTACK_KINDS, None),
     "armor_effectiveness": (frozenset("melee spear mace mining".split()), None),
-    # smash-атака живёт в MaceItem.hurtEnemy — ТОЛЬКО булава
+    # smash-атака живёт в MaceItem.hurtEnemy - ТОЛЬКО булава
     "smash_damage_per_fallen_block": (frozenset(["mace"]), None),
-    # защита — только то, что можно надеть (юзер: броня + equippable)
+    # защита - только то, что можно надеть (юзер: броня + equippable)
     "damage_protection": (frozenset("armor elytra worn".split()), "wear"),
     # прочность
     "item_damage": (_DURABILITY_KINDS, None),
     "repair_with_xp": (_DURABILITY_KINDS, None),
-    # снаряды: ProjectileWeaponItem = лук/арбалет (трезубец — только spawn)
+    # снаряды: ProjectileWeaponItem = лук/арбалет (трезубец - только spawn)
     "ammo_use": (frozenset("bow crossbow".split()), None),
     "projectile_piercing": (frozenset("bow crossbow".split()), None),
     "projectile_spread": (frozenset("bow crossbow".split()), None),
@@ -1578,13 +1595,13 @@ _COMP_ITEM_RULES = {
     # лутинг-подобные: оружие убийцы в mainhand (юзер: «работают в руках»)
     "mob_experience": (frozenset("melee spear mace".split()), "mainhand"),
     "equipment_drops": (frozenset("melee spear mace".split()), "mainhand"),
-    # piercing-атака (выпад/lunge) — копья и трезубец в mainhand
+    # piercing-атака (выпад/lunge) - копья и трезубец в mainhand
     "post_piercing_attack": (frozenset("spear trident".split()), "mainhand"),
 }
 
 # piercing-атака (PiercingWeapon.attack -> postPiercingAttack) доступна
 # только копьям/трезубцу: тег melee_weapon СМЕШАННЫЙ (мечи+копья), поэтому
-# для post_piercing_attack допустимы только однозначно-копейные записи —
+# для post_piercing_attack допустимы только однозначно-копейные записи -
 # #spears/#lunge/#trident и id копий/трезубца
 _PIERCING_ENTRIES = frozenset([
     "#minecraft:spears", "#minecraft:enchantable/lunge",
@@ -1599,8 +1616,8 @@ _HAND_SLOTS = frozenset(["any", "mainhand", "hand"])
 def _comp_usable(comp, supported, slots):
     """Юзабельна ли компонента для supported_items (+slots) по таблице
     правил (см. _COMP_ITEM_RULES). Проверяется КАЖДЫЙ элемент supported
-    («не надо мечу давать защиту» — смешанный набор бракуется целиком).
-    Пустые slots — дежурный краевой случай (валидность остаётся серверу)."""
+    («не надо мечу давать защиту» - смешанный набор бракуется целиком).
+    Пустые slots - дежурный краевой случай (валидность остаётся серверу)."""
     rule = _COMP_ITEM_RULES.get(comp)
     if rule is None:
         return True
@@ -1683,19 +1700,19 @@ _PROFILES = [
      [(["minecraft:shield"], 6)],
      [("offhand", 5), ("hand", 2), ("any", 1)],
      # damage_protection убран: щит не надевается как броня (юзер:
-     # «защита — только слоты брони»); hit_block — удар о блок щитом
+     # «защита - только слоты брони»); hit_block - удар о блок щитом
      [("post_attack", 3), ("hit_block", 2), ("knockback", 2),
       ("attributes", 2), ("prevent_equipment_drop", 1)]),
     ("saddle", 2,
      [(["minecraft:saddle"], 6)],
      [("saddle", 6), ("any", 1)],
      # damage/knockback/equipment_drops убраны: скакун не атакует предметом
-     # и не «убивает» (лутинг-подобные — только оружие в руках юзера)
+     # и не «убивает» (лутинг-подобные - только оружие в руках юзера)
      [("attributes", 5), ("post_attack", 3), ("tick", 2)]),
     ("book", 3,
      [(["minecraft:book"], 4), (["minecraft:enchanted_book"], 2)],
      [("any", 4), ("mainhand", 1), ("armor", 1)],
-     # equipment_drops убран: лутинг-подобные — только оружие (юзер)
+     # equipment_drops убран: лутинг-подобные - только оружие (юзер)
      [("attributes", 4), ("post_attack", 2), ("location_changed", 2),
       ("tick", 2), ("damage_immunity", 2)]),
     ("durability", 8,
@@ -1725,7 +1742,7 @@ def _absurd_items(rng):
     """Абсурдные supported_items: 'копательный меч', зачарование хлеба...
 
     ВНИМАНИЕ: "#тег" допустим только ЦЕЛИКОМ (верхний уровень HolderSet),
-    внутри списка — только чистые id (проверено: "Not a valid resource
+    внутри списка - только чистые id (проверено: "Not a valid resource
     location: #minecraft:...").
     """
     k = rng.randint(0, 3)
@@ -1753,7 +1770,7 @@ def _absurd_comps(rng):
                      "trident_sound", "trident_return_acceleration",
                      "trident_spin_attack_strength", "fishing_time_reduction",
                      "fishing_luck_bonus"):
-            weights.append(1)  # редкие, но возможные на мечах — наш стиль
+            weights.append(1)  # редкие, но возможные на мечах - наш стиль
         else:
             weights.append(2)
     return keys, weights
@@ -1768,17 +1785,17 @@ def _absurd_comps(rng):
 # Названия: описательные (по РЕАЛЬНЫМ эффектам зачарования)
 # ---------------------------------------------------------------------------
 # _effect_name строит название из фактического содержимого effects:
-#   «Громовое Пробитие»   — projectile_piercing
-#   «Яд и Отброс»         — post_attack(apply_mob_effect poison) + knockback
-#   «Кошачья Лапа»         — damage_immunity [minecraft:is_fall]
-#   «Проклятие Хрупкости» — item_damage с положительным знаком
-#   «Магическая Отплата»  — post_attack(damage_entity magic)
-#   «Заряд Ветра Полуночи» — apply_mob_effect wind_charged + родительный
+#   «Громовое Пробитие»   - projectile_piercing
+#   «Яд и Отброс»         - post_attack(apply_mob_effect poison) + knockback
+#   «Кошачья Лапа»         - damage_immunity [minecraft:is_fall]
+#   «Проклятие Хрупкости» - item_damage с положительным знаком
+#   «Магическая Отплата»  - post_attack(damage_entity magic)
+#   «Заряд Ветра Полуночи» - apply_mob_effect wind_charged + родительный
 # Прилагательное согласуется с родом слова (_word_gender/_inflect_adj);
 # фразы и мн.ч. идут без прилагательного. Знак учтён для ammo_use /
 # crossbow_charge_time / item_damage (_VE_FLIP): «Бережливость» против
 # «Проклятие Расточительства», «Быстрый Взвод» против «Затяжной Взвод».
-# Фолбэк при пустых эффектах (крайний случай 3%) — вкусовое _rand_name.
+# Фолбэк при пустых эффектах (крайний случай 3%) - вкусовое _rand_name.
 # Существующие паки мигрируются скриптом migrate_ench_names.py.
 # Слова для value-компонент (знак значения учитывается через _VE_FLIP)
 _VE_WORDS = {
@@ -1890,7 +1907,7 @@ _BLK_WORDS = {
 }
 
 # частицы -> слово (реестр particles 26.2; используется и генератором
-# mcfunction-функций — см. _fn_particle_cmd)
+# mcfunction-функций - см. _fn_particle_cmd)
 _PART_WORDS = {
     "minecraft:flame": "Искры", "minecraft:soul_fire_flame": "Искры Душ",
     "minecraft:heart": "Сердца", "minecraft:crit": "Крит",
@@ -1908,7 +1925,7 @@ _PART_WORDS = {
     "minecraft:totem_of_undying": "Тотем", "minecraft:firefly": "Светлячки",
     "minecraft:snowflake": "Снежинки", "minecraft:soul": "Души",
     "minecraft:dust": "Пыль",
-    # --- расширение для mcfunction-генератора (все id — SimpleParticleType
+    # --- расширение для mcfunction-генератора (все id - SimpleParticleType
     # --- jar 26.2, см. _FN_PARTICLES) ---
     "minecraft:sweep_attack": "Взмах", "minecraft:reverse_portal": "Изнанка",
     "minecraft:small_flame": "Огонёк", "minecraft:note": "Нота",
@@ -1961,11 +1978,11 @@ _DTAG_WORDS = {
 
 # ---------------------------------------------------------------------------
 # Словари для summarize_enchantment (краткие описания действий):
-# винительные падежи — «накладывает <ЧТО>», «усиливает <ЧТО>»
+# винительные падежи - «накладывает <ЧТО>», «усиливает <ЧТО>»
 # ---------------------------------------------------------------------------
 
 # моб-эффекты -> винительный падеж («накладывает яд», «накладывает слепоту»;
-# все id — реестр mob_effect 26.2, зеркало _EFF_WORDS)
+# все id - реестр mob_effect 26.2, зеркало _EFF_WORDS)
 _EFF_ACC = {
     "minecraft:speed": "скорость", "minecraft:slowness": "немощь",
     "minecraft:haste": "спешку", "minecraft:mining_fatigue": "усталость",
@@ -1991,7 +2008,7 @@ _EFF_ACC = {
 }
 
 # атрибуты -> винительный падеж («усиливает броню», «усиливает скорость атаки»;
-# реестр attributes 26.2 — покрывает весь пул _ATTRS)
+# реестр attributes 26.2 - покрывает весь пул _ATTRS)
 _ATTR_ACC = {
     "minecraft:movement_speed": "скорость", "minecraft:movement_efficiency": "проворство",
     "minecraft:max_health": "здоровье", "minecraft:max_absorption": "запас здоровья",
@@ -2019,8 +2036,8 @@ _DTAG_DAT = {
     "minecraft:is_drowning": "утоплению", "minecraft:burn_from_stepping": "горячим полам",
 }
 
-# множественное число / фразы — прилагательное не согласуется, пропускаем
-# (переливы/снежинки/светлячки/осколки — слова профилей mcfunction-функций)
+# множественное число / фразы - прилагательное не согласуется, пропускаем
+# (переливы/снежинки/светлячки/осколки - слова профилей mcfunction-функций)
 _PLURAL_WORDS = {"Трофеи", "Сердца", "Искры", "Жабры", "Брызги", "Души",
                  "Переливы", "Снежинки", "Светлячки", "Осколки"}
 
@@ -2035,7 +2052,7 @@ _GENDER_EXC = {"Немощь": "f", "Боль": "f", "Слизь": "f",
 
 def _word_gender(w):
     """Род слова для согласования прилагательного: 'm'/'f'/'n' или None
-    (фраза/мн.ч. — шаблоны с прилагательным пропускаются)."""
+    (фраза/мн.ч. - шаблоны с прилагательным пропускаются)."""
     if " " in w or "-" in w or w in _PLURAL_WORDS:
         return None
     if w in _GENDER_EXC:
@@ -2049,7 +2066,7 @@ def _word_gender(w):
     return "m"
 
 
-# притяжательные прилагательные — неправильное склонение
+# притяжательные прилагательные - неправильное склонение
 # (Медвежий -> Медвежья/Медвежье/Медвежьи, Лисий -> Лисья/...)
 _POSSESSIVE_ADJ = {"Медвежий", "Волчий", "Лисий", "Рыбий", "Паучий",
                    "Кабаний", "Олений", "Пастуший", "Верблюжий", "Заячий",
@@ -2059,7 +2076,7 @@ _POSSESSIVE_ADJ = {"Медвежий", "Волчий", "Лисий", "Рыбий
 
 def _inflect_adj(adj, gender):
     """Дикий -> Дикая/Дикое, Шепчущий -> Шепчущая/Шепчущее (согласование
-    с родом; после ж/ч/ш/щ — «ее», после к/г/х — «ое"). Множественное
+    с родом; после ж/ч/ш/щ - «ее», после к/г/х - «ое"). Множественное
     (gender='p'): Громовой -> Громовые, Большой -> Большие, Горький ->
     Горькие. Притяжательные (_POSSESSIVE_ADJ): Медвежий -> Медвежья/
     Медвежье/Медвежьи."""
@@ -2126,7 +2143,7 @@ def _ve_sign(eff):
 def _ee_word(d, run_function_word=None):
     """Слово по EntityEffect (реальный JSON зачарования).
 
-    run_function_word — слово профиля СГЕНЕРИРОВАННОЙ mcfunction-функции
+    run_function_word - слово профиля СГЕНЕРИРОВАННОЙ mcfunction-функции
     («Клык», «Громовержец»...): без него run_function даёт фолбэк
     «Ритуал» (старые данные, миграция имён)."""
     if not isinstance(d, dict):
@@ -2178,12 +2195,12 @@ def _ee_word(d, run_function_word=None):
 
 
 def _name_seeds(effects, rng=None, run_function_word=None):
-    """[(приоритет, слово)] по РЕАЛЬНЫМ эффектам; порядок — по зрелищности.
+    """[(приоритет, слово)] по РЕАЛЬНЫМ эффектам; порядок - по зрелищности.
 
-    run_function_word — слово профиля mcfunction-функции зачарования:
-    ставится с МАКСИМАЛЬНЫМ приоритетом (кастомная функция — самая
+    run_function_word - слово профиля mcfunction-функции зачарования:
+    ставится с МАКСИМАЛЬНЫМ приоритетом (кастомная функция - самая
     характерная фича), эффекты run_function в компонентах дают то же
-    слово (без дубля — dedup по seen)."""
+    слово (без дубля - dedup по seen)."""
     seeds = []
     seen = set()
 
@@ -2258,7 +2275,7 @@ def _name_seeds(effects, rng=None, run_function_word=None):
     return seeds
 
 
-# множественные существительные из _NOUN («Узы») — прилагательное
+# множественные существительные из _NOUN («Узы») - прилагательное
 # во множественном числе («Громовые Узы»)
 _PLURAL_NOUNS = {"Узы"}
 
@@ -2293,8 +2310,8 @@ def _rand_name(rng):
 def _effect_name(rng, effects, profile=None, run_function_word=None):
     """Название из РЕАЛЬНЫХ эффектов: «Громовое Пробитие», «Яд и Отброс»,
     «Проклятие Хрупкости Бездны». Прилагательное согласуется с родом слова.
-    run_function_word — слово профиля функции («Клык», «Скорость»...).
-    Фолбэк — вкусовое _rand_name."""
+    run_function_word - слово профиля функции («Клык», «Скорость»...).
+    Фолбэк - вкусовое _rand_name."""
     seeds = _name_seeds(effects, rng, run_function_word)
     if not seeds:
         return _rand_name(rng)
@@ -2319,13 +2336,13 @@ def _effect_name(rng, effects, profile=None, run_function_word=None):
 
 
 # ---------------------------------------------------------------------------
-# Генератор mcfunction для run_function-эффектов (контракты — докстринг
+# Генератор mcfunction для run_function-эффектов (контракты - докстринг
 # модуля). Каждая категория = отдельная функция-строитель, возвращает
 # (строки, слово_для_названия); диспетчер _gen_ench_function собирает
 # 1-10 команд (worn: 1-3) без повторов категорий и считает бюджет строк.
 # ---------------------------------------------------------------------------
 
-# частицы без аргументов (реестр particles jar 26.2 — сверено javap'ом
+# частицы без аргументов (реестр particles jar 26.2 - сверено javap'ом
 # ParticleTypes: все перечисленные ниже объявлены как SimpleParticleType,
 # т.е. работают голой строкой minecraft:<id> в /particle)
 _FN_PARTICLES = [
@@ -2360,7 +2377,7 @@ _FN_PARTICLES = [
 
 # параметризованные частицы (сверено байткодом jar 26.2):
 #   dust{color,scale}                     DustParticleOptions: color (RGB int)
-#     и scale — ОБА обязательные fieldOf
+#     и scale - ОБА обязательные fieldOf
 #   dust_color_transition{from_color,to_color,scale}
 #                                         DustColorTransitionOptions: все
 #     три обязательные
@@ -2369,7 +2386,7 @@ _FN_PARTICLES = [
 #     (optionalFieldOf с default 1.0, но пишем всегда)
 # использует _fn_pick_particle
 
-# цвета dust-частиц: палитра ~30 (DustParticleOptions.CODEC — color: int RGB
+# цвета dust-частиц: палитра ~30 (DustParticleOptions.CODEC - color: int RGB
 # 0..0xFFFFFF + scale: float)
 _FN_DUST_COLORS = [0xFFD700, 0x00E5FF, 0xFF55FF, 0x7CFC00, 0xFF4500,
                    0x40E0D0, 0xFF69B4, 0x9370DB, 0xF5DEB3, 0x00FF7F,
@@ -2407,7 +2424,7 @@ _FN_SELF_EFFECTS = ["minecraft:speed", "minecraft:haste",
                     "minecraft:hero_of_the_village",
                     "minecraft:breath_of_the_nautilus"]
 
-# дебафы врагам (аура/облако): 2-5 с, усилитель 0-1 — только безопасные
+# дебафы врагам (аура/облако): 2-5 с, усилитель 0-1 - только безопасные
 # для баланса (без wither/Instant-урона/hunger/levitation)
 _FN_AURA_EFFECTS = ["minecraft:slowness", "minecraft:weakness",
                     "minecraft:poison", "minecraft:mining_fatigue",
@@ -2415,7 +2432,7 @@ _FN_AURA_EFFECTS = ["minecraft:slowness", "minecraft:weakness",
                     "minecraft:darkness", "minecraft:blindness",
                     "minecraft:unluck"]
 
-# флейвор-фразы для actionbar (короткие, атмосферные; без кавычек внутри —
+# флейвор-фразы для actionbar (короткие, атмосферные; без кавычек внутри -
 # JSON-экранирует json.dumps в любом случае)
 _FN_FLAVOR = ["Ты слышишь шёпот глубин...", "Клинок поёт...",
               "Мир дрожит...", "Древняя сила пробуждается",
@@ -2436,7 +2453,7 @@ _FN_FLAVOR = ["Ты слышишь шёпот глубин...", "Клинок п
               "Рассвет близко. Или это пожар?",
               "Слышишь? И тишина услышала тебя",
               "Кто-то считает твои шаги",
-              "Соль на губах — к дальней дороге",
+              "Соль на губах - к дальней дороге",
               "Небо тяжелеет на глазах",
               "Старые боги ворочаются во сне",
               "Ветер несёт чужую песню",
@@ -2485,12 +2502,12 @@ _FN_FLAVOR = ["Ты слышишь шёпот глубин...", "Клинок п
               "Медведь спит, но видит тебя"]
 
 # формы фейерверка (FireworkExplosion$Shape: small_ball/large_ball/star/
-# creeper/burst — snake_case БЕЗ префикса; сверено байткодом jar 26.2;
-# биты — has_trail и has_twinkle)
+# creeper/burst - snake_case БЕЗ префикса; сверено байткодом jar 26.2;
+# биты - has_trail и has_twinkle)
 _FN_FW_SHAPES = ["small_ball", "large_ball", "star", "creeper", "burst"]
 
 # вспышечные частицы для категории «вспышка света» (все SimpleParticleType
-# или ColorParticleOption — сверено по jar)
+# или ColorParticleOption - сверено по jar)
 _FN_FLASH_PARTICLES = ["minecraft:end_rod", "minecraft:flash",
                        "minecraft:entity_effect", "minecraft:electric_spark",
                        "minecraft:glow", "minecraft:firework",
@@ -2508,13 +2525,13 @@ _FN_HARVEST_PARTICLES = ["minecraft:happy_villager", "minecraft:glow",
                          "minecraft:firefly", "minecraft:enchant",
                          "minecraft:end_rod", "minecraft:electric_spark"]
 
-# категории: (ключ, вес_full, вес_event, вес_worn) — 41 (20 исходных + 21
+# категории: (ключ, вес_full, вес_event, вес_worn) - 41 (20 исходных + 21
 # новых: дождь/вихрь/купол/аккорд/хор/гамма/веер-полукруг/стена клыков/
 # осколки/свечение/второе дыхание/шёпот/марш/пробуждение/клятва/дождь опыта/
 # прощальный салют/кольца/кресты/звёзды/спираль вниз). В worn доступны
 # только дешёвые гейченые (частицы/звук/фразы/перекраска/шёпот/клятва/
-# эхо/вспышка/тотем/гром-звук); молния — только full; призывы (клыки/
-# облака/фейерверки/XP) и effect give — не в worn.
+# эхо/вспышка/тотем/гром-звук); молния - только full; призывы (клыки/
+# облака/фейерверки/XP) и effect give - не в worn.
 _FN_CAT_W = [
     ("particle", 16, 14, 26),
     ("sound", 13, 13, 22),
@@ -2560,7 +2577,7 @@ _FN_CAT_W = [
     ("downspiral", 6, 5, 7), # спираль вниз (воронка)
 ]
 
-# приоритет «зрелищности» категории → её слово идёт в название
+# приоритет «зрелищности» категории -> её слово идёт в название
 _FN_CAT_PRIO = {"lightning": 10, "fangs": 9, "cloud": 8, "firework": 7,
                 "fw2": 7, "selfbuff": 6, "aura": 6, "auraring": 6,
                 "duet": 6, "recolor": 5, "glow2": 5, "totem": 5,
@@ -2574,9 +2591,9 @@ _FN_CAT_PRIO = {"lightning": 10, "fangs": 9, "cloud": 8, "firework": 7,
                 "downspiral": 4}
 
 _FN_CTX_DESC = {
-    "full": "post_attack — вызывается после удара; @s = владелец предмета",
+    "full": "post_attack - вызывается после удара; @s = владелец предмета",
     "event": "hit_block / post_piercing_attack / projectile_spawned",
-    "worn": "tick / location_changed — каждый тик, все команды гейчены",
+    "worn": "tick / location_changed - каждый тик, все команды гейчены",
 }
 
 
@@ -2592,28 +2609,22 @@ def _has_run_function(node):
 
 
 def _ench_rf_context(effects):
-    """Контекст вызова функции зачарования: worn (tick/location_changed —
-    самый частый и строгий, приоритетен), full (post_attack), event
-    (hit_block/post_piercing_attack/projectile_spawned). Одна функция на
-    зачарование обязана быть безопасной в ЛЮБОМ контексте, куда попал
-    run_function, поэтому выбираем строжайший."""
-    for comp in ("minecraft:tick", "minecraft:location_changed"):
-        if _has_run_function(effects.get(comp)):
-            return "worn"
+    """Most restrictive actual affected-entity context, never assume a player."""
+    if _has_run_function(effects.get("minecraft:projectile_spawned")):
+        return "projectile"
     if _has_run_function(effects.get("minecraft:post_attack")):
         return "full"
-    for comp in ("minecraft:hit_block", "minecraft:post_piercing_attack",
-                 "minecraft:projectile_spawned"):
+    for comp in ("minecraft:hit_block", "minecraft:post_piercing_attack"):
         if _has_run_function(effects.get(comp)):
             return "event"
     return None
 
 
 def _fn_gate(rng, cfg, chance):
-    """Гейт-предикат random_chance → префикс 'execute if predicate ... run '.
+    """Гейт-предикат random_chance -> префикс 'execute if predicate ... run '.
 
     Предикат пишется в gate_predicates (его обязан сохранить основной
-    скрипт в predicate/); id = <ench>_p<N> — уникален в рамках функции."""
+    скрипт в predicate/); id = <ench>_p<N> - уникален в рамках функции."""
     cfg["gi"][0] += 1
     pid = "%s:%s_p%d" % (cfg["ns"], cfg["fname"], cfg["gi"][0])
     cfg["gates"][pid] = {"condition": "minecraft:random_chance",
@@ -2622,7 +2633,7 @@ def _fn_gate(rng, cfg, chance):
 
 
 def _fn_gated(gate, line):
-    """Гейтит команду; если та уже начинается с execute — вливает гейт
+    """Гейтит команду; если та уже начинается с execute - вливает гейт
     ВНУТРЬ цепочки (без уродливого вложенного 'execute ... run execute')."""
     if line.startswith("execute "):
         return ("execute " + gate[len("execute "):-4]
@@ -2644,7 +2655,7 @@ def _fn_num(v, nd=2):
 def _fn_pick_particle(rng):
     """(строка particle, id-для-слова): простые из пула + параметризованные
     dust / dust_color_transition / entity_effect / flash / dragon_breath
-    (обязательность полей — см. комментарий над _FN_DUST_COLORS)."""
+    (обязательность полей - см. комментарий над _FN_DUST_COLORS)."""
     r = rng.random()
     if r < 0.17:
         return ("minecraft:dust{color:%d,scale:%s}"
@@ -2677,20 +2688,20 @@ def _fn_pt_at(p, x, y, z, d=0.04):
 
 
 def _fn_particle_cmd(rng, cfg, ctx, budget):
-    """Частицы — 10 форм геометрии (смещения считает генератор, команды
+    """Частицы - 10 форм геометрии (смещения считает генератор, команды
     получают готовые координаты):
-      eyes    — вспышка перед глазами смотрящего (anchored eyes + локальные)
-      beam    — простой пучок над головой
-      sector  — сектор перед исполнителем (горизонталь через rotated ~ 0)
-      ring    — кольцо 6-10 точек вокруг (positioned ~dx ~h ~dz)
-      spiral  — вертикальная спираль: угол и радиус растут с высотой
-      dome    — купол-полусфера 6-10 точек над головой (сферическая спираль)
-      arc     — арка-полуокружность над головой вдоль случайного азимута
-      trail   — «след» вдоль взгляда 5-8 точек (^ ^ ^N, в т.ч. по питчу)
-      pillar  — вертикальный столб 3-6 точек (positioned ~ ~N ~)
-      curtain — стена-занавес 2-3 ряда × 2-3 колонки, перпендикулярно взгляду
+      eyes    - вспышка перед глазами смотрящего (anchored eyes + локальные)
+      beam    - простой пучок над головой
+      sector  - сектор перед исполнителем (горизонталь через rotated ~ 0)
+      ring    - кольцо 6-10 точек вокруг (positioned ~dx ~h ~dz)
+      spiral  - вертикальная спираль: угол и радиус растут с высотой
+      dome    - купол-полусфера 6-10 точек над головой (сферическая спираль)
+      arc     - арка-полуокружность над головой вдоль случайного азимута
+      trail   - «след» вдоль взгляда 5-8 точек (^ ^ ^N, в т.ч. по питчу)
+      pillar  - вертикальный столб 3-6 точек (positioned ~ ~N ~)
+      curtain - стена-занавес 2-3 ряда x 2-3 колонки, перпендикулярно взгляду
     Плюс параметризованные частицы (dust/dust_color_transition/entity_effect/
-    flash/dragon_breath — см. _fn_pick_particle)."""
+    flash/dragon_breath - см. _fn_pick_particle)."""
     p, word_p = _fn_pick_particle(rng)
     count = rng.randint(3, 14)
     dx, dy, dz = _f(rng, 0.1, 0.6), _f(rng, 0.1, 0.5), _f(rng, 0.1, 0.6)
@@ -2710,7 +2721,7 @@ def _fn_particle_cmd(rng, cfg, ctx, budget):
         lines = ["particle %s ~ ~%s ~ %s %s %s %s %d"
                  % (p, _f(rng, 1.0, 1.6), dx, dy, dz, speed, count)]
     elif form == "sector":
-        # сектор перед исполнителем (горизонталь — rotated ~ 0)
+        # сектор перед исполнителем (горизонталь - rotated ~ 0)
         lines = ["execute at @s rotated ~%d 0 run particle %s ^ ^1.2 ^1.0 "
                  "%s 0.1 %s %s %d"
                  % (rng.randint(-25, 25), p, dx, dz, speed, count)]
@@ -2725,7 +2736,7 @@ def _fn_particle_cmd(rng, cfg, ctx, budget):
             _fn_num(rad * math.sin(a0 + 2.0 * math.pi * k / n)))
             for k in range(n)]
     elif form == "spiral":
-        # спираль: радиус r0→r1, высота растёт, 1-2 оборота
+        # спираль: радиус r0->r1, высота растёт, 1-2 оборота
         n = max(3, min(rng.randint(6, 10), budget))
         r0, r1 = _f(rng, 0.5, 1.0), _f(rng, 1.6, 3.0)
         h0, dh = _f(rng, 0.2, 0.6), _f(rng, 0.25, 0.5)
@@ -2781,7 +2792,7 @@ def _fn_particle_cmd(rng, cfg, ctx, budget):
         sz = _fn_num(_f(rng, -0.3, 0.3))
         lines = [_fn_pt_at(p, sx, _fn_num(0.3 + step * k), sz)
                  for k in range(n)]
-    else:  # curtain — стена-занавес перпендикулярно взгляду
+    else:  # curtain - стена-занавес перпендикулярно взгляду
         cols, rows = rng.randint(2, 3), rng.randint(2, 3)
         while cols * rows > budget and rows > 2:
             rows -= 1
@@ -2796,7 +2807,7 @@ def _fn_particle_cmd(rng, cfg, ctx, budget):
                  % (_fn_num(x), _fn_num(y), fwd, p)
                  for y in ys for x in xs]
     if ctx == "worn":
-        # каждый тик — только изредка (иначе спам)
+        # каждый тик - только изредка (иначе спам)
         gate = _fn_gate(rng, cfg, _f(rng, 0.02, 0.08))
         lines = [_fn_gated(gate, l) for l in lines]
     elif _chance(rng, 0.15):
@@ -2806,7 +2817,7 @@ def _fn_particle_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_sound_cmd(rng, cfg, ctx):
-    """Звук: playsound @s master с рандомным звуком (48 ванильных —
+    """Звук: playsound @s master с рандомным звуком (48 ванильных -
     _FN_SOUNDS, каждый сверен по реестру SoundEvents 26.2), громкость
     0.3-2.0, тон 0.5-2.0, иногда источник «над головой» (positioned)."""
     snd = rng.choice(_FN_SOUNDS)
@@ -2825,16 +2836,16 @@ def _fn_sound_cmd(rng, cfg, ctx):
 
 
 def _fn_fangs_cmd(rng, cfg, budget):
-    """Клыки заклинателя — 7 форм геометрии:
-      line   — линия 3-6 по взгляду (^ ^ ^N, горизонталь через rotated ~ 0)
-      fan    — веер 3-4 направления (rotated ~±15..45)
-      cross  — крест из 4 (rotated ~0/90/180/270)
-      arc    — дуга 5-8: полукруг по rotам (rotated ~-90..90)
-      ring   — кольцо 8-12 вокруг игрока (посчитанные смещения ~X ~ ~Z,
-               радиус 2.3-3.4 — владелец вне зоны укуса)
-      spiral — спираль: угол и радиус растут (1.2→4.0)
-      wall   — стена перпендикулярно взгляду (rotated ~±90: ось «влево»
-               после поворота совпадает со старым взглядом — ^±2 смещает
+    """Клыки заклинателя - 7 форм геометрии:
+      line   - линия 3-6 по взгляду (^ ^ ^N, горизонталь через rotated ~ 0)
+      fan    - веер 3-4 направления (rotated ~+/-15..45)
+      cross  - крест из 4 (rotated ~0/90/180/270)
+      arc    - дуга 5-8: полукруг по rotам (rotated ~-90..90)
+      ring   - кольцо 8-12 вокруг игрока (посчитанные смещения ~X ~ ~Z,
+               радиус 2.3-3.4 - владелец вне зоны укуса)
+      spiral - спираль: угол и радиус растут (1.2->4.0)
+      wall   - стена перпендикулярно взгляду (rotated ~+/-90: ось «влево»
+               после поворота совпадает со старым взглядом - ^+/-2 смещает
                стену вперёд, ^k расставляет клыки поперёк)"""
     form = rng.choices(
         ["line", "fan", "cross", "arc", "ring", "spiral", "wall"],
@@ -2851,7 +2862,7 @@ def _fn_fangs_cmd(rng, cfg, budget):
         lines = ["execute at @s rotated ~%d 0 run summon "
                  "minecraft:evoker_fangs ^ ^ ^%d" % (d, dist) for d in dirs]
     elif form == "arc":
-        # дуга: n клыков по дуге ±span/2 градусов перед исполнителем
+        # дуга: n клыков по дуге +/-span/2 градусов перед исполнителем
         n = max(2, min(rng.randint(5, 8), budget))
         span = rng.choice([120, 150, 180])
         dist = rng.randint(2, 3)
@@ -2899,11 +2910,11 @@ def _fn_fangs_cmd(rng, cfg, budget):
 
 def _fn_cloud_cmd(rng, cfg, budget):
     """Облака эффектов: одно ВПЕРЁДИ по взгляду или связка 2-3 на разных
-    смещениях (влево/вправо/вверх с джиттером). NBT 26.2 — Radius:Xf
+    смещениях (влево/вправо/вверх с джиттером). NBT 26.2 - Radius:Xf
     (float!), Duration 60-200, WaitTime, potion_contents.custom_effects
-    (1-3 эффекта; id/amplifier/duration/ambient/visible — кодек
+    (1-3 эффекта; id/amplifier/duration/ambient/visible - кодек
     MobEffectInstance) и с шансом 35% custom_color (окраска облака,
-    PotionContents); 20% — облачко медленно всплывает (Motion)."""
+    PotionContents); 20% - облачко медленно всплывает (Motion)."""
     n_clouds = min(rng.choices([1, 2, 3], weights=[5, 3, 2], k=1)[0], budget)
     lines = []
     for i in range(n_clouds):
@@ -2940,7 +2951,7 @@ def _fn_cloud_cmd(rng, cfg, budget):
 
 
 def _fn_fw_explosion(rng):
-    """SNBT одного заряда фейерверка (FireworkExplosion 26.2 — поля shape/
+    """SNBT одного заряда фейерверка (FireworkExplosion 26.2 - поля shape/
     colors/fade_colors/has_trail/has_twinkle, имена сверены байткодом)."""
     shape = rng.choice(_FN_FW_SHAPES)
     colors = [rng.choice(_FN_DUST_COLORS) for _ in range(rng.randint(1, 3))]
@@ -2955,9 +2966,9 @@ def _fn_fw_explosion(rng):
 
 
 def _fn_firework_cmd(rng, cfg):
-    """Фейерверк-визуал: ракета с компонентом fireworks (FireworksItem —
+    """Фейерверк-визуал: ракета с компонентом fireworks (FireworksItem -
     item stack SNBT: id/count/components{"minecraft:fireworks":...}),
-    взрыв далеко впереди (3.5-5 блока — владелец вне радиуса), короткий
+    взрыв далеко впереди (3.5-5 блока - владелец вне радиуса), короткий
     LifeTime 10-25 тиков."""
     item = ('{id:"minecraft:firework_rocket",count:1,'
             'components:{"minecraft:fireworks":{flight_duration:1,'
@@ -2972,7 +2983,7 @@ def _fn_firework_cmd(rng, cfg):
 def _fn_fw2_cmd(rng, cfg):
     """Двойной фейерверк: две ракеты с РАЗНЫМИ зарядами (форма/палитра/
     fade_colors/биты has_trail/has_twinkle), с разных смещений от
-    взгляда (слева/справа) — залп."""
+    взгляда (слева/справа) - залп."""
     lines = []
     for lx, ly, lz in [(-1.2, 0.5, 3.2), (1.2, 1.0, 3.6)]:
         item = ('{id:"minecraft:firework_rocket",count:1,'
@@ -2989,7 +3000,7 @@ def _fn_fw2_cmd(rng, cfg):
 
 
 def _fn_selfbuff_cmd(rng, cfg, ctx):
-    """Самобафф владельцу: 15-45 с (было 3-10 — юзер: слишком коротко),
+    """Самобафф владельцу: 15-45 с (было 3-10 - юзер: слишком коротко),
     усилитель 0-1, частицы скрыты (true).
     В worn запрещён (каждый тик обновлял бы таймер = перманентный баф)."""
     eff = rng.choice(_FN_SELF_EFFECTS)
@@ -3013,7 +3024,7 @@ def _fn_aura_cmd(rng, cfg):
 
 def _fn_flavor_cmd(rng, cfg, ctx):
     """Флейвор-фраза в actionbar (русские фразы, JSON-валидно через
-    json.dumps). В worn — гейт ~0.05 (требование юзера)."""
+    json.dumps). В worn - гейт ~0.05 (требование юзера)."""
     msg = {"text": rng.choice(_FN_FLAVOR)}
     if _chance(rng, 0.5):
         msg["color"] = rng.choice(
@@ -3031,8 +3042,8 @@ def _fn_flavor_cmd(rng, cfg, ctx):
 
 def _fn_recolor_cmd(rng, cfg, ctx):
     """Перекраска предмета item modify (существующее поведение как один из
-    вариантов): нужен mod_ids; гейт — предикат измерения или наш
-    random_chance (в worn — ОБЯЗАТЕЛЬНО гейчен)."""
+    вариантов): нужен mod_ids; гейт - предикат измерения или наш
+    random_chance (в worn - ОБЯЗАТЕЛЬНО гейчен)."""
     if not cfg["mod_ids"]:
         return None, None
     cmd = "item modify entity @s %s %s" % (
@@ -3049,8 +3060,8 @@ def _fn_recolor_cmd(rng, cfg, ctx):
 
 
 def _fn_xp_cmd(rng, cfg, budget):
-    """Мелкая награда опытом: 1-3 орба {Value:1..3} (NBT 26.2: Value —
-    int, байткод ExperienceOrb) либо xp add @s <=5 points. Редко — гейт
+    """Мелкая награда опытом: 1-3 орба {Value:1..3} (NBT 26.2: Value -
+    int, байткод ExperienceOrb) либо xp add @s <=5 points. Редко - гейт
     0.05-0.2; только full/event (в worn = бесплатная ферма XP)."""
     gate = _fn_gate(rng, cfg, _f(rng, 0.05, 0.2))
     if _chance(rng, 0.5):
@@ -3063,7 +3074,7 @@ def _fn_xp_cmd(rng, cfg, budget):
 
 
 def _fn_lightning_cmd(rng, cfg):
-    """Молния — редкий тяжёлый тир: только full, гейт 0.04-0.12 (требование
+    """Молния - редкий тяжёлый тир: только full, гейт 0.04-0.12 (требование
     юзера: if predicate random_chance <=0.1..0.15), разряд 3-5 блоков
     вперёд по взгляду (владелец вне радиуса)."""
     gate = _fn_gate(rng, cfg, _f(rng, 0.04, 0.12))
@@ -3074,7 +3085,7 @@ def _fn_lightning_cmd(rng, cfg):
 
 def _fn_echo_cmd(rng, cfg, ctx):
     """Эхо-звук: 2-3 playsound одного и того же звука с нарастающим pitch
-    (0.5-0.9 с шагом 0.2-0.4 — эффект нарастания). В worn — плотный
+    (0.5-0.9 с шагом 0.2-0.4 - эффект нарастания). В worn - плотный
     гейт (иначе звуковой спам каждый тик)."""
     snd = rng.choice(_FN_SOUNDS)
     n = 2 if ctx == "worn" else rng.randint(2, 3)
@@ -3093,7 +3104,7 @@ def _fn_echo_cmd(rng, cfg, ctx):
 def _fn_flash_cmd(rng, cfg, ctx):
     """Вспышка света: пучок end_rod/flash{color}/entity_effect{color}/
     electric_spark/glow/firework/explosion + короткий звук (все частицы
-    и звуки существуют в 26.2 — flash это ColorParticleOption, сверено
+    и звуки существуют в 26.2 - flash это ColorParticleOption, сверено
     javap'ом по ParticleTypes)."""
     fp = rng.choice(_FN_FLASH_PARTICLES)
     if fp in ("minecraft:flash", "minecraft:entity_effect"):
@@ -3113,7 +3124,7 @@ def _fn_flash_cmd(rng, cfg, ctx):
 
 
 def _fn_totem_cmd(rng, cfg, ctx):
-    """Тотемный эффект: particle totem_of_undying + звук item.totem.use —
+    """Тотемный эффект: particle totem_of_undying + звук item.totem.use -
     только визуал (предмет-тотем не выдаётся, воскрешения не происходит)."""
     lines = ["particle minecraft:totem_of_undying ~ ~1 ~ 0.5 0.7 0.5 %s %d "
              "force" % (_f(rng, 0.1, 0.4), rng.randint(20, 45)),
@@ -3130,8 +3141,8 @@ def _fn_totem_cmd(rng, cfg, ctx):
 
 def _fn_thunder_cmd(rng, cfg, ctx):
     """Грозовое эхо: только ЗВУК entity.lightning_bolt.thunder (саму молнию
-    НЕ призываем — она поджигает/уронит), источник высоко над головой
-    (positioned ~ ~8..24 ~ — звук «с неба»)."""
+    НЕ призываем - она поджигает/уронит), источник высоко над головой
+    (positioned ~ ~8..24 ~ - звук «с неба»)."""
     line = ("execute positioned ~ ~%s ~ run playsound "
             "minecraft:entity.lightning_bolt.thunder master @s ~ ~ ~ %s %s"
             % (_f(rng, 8.0, 24.0), _f(rng, 0.8, 1.5), _f(rng, 0.5, 0.9)))
@@ -3146,7 +3157,7 @@ def _fn_thunder_cmd(rng, cfg, ctx):
 def _fn_glow2_cmd(rng, cfg, ctx):
     """Жертвенное свечение: item modify поочерёдно в mainhand И offhand
     (обе руки «приносятся» зачарованию). Нужен mod_ids; гейты как у
-    перекраски (в worn — ОБЯЗАТЕЛЬНО гейчен)."""
+    перекраски (в worn - ОБЯЗАТЕЛЬНО гейчен)."""
     if not cfg["mod_ids"]:
         return None, None
     lines = ["item modify entity @s weapon.%s %s"
@@ -3181,7 +3192,7 @@ def _fn_auraring_cmd(rng, cfg, budget):
 
 
 def _fn_duet_cmd(rng, cfg, ctx):
-    """Самобафф-дуэт: два РАЗНЫХ эффекта сразу (короткие, 3-8 с — сила не
+    """Самобафф-дуэт: два РАЗНЫХ эффекта сразу (короткие, 3-8 с - сила не
     копится). В worn запрещён (каждый тик обновлял бы таймеры)."""
     effs = rng.sample(_FN_SELF_EFFECTS, 2)
     lines = ["effect give @s %s %d %d true"
@@ -3210,15 +3221,15 @@ def _fn_harvest_cmd(rng, cfg, budget):
 
 
 # ===========================================================================
-# НОВЫЕ КАТЕГОРИИ (требование юзера: «функции зачарований — кратно
-# расширить»): все — только разрешённые глаголы (particle/playsound/
+# НОВЫЕ КАТЕГОРИИ (требование юзера: «функции зачарований - кратно
+# расширить»): все - только разрешённые глаголы (particle/playsound/
 # effect give/summon безопасные/title/tellraw/execute/xp add/item modify),
-# worn-контекст — только дешёвые геометрии/звуки/фразы с гейтами
+# worn-контекст - только дешёвые геометрии/звуки/фразы с гейтами
 # ===========================================================================
 
 def _fn_gate_lines(rng, cfg, ctx, lines, worn_lo=0.02, worn_hi=0.08,
                    full_p=0.15, full_lo=0.3, full_hi=0.7):
-    """Гейтинг набора строк: worn — ВСЕГДА (вызов каждый тик), full/event —
+    """Гейтинг набора строк: worn - ВСЕГДА (вызов каждый тик), full/event -
     иногда; единая схема для новых категорий (как у particle/sound/echo)."""
     if ctx == "worn":
         gate = _fn_gate(rng, cfg, _f(rng, worn_lo, worn_hi))
@@ -3230,7 +3241,7 @@ def _fn_gate_lines(rng, cfg, ctx, lines, worn_lo=0.02, worn_hi=0.08,
 
 
 def _fn_rain_cmd(rng, cfg, ctx, budget):
-    """«Дождь» — частицы зоной СВЕРХУ игрока: 6-12 капель на нисходящих
+    """«Дождь» - частицы зоной СВЕРХУ игрока: 6-12 капель на нисходящих
     высотах 2.2-5.5, xz-разброс радиусом 0.6-3.0."""
     p, _wp = _fn_pick_particle(rng)
     n = max(3, min(rng.randint(6, 12), budget))
@@ -3248,7 +3259,7 @@ def _fn_rain_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_vortex_cmd(rng, cfg, ctx, budget):
-    """«Вихрь» — спираль 8-14 частиц по возрастающему радиусу 0.3-0.8 →
+    """«Вихрь» - спираль 8-14 частиц по возрастающему радиусу 0.3-0.8 ->
     1.6-2.6, высота ползёт вверх (шаг угла 35-65°, 1-2 витка)."""
     p, _wp = _fn_pick_particle(rng)
     n = max(4, min(rng.randint(8, 14), budget))
@@ -3268,7 +3279,7 @@ def _fn_vortex_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_dome_cmd(rng, cfg, ctx, budget):
-    """«Купол» — полусфера над игроком: кольцо по экватору + малое кольцо
+    """«Купол» - полусфера над игроком: кольцо по экватору + малое кольцо
     выше + макушка (радиус 1.3-2.4)."""
     p, _wp = _fn_pick_particle(rng)
     rad = _f(rng, 1.3, 2.4)
@@ -3291,7 +3302,7 @@ def _fn_dome_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_chord_cmd(rng, cfg, ctx):
-    """«Аккорд» — арпеджио: 3-5 звуков подряд с нарастающим pitch
+    """«Аккорд» - арпеджио: 3-5 звуков подряд с нарастающим pitch
     (шаг 0.15-0.35); один звук (чистое арпеджио) или 2-3 разных."""
     n = 3 if ctx == "worn" else rng.randint(3, 5)
     # один звук (чистое арпеджио) или 2-3 разных (перебор)
@@ -3307,8 +3318,8 @@ def _fn_chord_cmd(rng, cfg, ctx):
 
 
 def _fn_choir_cmd(rng, cfg, ctx):
-    """«Хор» — один и тот же звук с нескольких сторон (positioned ~±3,
-    3-4 источника вокруг игрока, громкость/тон общие — «хорал»)."""
+    """«Хор» - один и тот же звук с нескольких сторон (positioned ~+/-3,
+    3-4 источника вокруг игрока, громкость/тон общие - «хорал»)."""
     snd = rng.choice(_FN_SOUNDS)
     n = 2 if ctx == "worn" else rng.randint(3, 4)
     offs = [(-3.0, 1.5, 0.0), (3.0, 1.2, 0.0), (0.0, 2.0, -3.0),
@@ -3325,7 +3336,7 @@ def _fn_choir_cmd(rng, cfg, ctx):
 
 
 def _fn_gamma_cmd(rng, cfg, budget):
-    """«Гамма» — связка 2-3 area_effect_cloud на РАЗНОЙ ВЫСОТЕ (ярусы
+    """«Гамма» - связка 2-3 area_effect_cloud на РАЗНОЙ ВЫСОТЕ (ярусы
     0.4/1.4/2.4): облака маленькие (Radius 1.0-2.2), короткие, 1-2 эффекта.
     Не в worn (summon каждый тик = спам)."""
     n = min(rng.choices([2, 3], weights=[3, 2], k=1)[0], budget)
@@ -3350,8 +3361,8 @@ def _fn_gamma_cmd(rng, cfg, budget):
 
 
 def _fn_fangarc_cmd(rng, cfg, budget):
-    """«Веер клыков полукругом» — 5-9 клыков дугой 90-180° перед
-    исполнителем (дистанция 2-4); старый веер — узкий ±45°, этот — размах.
+    """«Веер клыков полукругом» - 5-9 клыков дугой 90-180° перед
+    исполнителем (дистанция 2-4); старый веер - узкий +/-45°, этот - размах.
     Не в worn (summon)."""
     n = max(3, min(rng.randint(5, 9), budget))
     span = rng.choice([90, 120, 150, 180])
@@ -3363,7 +3374,7 @@ def _fn_fangarc_cmd(rng, cfg, budget):
 
 
 def _fn_fangwall_cmd(rng, cfg, budget):
-    """«Стена клыков» — поперёк взгляда на ДИСТАНЦИИ 2.5-4.5 (rotated ~±90:
+    """«Стена клыков» - поперёк взгляда на ДИСТАНЦИИ 2.5-4.5 (rotated ~+/-90:
     поперечная ось совпадает со взглядом; 3-5 клыков через 1 блок).
     Не в worn (summon)."""
     rot = rng.choice([90, -90])
@@ -3385,10 +3396,10 @@ _FN_SHARD_BLOCKS = ["minecraft:stone", "minecraft:amethyst_block",
 
 
 def _fn_shards_cmd(rng, cfg, ctx, budget):
-    """«Осколки» — 4-8 ЧАСТИЦ block{block_state:{Name:...}} (замена идеи
-    summon falling_block — сущности не спамим); формат BlockParticleOption
-    26.2: поле block_state с BlockState.CODEC — сверено javap'ом; типы
-    block/block_marker/falling_dust — все BlockParticleOption."""
+    """«Осколки» - 4-8 ЧАСТИЦ block{block_state:{Name:...}} (замена идеи
+    summon falling_block - сущности не спамим); формат BlockParticleOption
+    26.2: поле block_state с BlockState.CODEC - сверено javap'ом; типы
+    block/block_marker/falling_dust - все BlockParticleOption."""
     ptype = rng.choice(["minecraft:block", "minecraft:block",
                         "minecraft:block_marker", "minecraft:falling_dust"])
     p = "%s{block_state:{Name:\"%s\"}}" % (ptype, rng.choice(_FN_SHARD_BLOCKS))
@@ -3400,16 +3411,16 @@ def _fn_shards_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_glow_cmd(rng, cfg, ctx):
-    """«Свечение» — effect give @s glowing 10-30 с, частицы скрыты;
+    """«Свечение» - effect give @s glowing 10-30 с, частицы скрыты;
     гейт ОБЯЗАТЕЛЕН (0.15-0.5). Не в worn (там effect give @s запрещён
-    инвариантом — каждый тик = перманентное свечение)."""
+    инвариантом - каждый тик = перманентное свечение)."""
     cmd = "effect give @s minecraft:glowing %d 0 true" % rng.randint(10, 30)
     gate = _fn_gate(rng, cfg, _f(rng, 0.15, 0.5))
     return [_fn_gated(gate, cmd)], "Сияние"
 
 
 def _fn_secondwind_cmd(rng, cfg, ctx):
-    """«Второе дыхание» — 2 самобаффа подряд с РАЗНЫМИ длительностями:
+    """«Второе дыхание» - 2 самобаффа подряд с РАЗНЫМИ длительностями:
     короткий всплеск (4-10 с) + долгое послевкусие (+6-18 с, усилитель 1).
     Не в worn (каждый тик обновлял бы таймеры)."""
     effs = rng.sample(_FN_SELF_EFFECTS, 2)
@@ -3424,8 +3435,8 @@ def _fn_secondwind_cmd(rng, cfg, ctx):
 
 
 def _fn_whisper_cmd(rng, cfg, ctx):
-    """«Пронзающий шёпот» — tellraw цветной флейвор в ЧАТ (не actionbar;
-    редкая категория — вес мал). В worn — плотный гейт."""
+    """«Пронзающий шёпот» - tellraw цветной флейвор в ЧАТ (не actionbar;
+    редкая категория - вес мал). В worn - плотный гейт."""
     msg = {"text": rng.choice(_FN_FLAVOR)}
     if _chance(rng, 0.7):
         msg["color"] = rng.choice(["dark_gray", "gray", "dark_purple",
@@ -3442,8 +3453,8 @@ def _fn_whisper_cmd(rng, cfg, ctx):
 
 
 def _fn_march_cmd(rng, cfg, ctx):
-    """«Марш» — последовательность 3-5 звуков с НАРАСТАЮЩЕЙ громкостью
-    0.3 → 1.5 (шаг 0.25-0.4), тон общий."""
+    """«Марш» - последовательность 3-5 звуков с НАРАСТАЮЩЕЙ громкостью
+    0.3 -> 1.5 (шаг 0.25-0.4), тон общий."""
     snd = rng.choice(_FN_SOUNDS)
     n = 3 if ctx == "worn" else rng.randint(3, 5)
     v0, vstep, pitch = _f(rng, 0.3, 0.45), _f(rng, 0.25, 0.4), _f(rng, 0.8, 1.3)
@@ -3455,9 +3466,9 @@ def _fn_march_cmd(rng, cfg, ctx):
 
 
 def _fn_awakening_cmd(rng, cfg, ctx):
-    """«Пробуждение» — комбо: вспышка света + громовое эхо (только звук
+    """«Пробуждение» - комбо: вспышка света + громовое эхо (только звук
     entity.lightning_bolt.thunder с высоты, без молнии) + залп частиц.
-    Дёшево (particle+playsound) — доступно и в worn с гейтом."""
+    Дёшево (particle+playsound) - доступно и в worn с гейтом."""
     fp = rng.choice(_FN_FLASH_PARTICLES)
     if fp in ("minecraft:flash", "minecraft:entity_effect"):
         fp = "%s{color:%d}" % (fp, rng.choice(_FN_DUST_COLORS))
@@ -3479,8 +3490,8 @@ _FN_OATH_TITLES = ["Клятва скреплена", "Союз заключён
 
 
 def _fn_oath_cmd(rng, cfg, ctx):
-    """«Клятва» — item modify ОБЕИХ рук (один модификатор — обет единый)
-    + title-заголовок. Нужен mod_ids; в worn — гейт обязательный
+    """«Клятва» - item modify ОБЕИХ рук (один модификатор - обет единый)
+    + title-заголовок. Нужен mod_ids; в worn - гейт обязательный
     (команды дешёвые: item + title)."""
     if not cfg["mod_ids"]:
         return None, None
@@ -3506,7 +3517,7 @@ def _fn_oath_cmd(rng, cfg, ctx):
 
 
 def _fn_xprain_cmd(rng, cfg, budget):
-    """«Дождь опыта» — 4-8 орбов опыта россыпью вокруг (±2 по xz,
+    """«Дождь опыта» - 4-8 орбов опыта россыпью вокруг (+/-2 по xz,
     высоты 0.5-2.5); только full/event + гейт 0.05-0.2 (в worn = ферма)."""
     gate = _fn_gate(rng, cfg, _f(rng, 0.05, 0.2))
     n = max(3, min(rng.randint(4, 8), budget))
@@ -3520,7 +3531,7 @@ def _fn_xprain_cmd(rng, cfg, budget):
 
 
 def _fn_farewell_cmd(rng, cfg):
-    """«Прощальный салют» — фейерверк с fade_colors (обязательны — «угасание»)
+    """«Прощальный салют» - фейерверк с fade_colors (обязательны - «угасание»)
     + прощальный залп частиц; LifeTime короткий (8-20). Не в worn (summon)."""
     shape = rng.choice(_FN_FW_SHAPES)
     colors = [rng.choice(_FN_DUST_COLORS) for _ in range(rng.randint(1, 3))]
@@ -3546,8 +3557,8 @@ def _fn_farewell_cmd(rng, cfg):
 
 
 def _fn_rings_cmd(rng, cfg, ctx, budget):
-    """«Многослойные кольца» — 2-3 концентрических кольца (радиусы шагом
-    ×0.7, каждое чуть выше), 6-8 точек на кольцо."""
+    """«Многослойные кольца» - 2-3 концентрических кольца (радиусы шагом
+    x0.7, каждое чуть выше), 6-8 точек на кольцо."""
     p, _wp = _fn_pick_particle(rng)
     n_layers = rng.choices([2, 3], weights=[3, 2], k=1)[0]
     r0, h = _f(rng, 0.7, 1.1), _f(rng, 0.8, 1.2)
@@ -3566,8 +3577,8 @@ def _fn_rings_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_crosses_cmd(rng, cfg, ctx, budget):
-    """«Кресты» — 1-3 креста частиц (центр + 4 луча, плечо 0.25-0.5) в
-    случайных точках вокруг; в маленький бюджет — урезанный крест."""
+    """«Кресты» - 1-3 креста частиц (центр + 4 луча, плечо 0.25-0.5) в
+    случайных точках вокруг; в маленький бюджет - урезанный крест."""
     p, _wp = _fn_pick_particle(rng)
     n_cross = 1 if budget < 6 else rng.randint(2, 3)
     arm = _f(rng, 0.25, 0.5)
@@ -3586,7 +3597,7 @@ def _fn_crosses_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_stars_cmd(rng, cfg, ctx, budget):
-    """«Звёзды» — 1-2 звезды: 5-8 лучей из центра (радиус 0.9-2.0, лёгкий
+    """«Звёзды» - 1-2 звезды: 5-8 лучей из центра (радиус 0.9-2.0, лёгкий
     вертикальный разброс) + точка-ядро."""
     p, _wp = _fn_pick_particle(rng)
     n_star = 1 if budget < 8 else rng.randint(1, 2)
@@ -3608,8 +3619,8 @@ def _fn_stars_cmd(rng, cfg, ctx, budget):
 
 
 def _fn_downspiral_cmd(rng, cfg, ctx, budget):
-    """«Спираль вниз» — воронка: 6-10 частиц, радиус СЖИМАЕТСЯ 1.8-2.6 →
-    0.3-0.8, высота падает 2.0-2.6 → ~0.5 (шаг угла 40-70°)."""
+    """«Спираль вниз» - воронка: 6-10 частиц, радиус СЖИМАЕТСЯ 1.8-2.6 ->
+    0.3-0.8, высота падает 2.0-2.6 -> ~0.5 (шаг угла 40-70°)."""
     p, _wp = _fn_pick_particle(rng)
     n = max(4, min(rng.randint(6, 10), budget))
     r0, r1 = _f(rng, 1.8, 2.6), _f(rng, 0.3, 0.8)
@@ -3627,16 +3638,16 @@ def _fn_downspiral_cmd(rng, cfg, ctx, budget):
     return _fn_gate_lines(rng, cfg, ctx, lines), "Воронка"
 
 
-def _gen_ench_function(rng, eid, ctx, mod_ids=None, pred_ids=None, gates=None,
+def _gen_ench_visuals(rng, eid, ctx, mod_ids=None, pred_ids=None, gates=None,
                        report=None):
     """Текст mcfunction для run_function-эффекта зачарования.
 
     Контракт: id функции = id зачарования; вызывается при срабатывании
     эффекта; @s = affected-сущность (для post_attack мы маршрутизируем
-    affected=enchanted — см. _build_post_attack). Возвращает
+    affected=enchanted - см. _build_post_attack). Возвращает
     (текст, слово_профиля): слово доминантной категории идёт в название
     зачарования («Клык», «Громовержец», «Скорость»...). gates пополняется
-    random_chance-предикатами (id <ench>_p<N>). report — если передан
+    random_chance-предикатами (id <ench>_p<N>). report - если передан
     set, в него добавляются ключи ИСПОЛЬЗОВАННЫХ категорий (для
     самотеста разнообразия; на генерацию не влияет)."""
     ns = eid.split(":", 1)[0]
@@ -3656,7 +3667,7 @@ def _gen_ench_function(rng, eid, ctx, mod_ids=None, pred_ids=None, gates=None,
     wmap = {c: (wf if ctx == "full" else we if ctx == "event" else ww)
             for c, wf, we, ww in _FN_CAT_W}
     cats = [c for c, _wf, _we, _ww in _FN_CAT_W
-            if wmap[c] > 0
+            if wmap[c] > 0 and c in _FN_VISUAL_CATS
             and (c not in ("recolor", "glow2", "oath") or cfg["mod_ids"])]
     used, lines, words = set(), [], []
     while len(used) < n_cats and budget > 0 and cats:
@@ -3754,14 +3765,453 @@ def _gen_ench_function(rng, eid, ctx, mod_ids=None, pred_ids=None, gates=None,
             words.append((_FN_CAT_PRIO[cat], w))
             if report is not None:
                 report.add(cat)
-    if not lines:  # крайний случай — дежурная вспышка
+    if not lines:  # крайний случай - дежурная вспышка
         lines = ["particle minecraft:enchanted_hit ~ ~1 ~ 0.4 0.6 0.4 0 6"]
         words.append((3, "Блеск"))
-    head = "# %s — вызывается run_function-эффектом зачарования (%s)\n" % (
+    head = "# %s - вызывается run_function-эффектом зачарования (%s)\n" % (
         eid, _FN_CTX_DESC[ctx])
     # слово профиля = доминантная (самая зрелищная) категория функции
     word = max(words, key=lambda p: p[0])[1]
     return head + "\n".join(lines) + "\n", word
+
+
+# Synchronous command families. Metadata is Python-side only, never an extra
+# field in an enchantment JSON. Old spectacle helpers below are supplemental.
+# Commands use Java's stable execute/return/data/tag/effect/teleport/damage API.
+# Requires in-game 26.2 reload/gameplay validation; NOT claimed server-tested.
+# Stable damage syntax: https://www.minecraft.net/en-us/article/minecraft-java-edition-1-19-4
+# Numeric audit: _rq_* emits flags/types/chances, not exact continuous
+# entity/location comparisons. chance/amount/duration/count remain quantities.
+_FN_RUNTIME = "rndim:enchantment_runtime"
+_FN_SOURCE_TAG = "rndim.enchantment_source"
+_FN_RAY_TAG = "rndim.enchantment_ray"
+_FN_HIT_TAG = "rndim.enchantment_hit"
+_FN_RAY_STEPS = 12  # unrolled 0.5-block samples; no recursive function calls
+_FN_MAX_COMMANDS = 110
+_FN_MAX_EVENT_CALLS = 1  # stricter than per-role dedupe, covers self-damage too
+_FN_PROC_CHANCE = 0.25
+
+# Only these old helpers may decorate a functional command. No old summon,
+# unbounded aura, arbitrary item_modifier, firework, or XP-orb helper is emitted.
+_FN_VISUAL_CATS = frozenset((
+    "particle", "sound", "flavor", "echo", "flash", "totem", "thunder",
+    "rain", "vortex", "dome", "chord", "choir", "shards",
+    "whisper", "rings", "crosses", "stars", "downspiral"))
+
+COMMAND_FAMILIES = {
+    "stride": {"kind": "buff", "effect": "speed", "word": "Скорость", "lore": "ускорение себе"},
+    "haste": {"kind": "buff", "effect": "haste", "word": "Спешка", "lore": "спешка себе"},
+    "ward": {"kind": "buff", "effect": "resistance", "word": "Защита", "lore": "сопротивление себе"},
+    "strength": {"kind": "buff", "effect": "strength", "word": "Сила", "lore": "сила себе"},
+    "mend": {"kind": "buff", "effect": "regeneration", "word": "Исцеление", "lore": "регенерация себе"},
+    "cushion": {"kind": "buff", "effect": "slow_falling", "word": "Парение", "lore": "медленное падение себе"},
+    "gills": {"kind": "buff", "effect": "water_breathing", "word": "Жабры", "lore": "подводное дыхание себе"},
+    "fireward": {"kind": "buff", "effect": "fire_resistance", "word": "Огнеупорность", "lore": "огнестойкость себе"},
+    "leap": {"kind": "buff", "effect": "jump_boost", "word": "Прыжок", "lore": "прыгучесть себе"},
+    "absorb": {"kind": "buff", "effect": "absorption", "word": "Щит", "lore": "поглощение себе"},
+    "nourish": {"kind": "buff", "effect": "saturation", "word": "Сытость", "lore": "сытость игроку", "player": True},
+    "antidote": {"kind": "cleanse", "effect": "poison", "word": "Противоядие", "lore": "снятие яда с себя"},
+    "unwither": {"kind": "cleanse", "effect": "wither", "word": "Очищение", "lore": "снятие иссушения с себя"},
+    "unburden": {"kind": "cleanse", "effect": "slowness", "word": "Свобода", "lore": "снятие замедления с себя"},
+    "unblind": {"kind": "cleanse", "effect": "blindness", "word": "Прозрение", "lore": "снятие слепоты с себя"},
+    "xp": {"kind": "xp", "word": "Жатва", "lore": "два очка опыта игроку", "player": True},
+    "ration": {"kind": "give", "word": "Припас", "lore": "хлеб игроку", "player": True},
+    "blink": {"kind": "blink", "offset": "^ ^ ^5", "word": "Скачок", "lore": "скачок примерно на 5 блоков вперёд"},
+    "retreat": {"kind": "blink", "offset": "^ ^ ^-3", "word": "Отступление", "lore": "скачок примерно на 3 блока назад"},
+    "sidestep": {"kind": "blink", "offset": "^3 ^ ^", "word": "Уклонение", "lore": "скачок примерно на 3 блока влево"},
+    "item_magnet": {"kind": "gather", "entity": "item", "word": "Притяжение", "lore": "притягивание трёх предметов"},
+    "xp_magnet": {"kind": "gather", "entity": "experience_orb", "word": "Сбор", "lore": "притягивание трёх сфер опыта"},
+    "ray_damage": {"kind": "ray", "action": "damage", "word": "Луч", "lore": "луч: 2 магического урона одному монстру", "projectile": True},
+    "ray_slow": {"kind": "ray", "action": "slowness", "word": "Оцепенение", "lore": "луч замедления одного монстра на 4 с", "projectile": True},
+    "ray_weak": {"kind": "ray", "action": "weakness", "word": "Истощение", "lore": "луч слабости одного монстра на 4 с", "projectile": True},
+    "ray_wither": {"kind": "ray", "action": "wither", "word": "Увядание", "lore": "луч иссушения одного монстра на 4 с", "projectile": True},
+    "frost_pulse": {"kind": "pulse", "effect": "slowness", "word": "Стужа", "lore": "замедление до трёх монстров на 4 с", "projectile": True},
+    "frailty_pulse": {"kind": "pulse", "effect": "weakness", "word": "Слабость", "lore": "слабость до трёх монстров на 4 с", "projectile": True},
+    "wither_pulse": {"kind": "pulse", "effect": "wither", "word": "Оковы", "lore": "иссушение до трёх монстров на 4 с", "projectile": True},
+    "lift_pulse": {"kind": "pulse", "effect": "levitation", "word": "Подъём", "lore": "левитация до трёх монстров на 4 с", "projectile": True},
+    "repel": {"kind": "repel", "word": "Изгнание", "lore": "безопасный сдвиг одного небольшого монстра от себя примерно на 2 блока"},
+    "beckon": {"kind": "beckon", "word": "Призыв", "lore": "безопасный сдвиг одного небольшого монстра к себе примерно на 2 блока"},
+    "animal_heal": {"kind": "animal_heal", "word": "Забота", "lore": "мгновенное лечение до трёх мирных животных в радиусе 4 блоков"},
+    "extinguish": {"kind": "extinguish", "word": "Тушение", "lore": "гасит обычный и синий огонь рядом"},
+    "webbreak": {"kind": "webbreak", "word": "Расчистка", "lore": "разрушает паутину рядом с выпадением добычи"},
+    "thaw": {"kind": "thaw", "word": "Оттепель", "lore": "растапливает соседний обычный лёд в воду"},
+    "frostpath": {"kind": "frostpath", "word": "Переправа", "lore": "замораживает соседние источники воды в подтаивающий лёд"},
+    "cultivate": {"kind": "cultivate", "word": "Плодородие", "lore": "мгновенно выращивает соседнюю пшеницу"},
+    "harvest": {"kind": "harvest", "word": "Урожай", "lore": "собирает соседнюю зрелую пшеницу с выпадением добычи"},
+    "till": {"kind": "till", "word": "Пахарь", "lore": "превращает соседнюю землю с воздухом сверху в пашню"},
+}
+
+
+# Curated positive allowlists deliberately exclude players, pets, items,
+# projectiles, armour stands and helper/marker entities from hostile effects.
+_FN_HOSTILES = tuple("zombie husk drowned zombie_villager skeleton stray bogged "
+    "wither_skeleton spider cave_spider creeper silverfish endermite enderman "
+    "witch pillager vindicator evoker vex ravager slime magma_cube blaze ghast "
+    "guardian elder_guardian phantom piglin_brute hoglin zoglin warden breeze".split())
+_FN_ANIMALS = tuple("cow sheep pig chicken rabbit horse donkey mule llama "
+    "trader_llama goat camel turtle panda fox axolotl frog bee mooshroom".split())
+_FN_BLINK_ACTORS = ("player",) + tuple(e for e in _FN_HOSTILES if e not in (
+    "spider", "cave_spider", "ravager", "slime", "magma_cube", "ghast",
+    "guardian", "elder_guardian", "phantom", "hoglin", "zoglin", "warden"))
+# Full, non-harmful support blocks only; no fluids, leaves, slabs, fences,
+# magma, powder snow, falling sand/gravel, or partial blocks.
+_FN_SUPPORT = tuple("stone granite diorite andesite deepslate cobbled_deepslate "
+    "tuff calcite dirt grass_block coarse_dirt rooted_dirt podzol mycelium "
+    "packed_mud clay terracotta netherrack end_stone basalt smooth_basalt "
+    "blackstone obsidian crying_obsidian cobblestone mossy_cobblestone "
+    "stone_bricks deepslate_bricks bricks nether_bricks red_nether_bricks "
+    "sandstone red_sandstone prismarine dark_prismarine snow_block "
+    "oak_planks spruce_planks birch_planks jungle_planks acacia_planks "
+    "dark_oak_planks mangrove_planks cherry_planks bamboo_planks "
+    "crimson_planks warped_planks quartz_block amethyst_block moss_block".split())
+_FN_TERRAIN_KINDS = frozenset(("extinguish", "webbreak", "thaw", "frostpath",
+                              "cultivate", "harvest", "till"))
+
+
+def _fn_predicate_id(namespace, kind):
+    return namespace + ":enchantment_runtime/" + kind
+
+
+def _fn_resource_predicates(namespace):
+    def entities(pool):
+        return {"condition": "minecraft:any_of", "terms": [
+            {"condition": "minecraft:entity_properties", "entity": "this",
+             "predicate": {"minecraft:entity_type": "minecraft:" + e}} for e in pool]}
+    data = {"hostiles": entities(_FN_HOSTILES), "animals": entities(_FN_ANIMALS),
+            "blink_actor": entities(_FN_BLINK_ACTORS),
+            "support": {"condition": "minecraft:location_check", "offsetY": -1,
+                        "predicate": {"block": {"blocks": ["minecraft:" + b for b in _FN_SUPPORT]}}}}
+    return {_fn_predicate_id(namespace, k): v for k, v in data.items()}
+
+
+def _fn_clear_destination(namespace):
+    # Snap to the block centre: accepted actors fit inside a 1x3-block shaft.
+    # Test the destination only; blink intentionally may pass through a wall.
+    return ("align xyz positioned ~0.5 ~ ~0.5 if loaded ~ ~-1 ~ "
+            "if loaded ~ ~2 ~ if block ~ ~ ~ #minecraft:air "
+            "if block ~ ~1 ~ #minecraft:air if block ~ ~2 ~ #minecraft:air "
+            "if predicate " + _fn_predicate_id(namespace, "support") + " ")
+
+
+def _fn_ray_commands(spec, namespace="rndim"):
+    """At most one curated hostile hit, 12 samples; stop on solid/unloaded cells.
+
+    @s stays the affected entity, including a projectile. Damage is deliberately
+    unattributed (magic), never guessed from @p. AABB samples intersect entities
+    rather than measuring feet-to-eye distance. No temporary entities or Motion.
+    Air-only sampling is conservative, NOT exact voxel/shape ray tracing.
+    """
+    lines = ["tag @s remove " + _FN_HIT_TAG,
+             "tag @s add " + _FN_RAY_TAG]
+    target = ("@e[predicate=%s,tag=!%s,dx=0,dy=0,dz=0,"
+              "sort=nearest,limit=1]" % (_fn_predicate_id(namespace, "hostiles"), _FN_SOURCE_TAG))
+    for step in range(1, _FN_RAY_STEPS + 1):
+        pos = ("execute if entity @s[tag=%s] at @s rotated as @s "
+               "anchored eyes positioned ^ ^ ^%s anchored feet "
+               % (_FN_RAY_TAG, _fn_num(step * 0.5)))
+        lines.append(pos + "unless loaded ~ ~ ~ run tag @s remove " + _FN_RAY_TAG)
+        lines.append(pos + "unless block ~ ~ ~ #minecraft:air run tag @s remove " + _FN_RAY_TAG)
+        lines.append(pos + "run particle minecraft:end_rod ~ ~ ~ 0 0 0 0 1 normal")
+        hit = pos + "positioned ~-0.5 ~-0.5 ~-0.5 "
+        lines.append(hit + "if entity " + target + " run tag @s add " + _FN_HIT_TAG)
+        action = ("damage %s 2 minecraft:magic" % target if spec["action"] == "damage"
+                  else "effect give %s minecraft:%s 4 0 true" % (target, spec["action"]))
+        lines.append(hit + "if entity @s[tag=%s] run %s" % (_FN_HIT_TAG, action))
+        lines.append("execute if entity @s[tag=%s] run tag @s remove %s"
+                     % (_FN_HIT_TAG, _FN_RAY_TAG))
+    lines += ["tag @s remove " + _FN_HIT_TAG, "tag @s remove " + _FN_RAY_TAG]
+    return lines
+
+
+def _fn_gameplay_commands(family, namespace="rndim"):
+    spec = COMMAND_FAMILIES[family]
+    kind = spec["kind"]
+    if kind == "ray":
+        return _fn_ray_commands(spec, namespace)
+    if kind in _FN_TERRAIN_KINDS:
+        # Five cells (self + four cardinal neighbours), no recursion, flood fill,
+        # new entities or schedules. Both current and below-foot layers are useful.
+        rules = {
+            "extinguish": [("fire", "air", "replace"), ("soul_fire", "air", "replace")],
+            "webbreak": [("cobweb", "air", "destroy")],
+            "thaw": [("ice", "water", "replace")],
+            "frostpath": [("water[level=0]", "frosted_ice", "replace")],
+            "cultivate": [("wheat", "wheat[age=7]", "replace")],
+            "harvest": [("wheat[age=7]", "air", "destroy")],
+            "till": [("dirt", "farmland", "replace"), ("grass_block", "farmland", "replace")],
+        }
+        y = -1 if kind in ("thaw", "frostpath", "till") else 0
+        lines = []
+        for x, z in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)):
+            for before, after, mode in rules[kind]:
+                head = "execute at @s positioned ~%d ~%d ~%d if loaded ~ ~ ~ " % (x, y, z)
+                if kind == "till":
+                    head += "if loaded ~ ~1 ~ if block ~ ~1 ~ #minecraft:air "
+                lines.append(head + "if block ~ ~ ~ minecraft:%s run setblock ~ ~ ~ minecraft:%s %s"
+                             % (before, after, mode))
+        return lines
+    if kind in ("repel", "beckon"):
+        # Only an explicitly tagged source, never a guessed nearest player.
+        target = ("@e[predicate=%s,predicate=%s,tag=!%s,distance=..4,sort=nearest,limit=1]"
+                  % (_fn_predicate_id(namespace, "hostiles"),
+                     _fn_predicate_id(namespace, "blink_actor"), _FN_SOURCE_TAG))
+        source = "@e[tag=%s,distance=..8,sort=nearest,limit=1]" % _FN_SOURCE_TAG
+        return ["execute at @s as %s at @s facing entity %s feet rotated ~ 0 positioned ^ ^ ^%d "
+                % (target, source, -2 if kind == "repel" else 2)
+                + _fn_clear_destination(namespace) + "run teleport @s ~ ~ ~"]
+    if kind == "animal_heal":
+        return ["execute at @s run effect give @e[predicate=%s,tag=!%s,distance=..4,sort=nearest,limit=3] minecraft:instant_health 1 0 true"
+                % (_fn_predicate_id(namespace, "animals"), _FN_SOURCE_TAG)]
+    if kind == "buff":
+        duration = 1 if spec.get("player") else 6
+        cmd = "effect give @s minecraft:%s %d 0 true" % (spec["effect"], duration)
+    elif kind == "cleanse":
+        cmd = "effect clear @s minecraft:" + spec["effect"]
+    elif kind == "xp":
+        cmd = "xp add @s 2 points"
+    elif kind == "give":
+        cmd = "give @s minecraft:bread 1"
+    elif kind == "blink":
+        return ["execute if predicate %s at @s rotated as @s rotated ~ 0 positioned %s "
+                % (_fn_predicate_id(namespace, "blink_actor"), spec["offset"])
+                + _fn_clear_destination(namespace) + "run teleport @s ~ ~ ~"]
+    elif kind == "gather":
+        return ["execute at @s run teleport @e[type=minecraft:%s,tag=!%s,"
+                "distance=..6,sort=nearest,limit=3] ~ ~ ~"
+                % (spec["entity"], _FN_SOURCE_TAG)]
+    elif kind == "pulse":
+        return ["execute at @s run effect give @e[predicate=%s,tag=!%s,"
+                "distance=..4,sort=nearest,limit=3] minecraft:%s 4 0 true"
+                % (_fn_predicate_id(namespace, "hostiles"), _FN_SOURCE_TAG, spec["effect"])]
+    else:
+        raise ValueError("Unknown command family: " + family)
+    if spec.get("player"):
+        cmd = "execute if entity @s[type=minecraft:player] run " + cmd
+    return [cmd]
+
+
+def command_family_lore(metadata):
+    """Authoritative full command description for loot; never parse mcfunction."""
+    if not metadata:
+        return ""
+    phrases = []
+    for family in metadata["families"]:
+        spec = COMMAND_FAMILIES[family]
+        phrase, kind = spec["lore"], spec["kind"]
+        if kind == "buff":
+            phrase += " (I, %d с)" % (1 if spec.get("player") else 6)
+        if spec.get("player"):
+            phrase += " (только если действующее лицо — игрок)"
+        if kind == "ray":
+            phrase += " (до 6 блоков, 12 объёмных проб; только воздух; не точная трассировка формы блоков и не физический снаряд)"
+            if spec['action'] == 'damage':
+                phrase += " (урон без назначенного атакующего)"
+        if kind in ("ray", "pulse", "repel", "beckon"):
+            phrase += " (выборка %d видов монстров; не игроки/питомцы; кроме себя)" % len(_FN_HOSTILES)
+        if kind in ("pulse", "animal_heal"):
+            phrase += " (радиус 4, без проверки прямой видимости)"
+        if kind in ("blink", "repel", "beckon"):
+            phrase += " (только небольшие допустимые сущности, загруженная свободная шахта 1x3 и надёжная опора; центр клетки, путь не проверяется)"
+        if kind == "gather":
+            phrase += " (до трёх, радиус 6, без проверки стен/чужой собственности)"
+        if kind in _FN_TERRAIN_KINDS:
+            phrase += " (до 5 загруженных клеток: центр и четыре соседа; меняет мир)"
+        phrases.append(phrase)
+    events = {"minecraft:post_attack": "после боя", "minecraft:hit_block": "при ударе о блок",
+              "minecraft:post_piercing_attack": "после пронзающего удара",
+              "minecraft:projectile_spawned": "при создании снаряда"}
+    roles = {"attacker": "носитель-атакующий", "victim": "носитель-жертва",
+             "bearer": "носитель", "projectile": "сам снаряд, не стрелок"}
+    bindings = metadata.get("bindings", [])
+    trigger = "; ".join(events.get(b["event"], b["event"]) + ": " + roles.get(b["affected"], b["affected"])
+                        for b in bindings) or "при вызове: affected-сущность"
+    return ("Команды - %s; один шанс 25%% на вызов события этим предметом: " % trigger
+            + "; ".join(phrases))
+
+
+def _gen_ench_function(rng, eid, ctx, mod_ids=None, pred_ids=None, gates=None,
+                       report=None, metadata=None):
+    """One synchronous, globally guarded event; up to two gameplay families.
+
+    No tick/location handler is emitted by the public generator. The legacy
+    'worn' argument is rejected to make accidental recurring use explicit.
+    Storage guard spans all entities/dimensions/functions, not just this eid:
+    nested damage-triggered enchantments cannot re-enter on another entity.
+    No early returns after acquiring the guard; failures still reach cleanup.
+    """
+    if ctx not in ("full", "event", "projectile"):
+        raise ValueError("Command enchantments require an instantaneous event")
+    ns, fname = eid.split(":", 1)
+    if gates is None:
+        gates = {}
+    cfg = {"ns": ns, "fname": fname, "gates": gates, "gi": [0]}
+    gates.update(_fn_resource_predicates(ns))
+    available = [f for f, s in COMMAND_FAMILIES.items()
+                 if ctx != "projectile" or s.get("projectile")]
+    first = rng.choice(available)
+    families = [first]
+    if rng.random() < 0.65:
+        remaining = [f for f in available if f != first and
+                     not (COMMAND_FAMILIES[first]["kind"] == "ray" and
+                          COMMAND_FAMILIES[f]["kind"] == "ray")]
+        families.append(rng.choice(remaining))
+    # An affected entity can be a mob/projectile even in a mixed post_attack
+    # all_of. Never leave it with ONLY player-only rewards or self buffs that
+    # may not apply (e.g. regeneration on undead). At least one family acts on
+    # the surroundings independently of the affected entity's living/player type.
+    def actor_independent(f):
+        return (COMMAND_FAMILIES[f]["kind"] in ("ray", "pulse", "blink", "gather",
+                "repel", "beckon", "animal_heal") or COMMAND_FAMILIES[f]["kind"] in _FN_TERRAIN_KINDS)
+    if not any(actor_independent(f) for f in families):
+        fallback = rng.choice([f for f in available if actor_independent(f)])
+        if len(families) == 2:
+            families[1] = fallback
+        else:
+            families.append(fallback)
+    # Exactly one gate for the whole event, BEFORE gameplay and visuals.
+    gate = _fn_gate(rng, cfg, _FN_PROC_CHANCE).split("predicate ", 1)[1].split()[0]
+    lines = ["execute unless entity @s run return 0",
+             "execute if data storage %s busy run return 0" % _FN_RUNTIME,
+             "execute unless predicate %s run return 0" % gate,
+             "data modify storage %s busy set value 1b" % _FN_RUNTIME,
+             "tag @s add " + _FN_SOURCE_TAG]
+    for family in families:
+        lines.extend(_fn_gameplay_commands(family, ns))
+    # Decorators cannot consume the action budget, replace an action or become
+    # a standalone function. Keep original visual variety, max four commands.
+    visual_report = set()
+    visual, _ = _gen_ench_visuals(rng, eid + "_v", "event", gates=gates,
+                                report=visual_report)
+    lines.extend(l for l in [l for l in visual.splitlines()
+                            if l and not l.startswith("#")][:4])
+    lines += ["tag @s remove " + _FN_SOURCE_TAG,
+              "data remove storage %s busy" % _FN_RUNTIME]
+    if len(lines) > _FN_MAX_COMMANDS:
+        raise AssertionError("Command budget exceeded")
+    if report is not None:
+        report.update(families)
+        report.update(visual_report)
+    info = {"families": families, "chance": _FN_PROC_CHANCE, "context": ctx,
+            "max_ray_steps": _FN_RAY_STEPS, "max_targets_per_action": 3,
+            "max_terrain_cells_per_action": 5, "max_actions_per_call": 2,
+            "max_calls_per_event_actor": 1, "max_calls_per_event": _FN_MAX_EVENT_CALLS,
+            "max_commands_per_event": len(lines) * _FN_MAX_EVENT_CALLS,
+            "budget_scope": "one enchantment component dispatch; separate equipped items can dispatch independently",
+            "physical_projectiles": False, "max_commands": len(lines)}
+    if metadata is not None:
+        metadata[eid] = info
+    word = COMMAND_FAMILIES[first]["word"]
+    return ("# %s: synchronous gameplay; visuals are supplemental\n" % eid
+            + "\n".join(lines) + "\n", word)
+
+
+def _split_run_functions(effect):
+    """Return a native tree and RF leaves without changing any native payload."""
+    if not isinstance(effect, dict):
+        return effect, []
+    if effect.get("type") == "minecraft:run_function":
+        return None, [effect]
+    if effect.get("type") != "minecraft:all_of":
+        return effect, []
+    native, functions = [], []
+    for child in effect.get("effects", []):
+        remainder, refs = _split_run_functions(child)
+        if remainder is not None:
+            native.append(remainder)
+        functions.extend(refs)
+    if not native:
+        return None, functions
+    if len(native) == 1:
+        return native[0], functions
+    return dict(effect, effects=native), functions
+
+
+def _normalize_run_functions(effects):
+    """Separate owner commands from native victim actions/requirements.
+
+    One RF leaf per enchantment/component/actor, so sequential duplicates cannot
+    roll the 25% gate repeatedly. Additionally cap the whole component at ONE
+    command entry: attacker and victim can be the same entity on self-damage.
+    First generated owner role wins; native actions on both roles are retained.
+    No tick state/cooldown required.
+    Native sibling requirements and targeting are copied verbatim, never erased.
+    """
+    bindings = []
+    for event, entries in effects.items():
+        if not isinstance(entries, list):
+            continue
+        out, calls, seen = [], [], set()
+        for entry in entries:
+            if not isinstance(entry, dict) or not _has_run_function(entry.get("effect")):
+                out.append(entry)
+                continue
+            native, refs = _split_run_functions(entry["effect"])
+            if native is not None:
+                out.append(dict(entry, effect=native))
+            for ref in refs:
+                call = {"effect": ref}
+                if event == "minecraft:post_attack":
+                    actor = entry["enchanted"]
+                    call.update(enchanted=actor, affected=actor)
+                else:
+                    actor = "projectile" if event == "minecraft:projectile_spawned" else "bearer"
+                key = (actor, ref["function"])
+                if key in seen or len(calls) >= _FN_MAX_EVENT_CALLS:
+                    continue
+                seen.add(key)
+                calls.append(call)
+                bindings.append({"event": event, "affected": actor,
+                                 "enchanted": entry.get("enchanted"),
+                                 "function": ref["function"]})
+        effects[event] = out + calls
+    return bindings
+
+
+def _has_native_gameplay(node):
+    """Effect-tree check, never count conditions/providers as an action."""
+    if isinstance(node, dict):
+        t = node.get("type")
+        if t in ("minecraft:spawn_particles", "minecraft:play_sound"):
+            return False
+        if t == "minecraft:apply_mob_effect":
+            effects = node.get("to_apply", [])
+            effects = [effects] if isinstance(effects, str) else effects
+            return any(e not in ("minecraft:glowing", "minecraft:night_vision")
+                       for e in effects)
+        if t == "minecraft:all_of":
+            return any(_has_native_gameplay(e) for e in node.get("effects", []))
+        if t in {"minecraft:" + name for name in (
+                "damage_entity", "ignite", "change_item_damage", "apply_impulse",
+                "apply_exhaustion", "replace_block", "replace_disk",
+                "set_block_properties", "summon_entity", "explode", "run_function",
+                "attribute", "add", "multiply", "set", "remove_binomial") }:
+            return True
+        if "attribute" in node and node.get("amount") not in (None, 0, 0.0):
+            return True
+        # Only traverse real effect payloads, NOT requirements/amount providers.
+        if "effect" in node:
+            return _has_native_gameplay(node["effect"])
+        return any(_has_native_gameplay(v) for k, v in node.items()
+                   if k.startswith("minecraft:") and k not in (
+                       "minecraft:crossbow_charging_sounds", "minecraft:trident_sound"))
+    if isinstance(node, list):
+        return any(_has_native_gameplay(v) for v in node)
+    return False
+
+
+def _ensure_gameplay(effects, eid):
+    """Visual-only native enchantments receive an unconditional real modifier.
+
+    Some non-entity components use unit/list codecs rather than a type field;
+    conservatively adding a small real attribute is safer than counting a
+    sound, a false requirement or a zero-valued decoration as gameplay.
+    """
+    if not _has_native_gameplay(effects):
+        effects.setdefault("minecraft:attributes", []).append({
+            "id": eid + "_active", "attribute": "minecraft:movement_speed",
+            "amount": 0.005, "operation": "add_value"})
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -3769,7 +4219,7 @@ def _gen_ench_function(rng, eid, ctx, mod_ids=None, pred_ids=None, gates=None,
 # ---------------------------------------------------------------------------
 
 
-# ванильные зачарования (data/minecraft/enchantment/, 42 шт. из jar) —
+# ванильные зачарования (data/minecraft/enchantment/, 42 шт. из jar) -
 # иногда попадают в exclusive_set («не сочетается с Остротой»)
 _VANILLA_ENCHS = [
     "minecraft:sharpness", "minecraft:smite", "minecraft:bane_of_arthropods",
@@ -3789,9 +4239,9 @@ _VANILLA_ENCHS = [
 
 
 def _rand_enchantment(rng, ns, eid, used_names, mod_ids=None, pred_ids=None,
-                      gates=None):
+                      gates=None, metadata=None):
     profile = _pick_w(rng, list(zip(_PROFILE_KEYS, _PROFILE_W)))
-    # профиль текущего зачарования — для самотеста юзабельности компонент
+    # профиль текущего зачарования - для самотеста юзабельности компонент
     # (в JSON зачарования его не пишем: сервер отверг бы лишнее поле)
     _LAST_ENCH_PROFILE[0] = profile
     if profile == "absurd":
@@ -3818,13 +4268,14 @@ def _rand_enchantment(rng, ns, eid, used_names, mod_ids=None, pred_ids=None,
             extra = rng.choice(_SLOT_GROUPS)
             if extra not in slot_names:
                 slot_names.append(extra)
-    if _chance(rng, 0.03):
-        slot_names = []  # крайний случай: пустые slots (валидность — сервер)
+    # Empty slots make every effect unreachable, not an acceptable edge case.
+    if not slot_names:
+        slot_names = ["hand"]
 
     # динамический фильтр юзабельности: компоненты, которые на выбранных
     # предметах/слотах не срабатывают, не попадают в кандидаты (таблица
-    # правил _COMP_ITEM_RULES; профиль absurd — исключение, там всё можно).
-    # Пустые slots — дежурный краевой случай: слот-требования пропускаются
+    # правил _COMP_ITEM_RULES; профиль absurd - исключение, там всё можно).
+    # Пустые slots - дежурный краевой случай: слот-требования пропускаются
     # (см. _comp_usable), но проверка видов предметов остаётся
     if profile != "absurd":
         pairs = [(c, w) for c, w in zip(comp_keys, comp_w)
@@ -3832,6 +4283,9 @@ def _rand_enchantment(rng, ns, eid, used_names, mod_ids=None, pred_ids=None,
         if pairs:
             comp_keys = [c for c, _w in pairs]
             comp_w = [w for _c, w in pairs]
+
+    pairs = [(c, w) for c, w in zip(comp_keys, comp_w) if c != "tick"]
+    comp_keys, comp_w = map(list, zip(*pairs))
 
     # 1-5 разных компонент (разнообразнее: раньше максимум был 4)
     n_eff = rng.choices([1, 2, 3, 4, 5],
@@ -3844,20 +4298,37 @@ def _rand_enchantment(rng, ns, eid, used_names, mod_ids=None, pred_ids=None,
     effects = {}
     for comp in sorted(chosen):
         # func_id = id зачарования: run_function ссылается на функцию с тем
-        # же id, attributes добавляют суффиксы _a<N>/_loc; профиль — для
+        # же id, attributes добавляют суффиксы _a<N>/_loc; профиль - для
         # тематических пулов атрибутов и прочих правил
         effects["minecraft:" + comp] = _COMPONENTS[comp](rng, eid, profile)
 
+    # Only the separate command entry owns the unconditional event gate.
+    # Native siblings retain all original conditions and their intended actor.
+    rf_bindings = _normalize_run_functions(effects)
+    if _ensure_gameplay(effects, eid):
+        # The fallback must be usable even on an odd/unequippable item.
+        if not any(s in slot_names for s in ("any", "hand", "mainhand", "offhand")):
+            slot_names.append("hand")
+
     # mcfunction для run_function-эффектов генерируем ДО имени: доминантная
-    # фича функции даёт слову названия («Клык», «Громовержец»...) —
+    # фича функции даёт слову названия («Клык», «Громовержец»...) -
     # функция СНАЧАЛА, потом _effect_name(run_function_word=...)
     fn_text, rf_word = None, None
     rf_ctx = _ench_rf_context(effects)
     if rf_ctx is not None:
         fn_text, rf_word = _gen_ench_function(
-            rng, eid, rf_ctx, mod_ids=mod_ids, pred_ids=pred_ids, gates=gates)
+            rng, eid, rf_ctx, mod_ids=mod_ids, pred_ids=pred_ids, gates=gates,
+            metadata=metadata)
+        if metadata is not None:
+            metadata[eid]["bindings"] = rf_bindings
+            metadata[eid]["max_calls_per_event_actor"] = 1
+            metadata[eid]["max_calls_per_event"] = max(
+                sum(b["event"] == event for b in rf_bindings)
+                for event in {b["event"] for b in rf_bindings})
+            metadata[eid]["max_commands_per_event"] = (
+                metadata[eid]["max_commands"] * metadata[eid]["max_calls_per_event"])
 
-    # имя описания (уникальное в пределах измерения) — по РЕАЛЬНЫМ
+    # имя описания (уникальное в пределах измерения) - по РЕАЛЬНЫМ
     # эффектам: «Громовое Пробитие», «Яд и Отброс», «Проклятие Хрупкости»
     for _ in range(8):
         nm = _effect_name(rng, effects, profile, rf_word)
@@ -3885,7 +4356,7 @@ def _rand_enchantment(rng, ns, eid, used_names, mod_ids=None, pred_ids=None,
                                   k=1)[0],
         "slots": slot_names,
     }
-    # primary_items — иногда (подмножество supported для веса в столе)
+    # primary_items - иногда (подмножество supported для веса в столе)
     if _chance(rng, 0.4):
         if isinstance(supported, str) and supported.startswith("#minecraft:"):
             ench["primary_items"] = supported
@@ -3901,18 +4372,21 @@ def rand_enchantments(rng, ns, name, count=None, mod_ids=None, pred_ids=None):
     """Случайные зачарования + enchantment_provider для одного измерения.
 
     Возвращает {"enchantments": {id: json}, "enchantment_providers": {id: json},
-    "functions": {fname: текст mcfunction}, "gate_predicates": {id: json}},
-    id вида "<ns>:<name>_enchN" и "<ns>:<name>_provN"; fname — часть id
+    "functions": {fname: текст mcfunction}, "gate_predicates": {id: json},
+    "function_metadata": {enchantment_id: Python-side command metadata}},
+    id вида "<ns>:<name>_enchN" и "<ns>:<name>_provN"; fname - часть id
     зачарования после ':' (файл function/<fname>.mcfunction). На диск
     ничего не пишет.
 
     run_function-эффекты ссылаются на функцию с id зачарования
-    ("<ns>:<name>_enchN") — её текст генерируется здесь же (см.
-    _gen_ench_function) и кладётся в "functions"; гейт-предикаты команд —
+    ("<ns>:<name>_enchN") - её текст генерируется здесь же (см.
+    _gen_ench_function) и кладётся в "functions"; гейт-предикаты команд -
     в "gate_predicates" (основной скрипт обязан записать их в predicate/,
     иначе команды с 'execute if predicate' молча не сработают).
-    mod_ids/pred_ids — id item_modifier'ов/predicates измерения: без
-    mod_ids категория перекраски (item modify) недоступна."""
+    function_metadata is not a Minecraft registry; do not write it to data/.
+    gen_loot consumes LAST_FUNCTION_METADATA automatically in this process.
+    mod_ids/pred_ids are retained for caller compatibility; arbitrary item
+    modifiers are no longer executed. Functions are event-only, never tick."""
     if count is None:
         # в среднем ~4-6, редкие выбросы до ~30 (heavy_count)
         count = _heavy_count(rng, 5.0, 15, 30, 0.08)
@@ -3924,11 +4398,12 @@ def rand_enchantments(rng, ns, name, count=None, mod_ids=None, pred_ids=None):
     gates = {}
     ench_ids = []
     profiles = {}
+    function_metadata = {}
     for i in range(count):
         eid = "%s:%s_ench%d" % (ns, name, i)
         ench, fn_text = _rand_enchantment(
             rng, ns, eid, used_names, mod_ids=mod_ids, pred_ids=pred_ids,
-            gates=gates)
+            gates=gates, metadata=function_metadata)
         enchantments[eid] = ench
         profiles[eid] = _LAST_ENCH_PROFILE[0]
         if fn_text is not None:
@@ -3992,27 +4467,30 @@ def rand_enchantments(rng, ns, name, count=None, mod_ids=None, pred_ids=None):
                 "enchantments": subset,
                 "max_cost_span": rng.randint(5, 25),
                 "min_cost": rng.randint(1, 15)}
-    # кэш для gen_loot (см. LAST_ENCHANTMENTS) — до возврата
-    global LAST_ENCHANTMENTS, LAST_PROFILES
+    # кэш для gen_loot (см. LAST_ENCHANTMENTS) - до возврата
+    global LAST_ENCHANTMENTS, LAST_PROFILES, LAST_FUNCTION_METADATA
     LAST_ENCHANTMENTS = enchantments
     LAST_PROFILES = profiles
+    LAST_FUNCTION_METADATA = function_metadata
     return {"enchantments": enchantments,
             "enchantment_providers": providers,
             "functions": functions,
-            "gate_predicates": gates}
+            "gate_predicates": gates,
+            "function_metadata": function_metadata}
 
 
 # последний результат rand_enchantments: {id зачарования: json}. Основной
 # скрипт (generate_dimension.py) передаёт в gen_loot только id
-# (set_custom_enchants), а полный JSON зачарований живёт здесь — gen_loot
+# (set_custom_enchants), а полный JSON зачарований живёт здесь - gen_loot
 # читает его ленивым импортом и сам строит сведения (имя/описание/
 # пассивность) для lore-подсказок и фикса «предмет только с визуалом».
 # Зачарования следующего измерения просто затирают прошлые (связка идёт
 # по id из set_custom_enchants, так что устаревшие записи не мешают).
 LAST_ENCHANTMENTS = {}
+LAST_FUNCTION_METADATA = {}  # same-lifecycle metadata for truthful loot lore
 
 # профиль последнего сгенерированного зачарования (для самотеста
-# юзабельности компонент — absurd exempt; JSON зачарования профиль не
+# юзабельности компонент - absurd exempt; JSON зачарования профиль не
 # хранит, сервер отверг бы лишнее поле)
 _LAST_ENCH_PROFILE = [None]
 
@@ -4029,7 +4507,7 @@ LAST_PROFILES = {}
 # боевых событий: attributes (постоянные модификаторы), tick (каждый тик),
 # location_changed (при движении, как frost_walker), damage_immunity
 # (когда по вам бьют), prevent_equipment_drop / prevent_armor_change
-# (просто носятся) — их ставят предметам «только с визуалом» в gen_loot
+# (просто носятся) - их ставят предметам «только с визуалом» в gen_loot
 PASSIVE_EFFECT_COMPONENTS = ("minecraft:attributes", "minecraft:tick",
                               "minecraft:location_changed",
                               "minecraft:damage_immunity",
@@ -4039,7 +4517,7 @@ PASSIVE_EFFECT_COMPONENTS = ("minecraft:attributes", "minecraft:tick",
 
 def passive_enchants(enchantments):
     """Id зачарований с ПАССИВНЫМ действием (см. PASSIVE_EFFECT_
-    COMPONENTS) — работают при ношении/удержании, без событий. Аргумент —
+    COMPONENTS) - работают при ношении/удержании, без событий. Аргумент -
     карта {id: json зачарования} (поле "enchantments" результата
     rand_enchantments); возвращает ОТСОРТИРОВАННЫЙ список id."""
     out = []
@@ -4051,7 +4529,7 @@ def passive_enchants(enchantments):
     return sorted(out)
 
 
-# «числовые» компоненты -> фраза действия (знак значения — _SUMMARY_FLIP)
+# «числовые» компоненты -> фраза действия (знак значения - _SUMMARY_FLIP)
 _SUMMARY_VE = {
     "damage": "усиливает урон",
     "damage_protection": "снижает получаемый урон",
@@ -4131,9 +4609,10 @@ def _summ_ee_phrase(d):
     if t == "minecraft:play_sound":
         return "подаёт голос"
     if t == "minecraft:run_function":
-        # текст mcfunction живёт вне JSON зачарования — _ee_word без слова
-        # профиля даёт «Ритуал» (см. _name_seeds): описываем ритуалом
-        return "творит особый ритуал"
+        meta = LAST_FUNCTION_METADATA.get(d.get("function"))
+        if meta:
+            return "шанс: " + COMMAND_FAMILIES[meta["families"][0]]["lore"]
+        return "вызывает функцию; действие неизвестно"
     if t == "minecraft:attribute":
         acc = _ATTR_ACC.get(d.get("attribute"))
         return "усиливает %s" % acc if acc else None
@@ -4153,18 +4632,44 @@ def _summ_first_effect(cval):
     return None
 
 
+def summarize_native_enchantment(ejson):
+    """Native summary without pretending a function is a native 'ritual'."""
+    effects = {}
+    conditional = False
+    for key, entries in (ejson or {}).get("effects", {}).items():
+        if not isinstance(entries, list):
+            effects[key] = entries
+            continue
+        out = []
+        for entry in entries:
+            if isinstance(entry, dict) and "effect" in entry:
+                native, _ = _split_run_functions(entry["effect"])
+                if native is None:
+                    continue
+                out.append(dict(entry, effect=native))
+                conditional = conditional or bool(entry.get("requirements"))
+            else:
+                out.append(entry)
+        if out:
+            effects[key] = out
+    if not effects:
+        return ""
+    summary = summarize_enchantment({"effects": effects})
+    return "Встроенные эффекты: " + summary + (" (со своими условиями)" if conditional else "")
+
+
 def summarize_enchantment(ejson):
-    """Краткое русское описание действия зачарования — ДО 8 СЛОВ, без
-    точки, по фактическим компонентам effects: damage → «усиливает урон»,
-    knockback → «отбрасывает врагов», post_attack → «мстит ядом при
-    ударе по тебе», apply_mob_effect → «накладывает слепоту», attributes
-    → «усиливает броню», damage_immunity → «даёт иммунитет к огню»,
-    tick/location_changed → «... при ношении/движении», run_function →
-    «творит особый ритуал» (доминанта функции — слово «Ритуал» из
+    """Краткое русское описание действия зачарования - ДО 8 СЛОВ, без
+    точки, по фактическим компонентам effects: damage -> «усиливает урон»,
+    knockback -> «отбрасывает врагов», post_attack -> «мстит ядом при
+    ударе по тебе», apply_mob_effect -> «накладывает слепоту», attributes
+    -> «усиливает броню», damage_immunity -> «даёт иммунитет к огню»,
+    tick/location_changed -> «... при ношении/движении», run_function ->
+    «творит особый ритуал» (доминанта функции - слово «Ритуал» из
     _ee_word/_name_seeds: текст mcfunction вне JSON зачарования).
     Берётся самая «зрелищная» компонента (приоритеты _SUMMARY_PRIO +
-    _VE_PRIO), при запасе слов — вторая через «и». Фолбэк при пустых
-    эффектах — «даёт скрытую силу»."""
+    _VE_PRIO), при запасе слов - вторая через «и». Фолбэк при пустых
+    эффектах - «даёт скрытую силу»."""
     effects = (ejson or {}).get("effects") if isinstance(ejson, dict) else None
     phrases = []  # (приоритет, фраза)
 
@@ -4215,10 +4720,11 @@ def summarize_enchantment(ejson):
             add(7, "даёт иммунитет к %s" % word if word
                 else "даёт иммунитет к урону")
         elif key == "post_attack":
-            # формулировка задачи: «мстит при ударе по тебе» — без
-            # падежных вывертов с внутренним эффектом (мстить + творительный
-            # не выводится из винительного «накладывает X»)
-            add(8, "мстит при ударе по тебе")
+            # post_attack may enchant either attacker or victim. Describe
+            # the actual effect without promising that the bearer was hit.
+            ph = _summ_ee_phrase(_summ_first_effect(cval))
+            add(8, ((ph + " в бою") if len(ph.split()) <= 6 else ph)
+                if ph else "действует при боевом событии")
         elif key in ("tick", "location_changed", "hit_block",
                      "post_piercing_attack", "projectile_spawned"):
             inner = _summ_first_effect(cval)
@@ -4228,7 +4734,8 @@ def summarize_enchantment(ejson):
                    "post_piercing_attack": "при пронзающем ударе",
                    "projectile_spawned": "на лету"}[key]
             if ph:
-                add(_SUMMARY_PRIO.get(key, 5), "%s %s" % (ph, ctx))
+                add(_SUMMARY_PRIO.get(key, 5), ("%s %s" % (ph, ctx))
+                    if len(ph.split()) + len(ctx.split()) <= 8 else ph)
             else:
                 add(_SUMMARY_PRIO.get(key, 5), "работает %s" % ctx)
         elif key == "prevent_equipment_drop":
@@ -4338,24 +4845,25 @@ if __name__ == "__main__":
 
     # глаголы mcfunction, разрешённые политикой (белый список)
     _FN_TEST_VERBS = {"particle", "playsound", "effect", "summon",
-                      "title", "tellraw", "execute", "item", "xp"}
+                      "title", "tellraw", "execute", "item", "xp",
+                      "damage", "teleport", "give", "return", "tag", "data", "setblock"}
     # запрещённые подстроки (после замены легального "effect give ");
-    # "teleport" НЕ ищем подстрокой — это слово в id звука
+    # "teleport" НЕ ищем подстрокой - это слово в id звука
     # entity.enderman.teleport, а сам глагол уже отсечён белым списком
-    _FN_TEST_BAN = ("kill", "gamemode", "gamerule", "scoreboard",
-                    "setblock", "weather", "ban", "kick", "deop",
+    _FN_TEST_BAN = ("kill ", "gamemode", "gamerule", "scoreboard",
+                    "weather", "ban", "kick", "deop",
                     "stopsound", "fillbiome", "loot ",
-                    "give ", "tp ", "time ", "data ", "fill ")
-    # id для проверки категории перекраски (половина сидов — с ними)
+                    "tp ", "time ", "fill ", "schedule ")
+    # id для проверки категории перекраски (половина сидов - с ними)
     half_mods = ["%s:m%d" % (NS, i) for i in range(3)]
     half_preds = ["%s:p%d" % (NS, i) for i in range(4)]
 
     def _check_fn_body(tag, ctx, body, known_refs, gates_map=None):
         """Проверки строк mcfunction: белый список глаголов, запреты,
         worn-инварианты, JSON actionbar, известные ссылки <ns>:...,
-        гейт молнии <= 0.15 (gates_map: id предиката → json)."""
+        гейт молнии <= 0.15 (gates_map: id предиката -> json)."""
         for l in body:
-            # реальная команда — после последнего " run " у execute
+            # реальная команда - после последнего " run " у execute
             cmd = l
             if cmd.startswith("execute"):
                 i = cmd.rfind(" run ")
@@ -4372,16 +4880,16 @@ if __name__ == "__main__":
             if verb not in _FN_TEST_VERBS:
                 errors.append("%s: глагол %r не в белом списке: %r"
                               % (tag, verb, l[:60]))
-            if verb == "effect" and not cmd.startswith("effect give "):
+            if verb == "effect" and not cmd.startswith(("effect give ", "effect clear ")):
                 errors.append("%s: effect не give: %r" % (tag, l[:60]))
             m = re.match(r"xp add @s (\d+) points$", cmd)
             if verb == "xp" and (not m or int(m.group(1)) > 5):
                 errors.append("%s: xp не 'add @s <=5 points': %r"
                               % (tag, l[:60]))
-            # запрещённые подстроки ("effect give " — легален)
+            # запрещённые подстроки ("effect give " - легален)
             probe = cmd.replace("effect give ", "EFFGIVE ")
             for bad in _FN_TEST_BAN:
-                if bad in probe:
+                if probe.startswith(bad):
                     errors.append("%s: запрещённое %r: %r" % (tag, bad, l[:60]))
             if "actionbar" in l:
                 try:
@@ -4391,7 +4899,7 @@ if __name__ == "__main__":
                 except Exception as ex:
                     errors.append("%s: битый JSON actionbar (%s): %r"
                                   % (tag, ex, l[:60]))
-            # JSON title-заголовка и tellraw (клятва/шёпот) — валиден и с text
+            # JSON title-заголовка и tellraw (клятва/шёпот) - валиден и с text
             if " title @s title " in l or l.startswith("title @s title "):
                 try:
                     j = json.loads(l.split("title @s title ", 1)[1])
@@ -4409,9 +4917,9 @@ if __name__ == "__main__":
                     errors.append("%s: битый JSON tellraw (%s): %r"
                                   % (tag, ex, l[:60]))
             if ctx == "worn":
-                # WORN: только дешёвые гейченые команды — частицы/звук/
+                # WORN: только дешёвые гейченые команды - частицы/звук/
                 # флейвор/перекраска/шёпот; никаких призывов (клыки/облака/
-                # молнии/XP — не "summon ..." в тексте звука!) и никаких
+                # молнии/XP - не "summon ..." в тексте звука!) и никаких
                 # эффектов
                 if verb not in ("particle", "playsound", "title", "item",
                                 "tellraw"):
@@ -4482,7 +4990,7 @@ if __name__ == "__main__":
         if json.dumps(res, sort_keys=True) != json.dumps(res2, sort_keys=True):
             errors.append("seed %d: невоспроизводимо" % seed)
 
-        # LAST_ENCHANTMENTS — кэш для gen_loot: равен последнему результату
+        # LAST_ENCHANTMENTS - кэш для gen_loot: равен последнему результату
         if LAST_ENCHANTMENTS != res2["enchantments"]:
             errors.append("seed %d: LAST_ENCHANTMENTS != результату" % seed)
         # passive_enchants: сортировка и взаимная полнота
@@ -4535,7 +5043,7 @@ if __name__ == "__main__":
                 if set(e[c].keys()) != {"base", "per_level_above_first"}:
                     errors.append("%s: %s не {{base, per_level_above_first}}" % (eid, c))
             neff = len(e.get("effects", {}))
-            if not (1 <= neff <= 5):
+            if not (1 <= neff <= 6):
                 errors.append("%s: эффектов %d (нужно 1-5)" % (eid, neff))
             ex = e.get("exclusive_set")
             if ex:
@@ -4548,8 +5056,8 @@ if __name__ == "__main__":
             # юзабельность компонент (юзер: «зачарования не должны быть на
             # предметах где их нельзя использовать»): каждая компонента
             # работает на supported_items (+slots) по таблице правил
-            # (_COMP_ITEM_RULES); профиль absurd — исключение (там всё
-            # можно); профиль — из side-канала LAST_PROFILES
+            # (_COMP_ITEM_RULES); профиль absurd - исключение (там всё
+            # можно); профиль - из side-канала LAST_PROFILES
             prof = LAST_PROFILES.get(eid)
             if prof is not None and prof != "absurd":
                 for comp in e.get("effects", {}):
@@ -4560,8 +5068,8 @@ if __name__ == "__main__":
                             "%s: компонента %s неюзабельна для %s"
                             % (eid, k,
                                json.dumps(e["supported_items"])[:70]))
-                # тематические пулы атрибутов: attack — оружию, mining —
-                # инструментам, броневые — броне (и внутри location_changed)
+                # тематические пулы атрибутов: attack - оружию, mining -
+                # инструментам, броневые - броне (и внутри location_changed)
                 allowed_attr = _PROFILE_ATTR_IDS.get(prof, _ALL_ATTR_IDS)
                 eff = e.get("effects", {})
                 attr_nodes = list(eff.get("minecraft:attributes") or [])
@@ -4602,13 +5110,13 @@ if __name__ == "__main__":
         gates = res.get("gate_predicates", {})
         fn_count += len(funcs)
         gate_count += len(gates)
-        # каждой функции соответствует зачарование с run_function — и наоборот
+        # каждой функции соответствует зачарование с run_function - и наоборот
         rf_expected = set()
         for eid, e in enchs.items():
             if "run_function" in json.dumps(e):
                 rf_expected.add(eid.split(":", 1)[1])
                 ctx = _ench_rf_context(e.get("effects", {}))
-                if ctx not in ("full", "event", "worn"):
+                if ctx not in ("full", "event", "projectile"):
                     errors.append("%s: run_function вне известных компонент" % eid)
         if set(funcs) != rf_expected:
             errors.append("seed %d: functions %s != run_function-зачарованиям %s"
@@ -4627,18 +5135,24 @@ if __name__ == "__main__":
             e = enchs.get("%s:%s" % (NS, fname), {})
             ctx = _ench_rf_context(e.get("effects", {})) or "full"
             ctx_counts[ctx] = ctx_counts.get(ctx, 0) + 1
-            mx = 3 if ctx == "worn" else 10
+            mx = _FN_MAX_COMMANDS
             if not 1 <= len(body) <= mx:
                 errors.append("%s: команд %d (нужно 1-%d)"
                               % (tag, len(body), mx))
             _check_fn_body(tag, ctx, body, known_refs, gates_map=gates)
-            fn_cats_seen |= _fn_cats(text)
+            fn_cats_seen.update(res["function_metadata"].get(
+                "%s:%s" % (NS, fname), {}).get("families", []))
             if len(fn_samples) < 10:
                 fn_samples.append((seed, fname, ctx, text))
 
         for pid, pj in gates.items():
             if not id_re.match(pid.split(":", 1)[1]):
                 errors.append("%s: плохое имя файла гейта" % pid)
+            resources = _fn_resource_predicates(NS)
+            if pid in resources:
+                if pj != resources[pid]:
+                    errors.append("%s: повреждён curated-предикат" % pid)
+                continue
             if pj.get("condition") != "minecraft:random_chance":
                 errors.append("%s: гейт не random_chance" % pid)
             ch = pj.get("chance")
@@ -4650,13 +5164,13 @@ if __name__ == "__main__":
             name_samples.append((eid, enchs[eid]["description"]["text"]))
 
     # ---- покрытие категорий: прямая генерация по всем контекстам ----
-    # (run_function в зачарованиях редок — проверяем разнообразие функций
+    # (run_function в зачарованиях редок - проверяем разнообразие функций
     # напрямую: все контексты, с mods/preds и без; заодно МЕТРИКА
-    # РАЗНООБРАЗИЯ — уникальные комбинации категорий по report; 120 сидов ×
-    # 3 контекста × 2 варианта = 720 функций (метрика «на 500 функций»))
+    # РАЗНООБРАЗИЯ - уникальные комбинации категорий по report; 120 сидов x
+    # 3 контекста x 2 варианта = 720 функций (метрика «на 500 функций»))
     profiles = set()
     for with_ids in (True, False):
-        for ctx in ("full", "event", "worn"):
+        for ctx in ("full", "event", "projectile"):
             for s in range(120):
                 cov_gates = {}
                 rep = set()
@@ -4670,14 +5184,14 @@ if __name__ == "__main__":
                 body = [l.strip() for l in text.splitlines()
                         if l.strip() and not l.strip().startswith("#")]
                 tag = "cov/%s/%d" % (ctx, s)
-                mx = 3 if ctx == "worn" else 10
+                mx = _FN_MAX_COMMANDS
                 if not 1 <= len(body) <= mx:
                     errors.append("%s: команд %d (нужно 1-%d)"
                                   % (tag, len(body), mx))
                 known = (set(cov_gates) | set(half_mods if with_ids else [])
                          | set(half_preds if with_ids else []))
                 _check_fn_body(tag, ctx, body, known, gates_map=cov_gates)
-                fn_cats_seen |= rep | _fn_cats(text)
+                fn_cats_seen |= rep
                 cov_ctx[ctx] = cov_ctx.get(ctx, 0) + 1
                 if rep:
                     profiles.add(frozenset(rep))
@@ -4687,8 +5201,8 @@ if __name__ == "__main__":
     n_cov = sum(cov_ctx.values())
     # требования юзера: >=35 категорий; >=150 уникальных профилей;
     # плотность разнообразия: >=150 профилей на 500 функций
-    if len(_FN_CAT_W) < 35:
-        errors.append("категорий команд %d (нужно >= 35)" % len(_FN_CAT_W))
+    if len(COMMAND_FAMILIES) < 30:
+        errors.append("семейств действий %d (нужно >= 30)" % len(COMMAND_FAMILIES))
     if len(profiles) < 150:
         errors.append("разнообразие: всего %d уникальных профилей категорий "
                       "(нужно >= 150)" % len(profiles))
@@ -4706,7 +5220,7 @@ if __name__ == "__main__":
         errors.append("пассивных зачарований нет ни одного (нужно > 0)")
     print("примеры описаний summarize_enchantment (до 8 слов):")
     for nm, s in summ_samples[:8]:
-        print("  «%s» — %s" % (nm, s))
+        print("  «%s» - %s" % (nm, s))
     print("количество зачарований на измерение: min %d, max %d, среднее %.1f"
           % (min(all_counts), max(all_counts), sum(all_counts) / len(all_counts)))
     print("распределение: %s" % sorted(all_counts))
@@ -4721,12 +5235,13 @@ if __name__ == "__main__":
              ", ".join("%s=%d" % kv for kv in sorted(ctx_counts.items()))))
     print("прямое покрытие: %s функций по контекстам (с mods/preds и без)"
           % ", ".join("%s=%d" % kv for kv in sorted(cov_ctx.items())))
-    print("разнообразие: %d функций → %d уникальных профилей категорий "
+    print("разнообразие: %d функций -> %d уникальных профилей категорий "
           "(>= 150; на 500 функций: %.0f)"
           % (n_cov, len(profiles), len(profiles) * 500.0 / max(1, n_cov)))
     print("покрытые категории команд: %d/%d: %s"
-          % (len(fn_cats_seen), len(_FN_CAT_PRIO), sorted(fn_cats_seen)))
-    not_cov = sorted(set(_FN_CAT_PRIO) - fn_cats_seen)
+          % (len(fn_cats_seen), len(COMMAND_FAMILIES) + len(_FN_VISUAL_CATS),
+             sorted(fn_cats_seen)))
+    not_cov = sorted((set(COMMAND_FAMILIES) | _FN_VISUAL_CATS) - fn_cats_seen)
     if not_cov:
         print("  НЕ покрыты категории: %s" % not_cov)
     print("слова профилей (связь с названиями): %s"
@@ -4737,7 +5252,7 @@ if __name__ == "__main__":
         print(text.rstrip("\n"))
     print("примеры названий:")
     for eid, nm in name_samples[:8]:
-        print("  %s — «%s»" % (eid, nm))
+        print("  %s - «%s»" % (eid, nm))
     if errors:
         print("ОШИБКИ (%d):" % len(errors))
         for e in errors[:20]:

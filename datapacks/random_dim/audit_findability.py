@@ -5,8 +5,11 @@ import json
 import math
 import random
 import sys
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
 
-sys.path.insert(0, ".")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_dimension as gd
 
 N_DIMS = 60
@@ -18,7 +21,7 @@ def channel_marginal(ch, rng):
     """Приближение маргинального распределения climate-канала по его DF."""
     if isinstance(ch, (int, float)):
         return ("c", float(ch))
-    if isinstance(ch, str):  # ссылка на DF-файл — читаем из noises? нет, DF.
+    if isinstance(ch, str):  # ссылка на DF-файл - читаем из noises? нет, DF.
         return ("n", 0.5)
     t = ch.get("type")
     if t == "minecraft:noise":
@@ -38,69 +41,98 @@ def channel_marginal(ch, rng):
         return channel_marginal(ch.get("argument"), rng)
     if t == "minecraft:constant":
         return ("c", float(ch.get("argument", 0)))
-    # add/mul/min/max/abs/... — шумоподобные
+    # add/mul/min/max/abs/... - шумоподобные
     return ("n", 0.5)
 
 
-def biome_area_fractions(dim, rng, samples=6000):
-    """Monte-Carlo площадей биомов multi_noise (i.i.d. по каналам)."""
-    gen = dim["dimension"]["generator"]
-    bs = gen.get("biome_source") or {}
-    if bs.get("type") != "minecraft:multi_noise" or "biomes" not in bs:
-        return None
-    entries = bs["biomes"]
+CLIMATE_KEYS = ("temperature", "humidity", "continentalness", "erosion",
+                "weirdness", "depth")
+ROUTER_KEYS = {"humidity": "vegetation", "weirdness": "ridges",
+               "continentalness": "continents"}
+
+
+def parameter_distance(value, parameter):
+    """Minecraft multi-noise distance to a point OR a closed interval."""
+    lo, hi = parameter if isinstance(parameter, (list, tuple)) else (parameter, parameter)
+    return max(float(lo) - value, value - float(hi), 0.0)
+
+
+def nearest_biome(entries, climate):
+    """Squared interval distance including offset; stable list-order ties."""
+    def distance(entry):
+        params = entry["parameters"]
+        return float(params.get("offset", 0.0)) ** 2 + sum(
+            parameter_distance(climate[key], params.get(key, 0.0)) ** 2
+            for key in CLIMATE_KEYS)
+    return min(entries, key=distance)["biome"]
+
+
+def model_context(dim):
+    return SimpleNamespace(dfs=dim.get("density_functions", {}),
+                           noises=dim.get("noises", {}))
+
+
+def climate_at(dim, x, y, z):
+    """Deterministic DF model, NOT Minecraft noise or in-game validation."""
     router = dim["noise_settings"]["noise_router"]
-    chans = {}
-    for name in ("temperature", "humidity", "continentalness", "erosion",
-                 "weirdness", "depth"):
-        # biome_source использует "vegetation" вместо "humidity"? проверим ключи
-        chans[name] = channel_marginal(router.get(name, 0.0), rng)
-    # ключи параметров биома: temperature/humidity/continentalness/erosion/
-    # weirdness/depth/offset (в 26.2 vegetation == humidity в исходнике? нет:
-    # в multi_noise json это "humidity")
-    param_keys = list(entries[0]["parameters"].keys())
-    params = []
-    offs = []
-    for e in entries:
-        p = e["parameters"]
-        params.append([float(p.get(k, 0.0)) for k in param_keys])
-        offs.append(float(p.get("offset", 0.0)))
-    # маргинали по ключам параметров: маппим имена
-    marg = []
-    for k in param_keys:
-        if k == "offset":
-            marg.append(None)
-            continue
-        # параметр биома -> канал router (в 26.2 humidity->vegetation,
-        # weirdness->ridges)
-        rname = {"humidity": "vegetation", "weirdness": "ridges"}.get(k, k)
-        marg.append(channel_marginal(router.get(rname, 0.0), rng))
-    counts = [0] * len(entries)
-    keys_idx = list(range(len(param_keys)))
+    gen = model_context(dim)
+    return {key: gd._sim_df(router.get(ROUTER_KEYS.get(key, key), 0.0),
+                            x, y, z, gen) for key in CLIMATE_KEYS}
+
+
+def biome_area_fractions(dim, rng, samples=6000, y=None):
+    """MODEL cross-section areas at one explicit Y, never a depth average.
+
+    The default is 65% of world height (a surface/sky climate cross-section,
+    NOT a terrain heightmap). References, interval parameters and actual router
+    channel names are resolved. The noise model is gd._sim_df, not Java noise.
+    """
+    bs = dim["dimension"]["generator"].get("biome_source") or {}
+    if bs.get("type") != "minecraft:multi_noise" or not bs.get("biomes"):
+        return None
+    geometry = dim["noise_settings"]["noise"]
+    if y is None:
+        y = geometry["min_y"] + geometry["height"] * 0.65
+    counts = {entry["biome"]: 0 for entry in bs["biomes"]}
     for _ in range(samples):
-        vals = []
-        for i in keys_idx:
-            m = marg[i]
-            if m is None:
-                vals.append(0.0)
-            elif m[0] == "c":
-                vals.append(m[1])
-            else:
-                vals.append(max(-1.5, min(1.5, rng.gauss(0.0, m[1]))))
-        best, bd = 0, 1e9
-        for bi in range(len(params)):
-            d = offs[bi] * offs[bi]
-            pp = params[bi]
-            for i in keys_idx:
-                if marg[i] is None:
-                    continue
-                dv = pp[i] - vals[i]
-                d += dv * dv
-            if d < bd:
-                bd, best = d, bi
-        counts[best] += 1
-    return {entries[i]["biome"]: counts[i] / samples
-            for i in range(len(entries))}
+        x, z = rng.uniform(-8192, 8192), rng.uniform(-8192, 8192)
+        counts[nearest_biome(bs["biomes"], climate_at(dim, x, y, z))] += 1
+    return {bid: count / max(1, samples) for bid, count in counts.items()}
+
+
+def cave_model_report(gen, dim, samples=32):
+    """Per-stratum altitude/air/enclosure evidence; no game claims.
+
+    A cave hit requires the intended biome, negative density at the centre,
+    positive density above AND below it, and an unflooded centre. It is much
+    stronger than counting underground labels but still only a graph model.
+    """
+    entries = dim["dimension"]["generator"]["biome_source"].get("biomes", [])
+    settings = dim["noise_settings"]
+    fd = settings["noise_router"]["final_density"]
+    rows = []
+    rng = random.Random(47021)
+    for bid, geometry in sorted(gen.cave_geometry.items()):
+        cy = geometry["center_y"]
+        half = int(geometry["half_height"])
+        hits = biome_hits = 0
+        for _ in range(samples):
+            x, z = rng.uniform(-8192, 8192), rng.uniform(-8192, 8192)
+            winner = nearest_biome(entries, climate_at(dim, x, cy, z))
+            biome_hits += winner == bid
+            air = gd._sim_df(fd, x, cy, z, gen) < 0.0
+            floor = gd._sim_df(fd, x, cy - half, z, gen) > 0.0
+            ceiling = gd._sim_df(fd, x, cy + half, z, gen) > 0.0
+            dry = not settings["aquifers_enabled"] and cy >= settings["sea_level"]
+            hits += winner == bid and air and floor and ceiling and dry
+        rows.append({"biome": bid, "archetype": gen.biome_archetype[bid],
+                     "samples": samples, "biome_hits": biome_hits,
+                     "enclosed_air_hits": hits, "center_y": cy})
+    return {"validation": "static DF/noise model, NOT in-game chunks",
+            "eligible": gen.cave_mode, "cave_biomes": len(rows),
+            "eligible_miss": gen.cave_mode and (not rows or any(
+                row["enclosed_air_hits"] == 0 for row in rows)),
+            "strata": rows}
 
 
 def resolve_biomes(ref, biome_tags):
@@ -116,8 +148,15 @@ def analyze(seed):
     rng = random.Random(seed)
     name = "audit%d" % seed
     gen = gd.DimensionGenerator(rng, NS, name)
-    dim = gen.generate()
-    res = {"seed": seed}
+    # generate() can write advancement helpers; never let audit touch the pack.
+    old_root = gd.DATA_ROOT
+    try:
+        with tempfile.TemporaryDirectory(prefix="rndim_audit_") as td:
+            gd.DATA_ROOT = Path(td) / "data"
+            dim = gen.generate()
+    finally:
+        gd.DATA_ROOT = old_root
+    res = {"seed": seed, "caves_model": cave_model_report(gen, dim)}
     st = dim.get("structures_data") or {}
     structures = st.get("structures", {})
     sets = st.get("structure_sets", {})
@@ -168,16 +207,21 @@ def analyze(seed):
 
 
 def main():
+    print("MODEL ONLY: fixed-altitude climate/DF sampling; no Minecraft chunks tested.")
     stats = {"dead_total": 0, "struct_total": 0, "dead_reasons": {},
              "locate_blocks": [], "locate_fail": 0, "stumble": [],
              "spacing": [], "freq": [], "sep": [], "rings_dist": [],
              "rings_zero": 0, "rings_total": 0, "area_small": 0,
              "area_total": 0, "area_zero": 0, "risky60": 0,
              "dims": 0, "dims_no_findable": 0, "areas_hist": [],
-             "n_biomes": [], "rings_count": [], "freq_low": 0}
+             "n_biomes": [], "rings_count": [], "freq_low": 0,
+             "cave_worlds": 0, "cave_eligible": 0, "cave_misses": 0}
     for seed in range(1, N_DIMS + 1):
         r = analyze(seed)
         stats["dims"] += 1
+        stats["cave_worlds"] += bool(r["caves_model"]["cave_biomes"])
+        stats["cave_eligible"] += r["caves_model"]["eligible"]
+        stats["cave_misses"] += r["caves_model"]["eligible_miss"]
         stats["n_biomes"].append(r["n_biomes"])
         findable = 0
         for row in r["rows"]:
@@ -195,7 +239,7 @@ def main():
                 stats["dead_reasons"][k] = stats["dead_reasons"].get(k, 0) + 1
                 continue
             if row["area"] is None:
-                continue  # не multi_noise — пропускаем метрики
+                continue  # не multi_noise - пропускаем метрики
             for (sp, sep, f) in row.get("rs", []):
                 stats["spacing"].append(sp)
                 stats["sep"].append(sep)
@@ -224,6 +268,10 @@ def main():
                     findable += 1
         if findable == 0:
             stats["dims_no_findable"] += 1
+    print("CAVE MODEL: %d/%d worlds (target probability %.0f%%), "
+          "%d eligible, %d eligible enclosed-air misses" % (
+              stats["cave_worlds"], stats["dims"], 100 * gd.CAVE_WORLD_TARGET,
+              stats["cave_eligible"], stats["cave_misses"]))
     def med(x):
         x = sorted(x)
         return (x[len(x)//2] if x else None)

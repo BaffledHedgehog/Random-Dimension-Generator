@@ -1,1 +1,0 @@
-probe invoke_name write_file

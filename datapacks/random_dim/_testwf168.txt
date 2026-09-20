@@ -1,1 +1,0 @@
-probe write_file tool by name

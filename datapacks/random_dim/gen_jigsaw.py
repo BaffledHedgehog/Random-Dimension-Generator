@@ -1,3 +1,9 @@
+def _fnv1a(s):
+    h = 2166136261
+    for c in s.encode('utf-8'):
+        h = ((h ^ c) * 16777619) & 0xffffffff
+    return h
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -436,7 +442,7 @@ def _jigsaw_nbt(rng, pool, key, final_state, name=None):
 
 
 def _carve_side_port(rng, g, ctx, face, floor_y, along, pool, name=None):
-    """Боковой порт: проём W×H в грани face, jigsaw в плоскости пола.
+    """Боковой порт: проём WxH в грани face, jigsaw в плоскости пола.
     along — координата ЦЕНТРА проёма вдоль грани. Возвращает (x, y, z)
     jigsaw-блока."""
     W, H = ctx["W"], ctx["H"]
@@ -1212,13 +1218,13 @@ def _build_cap(rng, ctx):
 
 # ---------------------------------------------------------------------------
 # Новые архетипы кусков: gate / courtyard / spire / terrace / pit / viaduct
-# (портовый профиль общий со всеми: боковые W×H в плоскости пола,
+# (портовый профиль общий со всеми: боковые WxH в плоскости пола,
 # joint=rollable, симметричные name==target — куски стыкуются с любыми)
 # ---------------------------------------------------------------------------
 
 def _build_gate(rng, ctx):
     """gate: ворота/арка — массивная рама толщиной 2-4 с проёмом ровно
-    в профиль W×H (стыкуется с коридорами/комнатами встык), над проёмом —
+    в профиль WxH (стыкуется с коридорами/комнатами встык), над проёмом —
     перемычка, сверху декоративная перекладина из акцента по всей ширине.
     Порты с двух концов прохода."""
     W, H = ctx["W"], ctx["H"]
@@ -1237,7 +1243,7 @@ def _build_gate(rng, ctx):
                 if y == h - 1:
                     st = ctx["accent"]             # перекладина поверху
                 elif o0 <= b <= o1 and y <= H:
-                    st = _AIR                      # сквозной проём W×H
+                    st = _AIR                      # сквозной проём WxH
                 else:
                     st = ctx["wall"]               # быки + перемычка
                 if along_x:
@@ -1273,7 +1279,7 @@ def _build_gate(rng, ctx):
 
 
 def _build_courtyard(rng, ctx):
-    """courtyard: открытый дворик — площадка 9-15×9-15 (в пределах 16×16),
+    """courtyard: открытый дворик — площадка 9-15x9-15 (в пределах 16x16),
     колоннада по внутреннему периметру (углы — акцент, колонны выше стен),
     БЕЗ кровли (верхний слой — воздух), пол из палитры; в центре иногда
     постамент с фонарём, изредка «колодец»-порт в полу. 1-3 боковых порта."""
@@ -1553,7 +1559,7 @@ def _build_viaduct(rng, ctx):
 
 
 # ---------------------------------------------------------------------------
-# НОВЫЕ архетипы кусков (портовый профиль общий со всеми: боковые W×H в
+# НОВЫЕ архетипы кусков (портовый профиль общий со всеми: боковые WxH в
 # плоскости пола, joint=rollable, симметричные name==target — куски
 # стыкуются с любыми). Живность — как у существующих ролей: мобы ≤ 2
 # с малым шансом, спавнер ≤ 10-12% и только в «комнатных» архетипах
@@ -1575,7 +1581,7 @@ def _build_rotunda(rng, ctx):
     """rotunda: ротонда — октагональный зал 11-15 в диаметре, кольцо
     колонн с отступом 2, купол-свод из сужающихся октагональных колец
     (2-3 яруса + акцент-макушка). Размер подбирается под профиль W —
-    чтобы проём W×H попадал в грань октагона (|dz| <= lim-R)."""
+    чтобы проём WxH попадал в грань октагона (|dz| <= lim-R)."""
     W, H = ctx["W"], ctx["H"]
     s = rng.choice([13, 15] if W == 5 else [11, 13, 15])
     c = s // 2
@@ -2649,13 +2655,18 @@ def _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
                               "max_inclusive": {"absolute": yb}}
     if rng.random() < 0.85:
         sj["terrain_adaptation"] = rng.choices(
-            ["none", "beard_thin", "beard_box", "bury", "encapsulate"],
-            weights=[45, 20, 15, 10, 10])[0]
-    # heightmap-проекция — только в мире БЕЗ кровли: в cavern-мирах
-    # WORLD_SURFACE_WG указывает на крышу и структура уходит вне мира
-    if sj["step"] == "surface_structures" and rng.random() < 0.25 \
-            and not has_ceiling:
+            ["beard_thin", "beard_box", "bury", "encapsulate", "none"],
+            weights=[65, 22, 8, 3, 2])[0]
+    # heightmap projection: maintain exact RNG draw count if step == surface_structures
+    _draw_hm = (rng.random() < 0.98) if (sj["step"] == "surface_structures" and not has_ceiling) else True
+    if not has_ceiling and (_draw_hm or (_fnv1a(sid + "_hm") % 100 < 96)):
         sj["project_start_to_heightmap"] = "WORLD_SURFACE_WG"
+        if hi_y <= lo_y:
+            sj["start_height"] = {"absolute": lo_y}
+        else:
+            sj["start_height"] = {"absolute": 0}
+    elif not has_ceiling:
+        sj["start_height"] = {"absolute": rng.randint(lo_y, min(hi_y, lo_y + 30))}
     if rng.random() < 0.30:
         sj["start_jigsaw_name"] = ctx["anchor_key"]
     if rng.random() < 0.15:
@@ -2684,10 +2695,10 @@ def _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
         sj["biomes"] = "#%s:%s" % (ns, tag_name)
         result["biome_tags"][tag_name] = {
             "values": sorted(rng.sample(
-                biome_ids, min(len(biome_ids), rng.randint(2, 5))))}
+                biome_ids, min(len(biome_ids), max(3, int(len(biome_ids) * 0.75)))))}
     else:
         sj["biomes"] = sorted(rng.sample(
-            biome_ids, min(len(biome_ids), rng.randint(2, 5))))
+            biome_ids, min(len(biome_ids), max(3, int(len(biome_ids) * 0.75)))))
 
     result["structures"][sid] = sj
 
@@ -2818,8 +2829,8 @@ def _parse_nbt(data):
 
 
 def _self_test_builders(iterations=6):
-    """Прямой матричный тест строителей кусков: КАЖДАЯ роль × W{3,5} ×
-    H{2,3,4} × N повторов — размеры ≤16x24x16, ≥1 валидный порт
+    """Прямой матричный тест строителей кусков: КАЖДАЯ роль x W{3,5} x
+    H{2,3,4} x N повторов — размеры ≤16x24x16, ≥1 валидный порт
     (canAttach-совместимость: joint=rollable, name==target, ключи
     port/vport/anchor), у боковых ролей — ≥1 горизонтальный порт,
     живность в лимитах (мобы ≤ 2, спавнер ≤ 1), экспорт NBT
@@ -2906,7 +2917,7 @@ def _self_test_builders(iterations=6):
                     root = _parse_nbt(_gz.decompress(blob))
                     assert root["size"] == [g.sx, g.sy, g.sz], role
                     assert root["DataVersion"] == DATA_VERSION, role
-    print("строители: %d ролей × W{3,5} × H{2,3,4} × %d = %d кусков OK"
+    print("строители: %d ролей x W{3,5} x H{2,3,4} x %d = %d кусков OK"
           % (len(checked), iterations, sum(checked.values())))
 
 

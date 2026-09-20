@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_structures.py — генератор случайных КАРВЕРОВ и СТРУКТУР для Minecraft 26.2
+gen_structures.py - генератор случайных КАРВЕРОВ и СТРУКТУР для Minecraft 26.2
 (pack_format 107). Синтаксис каждого JSON и формат .nbt-шаблонов сверён с
 ванильным jar-файлом 26.2 (minecraft-26.2-client.jar): байткодом классов
 кодеков, ванильными worldgen/structure/*.json и бинарными NBT-шаблонами
 из data/minecraft/structure/ (DataVersion 4903).
 
 Модуль импортируется главным скриптом (generate_dimension.py) и сам ничего
-не пишет на диск — только ВОЗВРАЩАЕТ dict'ы {id: json} / {путь: текст}:
+не пишет на диск - только ВОЗВРАЩАЕТ dict'ы {id: json} / {путь: текст}:
 
     rand_carvers(rng, ns, name, min_y, max_y)
         -> {carver_id: json}          # писать в data/<ns>/worldgen/configured_carver/<имя>.json
@@ -22,10 +22,10 @@ gen_structures.py — генератор случайных КАРВЕРОВ и 
             "processor_lists":  {id: json},   # data/<ns>/worldgen/processor_list/
             "biome_tags":       {tag: json},  # data/<ns>/tags/worldgen/biome/<tag>.json
                                               # (tag вида "has_structure/<имя>")
-            "nbt_files":        {ключ: bytes} # data/<ns>/structure/<ключ>.nbt —
+            "nbt_files":        {ключ: bytes} # data/<ns>/structure/<ключ>.nbt -
                                               # СВОИ шаблоны (gzip-NBT) с особыми мобами
            }
-    # loot_alloc — общий на измерение счётчик LootSlots (см. класс ниже):
+    # loot_alloc - общий на измерение счётчик LootSlots (см. класс ниже):
     # каждый сундук/волт/моб шаблона занимает СВОЙ уникальный слот
     # лут-таблицы "<ns>:<name>_lootN"; сам слот занятых этим вызовом
     # возвращается в result["loot_slots"].
@@ -36,7 +36,7 @@ gen_structures.py — генератор случайных КАРВЕРОВ и 
       {absolute} | {above_bottom} | {below_top}),
       yScale (число ИЛИ uniform/trapezoid FloatProvider), lava_level (VerticalAnchor),
       debug_settings (опционально: air_state/barrier_state/water_state/lava_state),
-      replaceable (HolderSet: тег "#..." ИЛИ список ID блоков — подтверждено
+      replaceable (HolderSet: тег "#..." ИЛИ список ID блоков - подтверждено
       байткодом: RegistryCodecs.homogeneousList(Registries.BLOCK)),
       cave/nether_cave: floor_level, horizontal_radius_multiplier,
       vertical_radius_multiplier (число ИЛИ uniform FloatProvider),
@@ -47,7 +47,7 @@ gen_structures.py — генератор случайных КАРВЕРОВ и 
   structure/*.json и классам structures/*.class). ocean_monument НЕ
   генерируем: findGenerationPoint требует биомы ванильного тега
   #minecraft:required_ocean_monument_surrounding (радиус 29), своих биомов
-  там нет — monument ВСЕГДА empty (аудит находимости):
+  там нет - monument ВСЕГДА empty (аудит находимости):
     jigsaw, mineshaft, woodland_mansion, desert_pyramid,
     jungle_temple, igloo, swamp_hut, stronghold, buried_treasure, shipwreck,
     ocean_ruin, end_city, fortress, nether_fossil, ruined_portal.
@@ -55,12 +55,12 @@ gen_structures.py — генератор случайных КАРВЕРОВ и 
     spawn_overrides (обяз.), step (обяз.), terrain_adaptation (опц.,
     TerrainAdjustment: none|bury|beard_thin|beard_box|encapsulate).
     ПЛЮС ФОРКИ ванильных jigsaw-структур (~35% структур, VANILLA_JIGSAW_FORKS
-    ниже): type jigsaw со start_pool = ВАНИЛЬНЫЙ пул — структура
+    ниже): type jigsaw со start_pool = ВАНИЛЬНЫЙ пул - структура
     собирается ЦЕЛИКОМ из ванильного дерева кусков (5 деревень,
     pillager_outpost, bastion_remnant, ancient_city, trail_ruins,
-    trial_chambers — все 10 jigsaw-структур jar 26.2), параметры
+    trial_chambers - все 10 jigsaw-структур jar 26.2), параметры
     случайные (size 4-20, max_distance_from_center, terrain_adaptation,
-    step, start_height, spawn_overrides, biomes — наши), а
+    step, start_height, spawn_overrides, biomes - наши), а
     use_expansion_hack / start_jigsaw_name / pool_aliases /
     dimension_padding / liquid_settings копируются из ванили.
     Доп. поля по типам (из байткода кодеков):
@@ -69,7 +69,7 @@ gen_structures.py — генератор случайных КАРВЕРОВ и 
                      (floatRange 0..1)
       nether_fossil: height (HeightProvider)
       shipwreck:     is_beached (bool)
-      ruined_portal: setups — непустой список {air_pocket_probability,
+      ruined_portal: setups - непустой список {air_pocket_probability,
                      can_be_cold, mossiness, overgrown, placement
                      (on_land_surface|partly_buried|underground|in_mountain|
                       in_nether|on_ocean_floor), replace_with_blackstone,
@@ -85,24 +85,24 @@ gen_structures.py — генератор случайных КАРВЕРОВ и 
       spread intRange(0,1023), count intRange(1,4095), preferred_biomes
       (HolderSet биомов), salt}.
   template_pool: elements[{element{element_type, location, processors,
-      projection}, weight}], fallback. location — путь шаблона БЕЗ расширения.
+      projection}, weight}], fallback. location - путь шаблона БЕЗ расширения.
       Свои пулы (свои jigsaw-данжи) содержат ТОЛЬКО свои .nbt из
-      data/<ns>/structure/ — отдельные ванильные куски НЕ подмешиваются
-      (решение юзера: «один дом а не целиком деревня — это кринж»);
+      data/<ns>/structure/ - отдельные ванильные куски НЕ подмешиваются
+      (решение юзера: «один дом а не целиком деревня - это кринж»);
       ванильский контент приходит ЦЕЛИКОМ через форки (ванильный
       start_pool = целое ванильное дерево кусков, а не его кусок).
   processor_list: processors[{processor_type: rule|block_rot|protected_blocks|
-      capped}]. Старых block_replace/block_swap/guarded в 26.2 НЕТ — их роль
-      играет rule (input_predicate → output_state).
+      capped}]. Старых block_replace/block_swap/guarded в 26.2 НЕТ - их роль
+      играет rule (input_predicate -> output_state).
 
-Шаблоны построек (со specials-мобами и сундуками) — БИНАРНЫЕ .nbt
+Шаблоны построек (со specials-мобами и сундуками) - БИНАРНЫЕ .nbt
 (gzip-NBT), как у ванильных шаблонов из jar. Формат корня сверен по
 StructureTemplate.class и ванильным .nbt (DataVersion 4903):
     {size:[I,I,I], entities:[{pos:[D,D,D], blockPos:[I,I,I], nbt:{...}}],
      blocks:[{pos:[I,I,I], state:<индекс палитры>, nbt:{...}}],
      palette:[{Name:"...", Properties:{...}}], DataVersion:4903}
 ВАЖНО (проверено на реальном сервере 26.2 + байткод server-26.2.jar):
-текстовые .snbt-шаблоны ОБЫЧНЫЙ сервер НЕ читает — StructureTemplateManager
+текстовые .snbt-шаблоны ОБЫЧНЫЙ сервер НЕ читает - StructureTemplateManager
 строит ResourceManagerTemplateSource с RESOURCE_STRUCTURE_LISTER =
 FileToIdConverter("structure", ".nbt") и readStructure() =
 NbtIo.readCompressed (gzip). Текстовый листер ".snbt" используется ТОЛЬКО
@@ -114,64 +114,64 @@ NbtIo.readCompressed (gzip). Текстовый листер ".snbt" испол�
 Точные NBT-имена тегов (сверены по байткоду 26.2 + ванильным шаблонам):
   сундук/бочка:  nbt блока {id:"minecraft:chest", LootTable:"ns:path"}
                  (RandomizableContainer.tryLoadLootTable читает "LootTable";
-                 seed "LootTableSeed" не обязателен — StructureTemplate сам
+                 seed "LootTableSeed" не обязателен - StructureTemplate сам
                  подставляет случайный при установке)
-  моб:           id, CustomName (NBT-компонент {text,color,italic} —
+  моб:           id, CustomName (NBT-компонент {text,color,italic} -
                  ComponentSerialization.CODEC), CustomNameVisible, Health
                  (float), attributes:[{id:"minecraft:max_health", base:D}]
                  (AttributeInstance$Packed), equipment:{mainhand|offhand|head|
                  chest|legs|feet:{id,count,components}} (EntityEquipment.CODEC =
                  unboundedMap(EquipmentSlot, ItemStack); старых HandItems/
-                 ArmorItems в 26.2 НЕТ — их конвертирует EquipmentFormatFix),
+                 ArmorItems в 26.2 НЕТ - их конвертирует EquipmentFormatFix),
                  drop_chances:{<слот>:F} (DropChances.CODEC), DeathLootTable
                  (Mob), PersistenceRequired, Glowing, Fire, CanPickUpLoot,
                  LeftHanded, Silent, Rotation. NoAI/Invulnerable НЕ
-                 генерируются — мобы живут своей жизнью и уязвимы.
+                 генерируются - мобы живут своей жизнью и уязвимы.
   предмет:       {id:"minecraft:diamond_sword", count:1,
                  components:{"minecraft:enchantments":{"minecraft:sharpness":5}
                  (ItemEnchantments.CODEC = прямой map, без обёртки "levels"),
                  "minecraft:custom_name":{text:...,color:...}}}
 
-Привязка к измерению: structure_set — ГЛОБАЛЬНЫЙ реестр, поля "dimension" нет
+Привязка к измерению: structure_set - ГЛОБАЛЬНЫЙ реестр, поля "dimension" нет
 ни в structure_set, ни в dimension/world_preset. Структура появляется в
-тех измерениях, где биом-сорс содержит биомы из её поля "biomes" — поэтому
+тех измерениях, где биом-сорс содержит биомы из её поля "biomes" - поэтому
 структуры ссылаются на биомы ТОЛЬКО этого измерения (список ID или свой тег
 #ns:has_structure/... из biome_tags).
 
 АУДИТ КРОСС-ЧАНКОВЫХ ЧТЕНИЙ (26.2, байткод server/client jar, сент. 2026):
-структуры НЕ способны читать террейн дальше ±1 чанка от генерируемого —
+структуры НЕ способны читать террейн дальше +/-1 чанка от генерируемого -
 и это не конвертируется в «unsafe terrain read»:
   * StructureStart.placeInChunk вызывает postProcess ТОЛЬКО для кусков,
     пересекающих бокс текущего чанка; TemplateStructurePiece.postProcess
-    ставит placeSettings.setBoundingBox(бокс чанка) — StructureTemplate
-    пропускает блоки/сущности вне бокса → все записи обрезаны по чанку;
-  * единственный выход за пределы чанка — lambda$updateShapeAtEdge$0
+    ставит placeSettings.setBoundingBox(бокс чанка) - StructureTemplate
+    пропускает блоки/сущности вне бокса -> все записи обрезаны по чанку;
+  * единственный выход за пределы чанка - lambda$updateShapeAtEdge$0
     (StructureTemplate): после установки читает СОСЕДНИЙ блок у края
     бокса (getBlockState на 1 блок наружу) и при изменении формы пишет
-    туда setBlock — чебышёвское расстояние 1 <= writeRadius(FEATURES)=1
+    туда setBlock - чебышёвское расстояние 1 <= writeRadius(FEATURES)=1
     (ChunkPyramid: step FEATURES = STRUCTURE_STARTS@8 + CARVERS@1 +
-    blockStateWriteRadius(1)) → легально, варнинга нет;
-  * terrain_adaptation (Beardifier) — чистая математика плотности, блочных
+    blockStateWriteRadius(1)) -> легально, варнинга нет;
+  * terrain_adaptation (Beardifier) - чистая математика плотности, блочных
     чтений не делает; инflate бокса на +12 учтён лимитом md+12<=128.
 Проверенные ограничения, которые генератор обязан соблюдать (см. ниже):
-  1) jigsaw: verifyRange — max_distance_from_center + 12 <= 128 при
+  1) jigsaw: verifyRange - max_distance_from_center + 12 <= 128 при
      terrain_adaptation != none (иначе датапак не грузится ЦЕЛИКОМ);
-  1а) jigsaw: size — Codec.intRange(0, 20) (байткод JigsawStructure.CODEC,
+  1а) jigsaw: size - Codec.intRange(0, 20) (байткод JigsawStructure.CODEC,
       сконстантён iconst_0+bipush 20): «40 шагов» генерации НЕВОЗМОЖНЫ,
-      потолок гигантского форка — 20; max_distance_from_center держим
-      не ниже 4*size — иначе дальние куски дерева молча отбрасываются
+      потолок гигантского форка - 20; max_distance_from_center держим
+      не ниже 4*size - иначе дальние куски дерева молча отбрасываются
       (обрубанная деревня);
-  2) jigsaw: use_expansion_hack=true → YSpan дочернего куска <= 16,
+  2) jigsaw: use_expansion_hack=true -> YSpan дочернего куска <= 16,
      иначе кусок молча отбрасывается (дыры в данже); поэтому у ФОРКОВ
      hack всегда ванильный: включение его у бастиона/древнего города/
      trial chambers (куски выше 16) продырявит структуру, выключение у
-     деревень меняет ванильное поведение — копируем как есть;
+     деревень меняет ванильное поведение - копируем как есть;
   3) random_spread: separation < spacing;
   4) стартовые высоты оставляют запас до потолка мира: jigsaw
      start_height <= max_y - 34 (куски пулов до ~24 блоков + запас 10;
-     ниже кровли — roof_bottom - 34), nether_fossil height <= max_y - 30;
+     ниже кровли - roof_bottom - 34), nether_fossil height <= max_y - 30;
      прочие высокие не-jigsaw типы (mansion/fortress/end_city, до ~30
-     блоков) высоту в JSON НЕ принимают (только settingsCodec) — их
+     блоков) высоту в JSON НЕ принимают (только settingsCodec) - их
      вертикалью управляет код относительно рельефа, поэтому их лишь
      допускают в высокие миры (Y_GATED_TYPES: max_y >= 100).
 Аудит данных (сент. 2026: 253 jigsaw-структуры / 1050 .nbt / 123 с hack):
@@ -179,7 +179,7 @@ NbtIo.readCompressed (gzip). Текстовый листер ".snbt" испол�
 
 Мобы с NBT (CustomName/Health/attributes/equipment/DeathLootTable) невозможны
 в биом-спавнерах (SpawnerData = type/weight/minCount/maxCount), но возможны
-в шаблонах .nbt — поэтому «особые» мобы генерируются только здесь.
+в шаблонах .nbt - поэтому «особые» мобы генерируются только здесь.
 """
 
 import gzip
@@ -209,19 +209,30 @@ STRUCTURE_STEPS = ["underground_structures", "surface_structures",
 
 # Значения terrain_adaptation (enum TerrainAdjustment, байткод подтверждён:
 # none, bury, beard_thin, beard_box, encapsulate)
+def _sh_max_val(sh, lo, hi):
+    if "absolute" in sh:
+        return sh["absolute"]
+    def _a(a):
+        if "absolute" in a:
+            return a["absolute"]
+        if "above_bottom" in a:
+            return lo + a["above_bottom"]
+        return hi - a["below_top"]
+    return max(_a(sh["min_inclusive"]), _a(sh["max_inclusive"]))
+
 TERRAIN_ADAPTATIONS = ["none", "beard_thin", "beard_box", "bury", "encapsulate"]
 # Веса terrain_adaptation (порядок = TERRAIN_ADAPTATIONS): beard_thin/
-# beard_box «доращивают» землю под структурой — постройки стоят на земле,
+# beard_box «доращивают» землю под структурой - постройки стоят на земле,
 # а не висят в воздухе, поэтому бороды суммарно 45%; bury/encapsulate
-# прячут структуру целиком под землю/в капсулу — суммарно лишь 10%
-# (равновероятный choice давал 40% bury+encapsulate — аудит находимости)
-TERRAIN_ADAPTATION_WEIGHTS = [45, 30, 15, 5, 5]
+# прячут структуру целиком под землю/в капсулу - суммарно лишь 10%
+# (равновероятный choice давал 40% bury+encapsulate - аудит находимости)
+TERRAIN_ADAPTATION_WEIGHTS = [3, 62, 25, 7, 3]
 
 # 15 из 16 типов структур 26.2 (data/minecraft/worldgen/structure/*.json).
-# jigsaw — отдельно (ему нужен start_pool); остальные генерируют куски в
+# jigsaw - отдельно (ему нужен start_pool); остальные генерируют куски в
 # коде. ocean_monument исключён: findGenerationPoint требует, чтобы ВСЕ
 # биомы в радиусе 29 были из ванильного тега
-# minecraft:required_ocean_monument_surrounding — биомы случайного
+# minecraft:required_ocean_monument_surrounding - биомы случайного
 # измерения в нём отсутствуют, monument ВСЕГДА возвращает empty.
 JIGSAW_TYPE = "minecraft:jigsaw"
 NON_JIGSAW_TYPES = [
@@ -234,12 +245,12 @@ NON_JIGSAW_TYPES = [
     "minecraft:shipwreck", "minecraft:ruined_portal",
 ]
 # Типы, которым нужна АБСОЛЮТНАЯ высота: findGenerationPoint требует
-# getLowestY(бокс 5x5 чанков) >= 60 — при max_y < 100 рельеф туда не
+# getLowestY(бокс 5x5 чанков) >= 60 - при max_y < 100 рельеф туда не
 # дотягивается, структуры ВСЕГДА empty (аудит находимости), поэтому
 # выдаём их только мирам с max_y >= 100. Про высоту сверху: эти типы
-# (~30 блоков кусков) принимают в JSON ТОЛЬКО settingsCodec — поля
+# (~30 блоков кусков) принимают в JSON ТОЛЬКО settingsCodec - поля
 # start_height/height у них нет, вертикаль задаёт код; единственный
-# не-jigsaw тип с полем высоты — nether_fossil (height, см.
+# не-jigsaw тип с полем высоты - nether_fossil (height, см.
 # _rand_structure_json: hi_y = max_y - 30).
 Y_GATED_TYPES = ("minecraft:woodland_mansion", "minecraft:end_city")
 
@@ -279,7 +290,7 @@ DATA_VERSION = 4903
 # display-сущности, рамки/картины/лееры, item/falling_block/tnt/end_crystal,
 # player, armor_stand/mannequin (LivingEntity, но не Mob), боссы
 # (ender_dragon/wither), killer_bunny (это вариант кролика, а НЕ отдельный
-# entity_type — сервер отвечает "Unknown registry key"), а также
+# entity_type - сервер отвечает "Unknown registry key"), а также
 # суффиксные ключи с точками (villager.armorer, tropical_fish.type.*, ...).
 STRUCTURE_MOBS = [
     "allay", "armadillo", "axolotl", "bat", "bee", "blaze", "bogged",
@@ -299,7 +310,7 @@ STRUCTURE_MOBS = [
     "zombie_nautilus", "zombie_villager", "zombified_piglin",
 ]
 
-# Мобы, у которых в jar есть лут-таблица entities/<имя> — fallback для
+# Мобы, у которых в jar есть лут-таблица entities/<имя> - fallback для
 # DeathLootTable, когда счётчик слотов не передан (killer_bunny использует rabbit)
 MOB_LOOT_TABLES = {
     "allay", "armadillo", "axolotl", "bat", "bee", "blaze", "bogged",
@@ -319,7 +330,7 @@ MOB_LOOT_TABLES = {
     "zombie_nautilus", "zombie_villager", "zombified_piglin",
 }
 
-# Ванильные chest-лут-таблицы (data/minecraft/loot_table/chests/) — fallback
+# Ванильные chest-лут-таблицы (data/minecraft/loot_table/chests/) - fallback
 # для сундуков, когда счётчик слотов не передан (loot_alloc=None)
 VANILLA_CHEST_LOOT = [
     "minecraft:chests/simple_dungeon", "minecraft:chests/abandoned_mineshaft",
@@ -340,10 +351,10 @@ VANILLA_CHEST_LOOT = [
     "minecraft:chests/village/village_taiga_house",
 ]
 
-# Полный реестр entity_type 26.2 — сверен по jar (constant pool
+# Полный реестр entity_type 26.2 - сверен по jar (constant pool
 # net/minecraft/world/entity/EntityTypeIds.class: все snake_case id;
 # шумовые строки create/name/this исключены; creaking_transient и
-# falling_block_type есть только в lang, в реестре отсутствуют — НЕ
+# falling_block_type есть только в lang, в реестре отсутствуют - НЕ
 # использовать). Нужен самотесту: id любой сущности спавнера обязан
 # здесь присутствовать (суммон несуществующего id = "Unknown registry
 # key" и молча мёртвый спавнер).
@@ -388,13 +399,13 @@ ENTITY_TYPE_IDS = frozenset(
     ])
 
 # Спектр сущностей спавнеров данжей (решение юзера: «спавнят ВСЕ
-# сущности, не только мобов, даже предметы»). Мобы — 85% пула,
-# спец-типы — 15%; внутри спец-типов веса ниже (item — самый частый,
-# wind_charge — редкий). Формат NBT каждого типа сверен javap'ом
+# сущности, не только мобов, даже предметы»). Мобы - 85% пула,
+# спец-типы - 15%; внутри спец-типов веса ниже (item - самый частый,
+# wind_charge - редкий). Формат NBT каждого типа сверен javap'ом
 # соответствующих классов jar 26.2 (см. докстринги генераторов).
 # ВНИМАНИЕ на имена реестра: отдельного boat/chest_boat НЕТ (только
 # по породам дерева: oak_boat/oak_chest_boat/bamboo_raft/...),
-# вагонетка с сундуком — chest_minecart (НЕ minecart_chest).
+# вагонетка с сундуком - chest_minecart (НЕ minecart_chest).
 SPAWNER_MOB_SHARE = 0.85          # суммарная доля обычных мобов
 SPAWNER_SPECIAL_WEIGHTS = {       # веса внутри оставшихся 15%
     "item": 3.0,                 # Item {id, count, components}
@@ -413,19 +424,19 @@ SPAWNER_SPECIAL_WEIGHTS = {       # веса внутри оставшихся 1
     "wind_charge": 0.5,          # редкий
 }
 
-# породы лодок (реестр: <wood>_boat/<wood>_chest_boat, бамбук — рафт)
+# породы лодок (реестр: <wood>_boat/<wood>_chest_boat, бамбук - рафт)
 _BOAT_WOODS = ["acacia", "bamboo", "birch", "cherry", "dark_oak",
                "jungle", "mangrove", "oak", "pale_oak", "spruce"]
 
 # Предметы для сущности item / рамок / контейнеров спавнеров.
 # Идентификаторы сверены по реестру предметов 26.2 (assets/minecraft/
-# items/*.json в jar, 1537 шт.). Зачарованное оружие/броня/именное —
+# items/*.json в jar, 1537 шт.). Зачарованное оружие/броня/именное -
 # через _rand_item_stack (обший генератор снаряжения мобов).
-SPAWNER_RARE_ITEMS = [          # (id, min, max) — редкие материалы/
+SPAWNER_RARE_ITEMS = [          # (id, min, max) - редкие материалы/
     ("minecraft:diamond", 1, 3),            # артефакты; max учёл
     ("minecraft:emerald", 1, 3),            # max_stack_size предмета
     ("minecraft:gold_ingot", 1, 3),         # (музык. диски/тотемы/
-    ("minecraft:iron_ingot", 2, 6),         # рога/книги — ровно 1)
+    ("minecraft:iron_ingot", 2, 6),         # рога/книги - ровно 1)
     ("minecraft:copper_ingot", 2, 6),
     ("minecraft:lapis_lazuli", 2, 6),
     ("minecraft:amethyst_shard", 2, 6),
@@ -464,7 +475,7 @@ SPAWNER_RARE_ITEMS = [          # (id, min, max) — редкие материа
     ("minecraft:iron_nugget", 2, 8),
     ("minecraft:slime_ball", 2, 6),
 ]
-SPAWNER_USEFUL_STACKS = [       # (id, min, max) — просто полезный стак
+SPAWNER_USEFUL_STACKS = [       # (id, min, max) - просто полезный стак
     ("minecraft:arrow", 8, 32), ("minecraft:spectral_arrow", 4, 16),
     ("minecraft:torch", 8, 16), ("minecraft:coal", 4, 16),
     ("minecraft:bread", 3, 12), ("minecraft:cooked_beef", 3, 12),
@@ -478,10 +489,10 @@ SPAWNER_USEFUL_STACKS = [       # (id, min, max) — просто полезны
     ("minecraft:spider_eye", 2, 8),
 ]
 
-# area_effect_cloud: potion_contents {potion: <базовое зелье>} — реестр
+# area_effect_cloud: potion_contents {potion: <базовое зелье>} - реестр
 # Potions.class 26.2 (long_/strong_ префиксов в 26.2 больше нет);
-# custom_effects — MobEffects.class (формат записи Details: id/amplifier/
-# duration/ambient/show_particles/show_icon — RecordCodecBuilder)
+# custom_effects - MobEffects.class (формат записи Details: id/amplifier/
+# duration/ambient/show_particles/show_icon - RecordCodecBuilder)
 AEC_POTIONS = [
     "fire_resistance", "harming", "healing", "infested", "invisibility",
     "leaping", "luck", "night_vision", "oozing", "poison", "regeneration",
@@ -498,26 +509,27 @@ AEC_EFFECTS = [
     "darkness", "wind_charged", "weaving", "oozing", "infested",
 ]
 
-# Формы залпов фейерверка (FireworkExplosion$Shape, 26.2 — строковые id)
+# Формы залпов фейерверка (FireworkExplosion$Shape, 26.2 - строковые id)
 FIREWORK_SHAPES = ["small_ball", "large_ball", "star", "creeper", "burst"]
 
-# Атрибуты и разумные диапазоны base (id — snake_case без "generic.",
+# Атрибуты и разумные диапазоны base (id - snake_case без "generic.",
 # подтверждено Attributes.class и ванильным NBT allay). Атрибуты, которых
 # нет у конкретного моба, молча пропускаются при загрузке (AttributeMap.apply:
-# getInstance == null → skip), поэтому можно брать любые.
+# getInstance == null -> skip), поэтому можно брать любые.
 ATTRIBUTE_RANGES = {
-    "minecraft:max_health": (10.0, 100.0),
-    "minecraft:attack_damage": (1.0, 20.0),
-    "minecraft:movement_speed": (0.1, 0.6),
-    "minecraft:follow_range": (16.0, 80.0),
-    "minecraft:armor": (0.0, 15.0),
-    "minecraft:armor_toughness": (0.0, 10.0),
-    "minecraft:attack_speed": (0.5, 4.0),
-    "minecraft:knockback_resistance": (0.0, 1.0),
-    "minecraft:max_absorption": (0.0, 20.0),
-    "minecraft:scale": (0.5, 2.0),
-    "minecraft:jump_strength": (0.3, 1.5),
-    "minecraft:safe_fall_distance": (3.0, 15.0),
+    "minecraft:max_health": (10.0, 60.0),
+    "minecraft:attack_damage": (1.0, 12.0),
+    "minecraft:movement_speed": (0.15, 0.35),
+    "minecraft:follow_range": (16.0, 48.0),
+    "minecraft:armor": (0.0, 10.0),
+    "minecraft:armor_toughness": (0.0, 5.0),
+    "minecraft:attack_speed": (0.5, 2.0),
+    "minecraft:knockback_resistance": (0.0, 0.5),
+    "minecraft:max_absorption": (0.0, 10.0),
+    "minecraft:scale": (0.7, 1.5),
+    "minecraft:jump_strength": (0.3, 0.7),
+    "minecraft:safe_fall_distance": (3.0, 10.0),
+    "minecraft:gravity": (0.04, 0.12),
 }
 
 # Ванильные зачарования 26.2 (data/minecraft/enchantment/*.json)
@@ -533,14 +545,14 @@ ENCHANTMENTS = [
     "wind_burst",  # curse-зачарования (binding/vanishing) намеренно не берём
 ]
 
-# кастомные зачарования текущего измерения (id "ns:name_enchN") — их
+# кастомные зачарования текущего измерения (id "ns:name_enchN") - их
 # подмешивает generate_dimension.py перед вызовом rand_structures
 CUSTOM_ENCHS = []
 
 
 def set_custom_enchants(ids):
     """Задать кастомные зачарования измерения: попадают в снаряжение
-    мобов-«боссов» из .nbt-шаблонов (связка мобы ↔ зачарования).
+    мобов-«боссов» из .nbt-шаблонов (связка мобы ? зачарования).
     Вызывать до rand_structures."""
     global CUSTOM_ENCHS
     CUSTOM_ENCHS = [i for i in (ids or []) if i]
@@ -578,7 +590,7 @@ ARMOR_ITEMS = [
 ]
 
 # Генерация «крутых» имён мобов: прилагательное + существительное
-# (пулы расширены ~×2.8: больше мрачных эпитетов/титулов/реликвий)
+# (пулы расширены ~x2.8: больше мрачных эпитетов/титулов/реликвий)
 MOB_NAME_ADJ = ["Ancient", "Crimson", "Hollow", "Gloom", "Dread", "Storm",
                 "Frost", "Ember", "Shadow", "Void", "Cursed", "Iron", "Pale",
                 "Rotten", "Shimmering", "Whispering", "Blood", "Moonlit",
@@ -613,13 +625,13 @@ TEXT_COLORS = ["red", "gold", "yellow", "aqua", "light_purple", "green",
                "dark_aqua", "dark_purple", "dark_red", "gray", "white",
                "dark_blue", "blue", "black", "dark_gray", "dark_green"]
 
-# Ванильные nbt-шаблоны из data/minecraft/structure/ (пути БЕЗ .nbt) —
+# Ванильные nbt-шаблоны из data/minecraft/structure/ (пути БЕЗ .nbt) -
 # только документация содержимого jar и источник для САМОТЕСТА (проверка
 # «в своих пулах нет ванильских кусков»). В ГЕНЕРАЦИИ не используется:
 # отдельные ванильные куски в своих пулax давали «обрубки» ванильских
-# структур — jigsaw-данж собирался из разрозненных домов (юзер: «один дом
-# а не целиком деревня — это кринж»). Ванильский контент теперь приходит
-# только ЦЕЛИКОМ — форки VANILLA_JIGSAW_FORKS (ванильный start_pool =
+# структур - jigsaw-данж собирался из разрозненных домов (юзер: «один дом
+# а не целиком деревня - это кринж»). Ванильский контент теперь приходит
+# только ЦЕЛИКОМ - форки VANILLA_JIGSAW_FORKS (ванильный start_pool =
 # корень целого ванильного дерева кусков).
 NBT_FAMILIES = {
     "village/plains/houses": [
@@ -871,11 +883,11 @@ NBT_LOCATIONS = sorted(
 # Ванильные алиасы спавнер-пулов trial_chambers (скопировано из
 # data/minecraft/worldgen/structure/trial_chambers.json, 26.2). Цепочка:
 # кусок (chamber_2 и др.) -> реальный пул spawner/ranged -> connector NBT,
-# чей jigsaw-блок дёргает АЛИАС spawner/contents/ranged — реального пула
+# чей jigsaw-блок дёргает АЛИАС spawner/contents/ranged - реального пула
 # с таким id нет, без этих биндингов JigsawPlacement WARNs «Empty or
 # non-existent pool». Содержимое варьируется между группами: ranged и
-# slow_ranged выбираются согласованно (random_group), melee/small_melee —
-# независимо (random). contents/breeze — реальный пул, алиас не нужен.
+# slow_ranged выбираются согласованно (random_group), melee/small_melee -
+# независимо (random). contents/breeze - реальный пул, алиас не нужен.
 TRIAL_POOL_ALIASES = [
     {
         "type": "minecraft:random_group",
@@ -931,30 +943,30 @@ TRIAL_POOL_ALIASES = [
 # ФОРКИ ванильных jigsaw-структур 26.2
 # ---------------------------------------------------------------------------
 # Все 10 структур с "type": "minecraft:jigsaw" из jar minecraft-26.2-client.jar
-# (data/minecraft/worldgen/structure/*.json — остальные 24 типа генерятся кодом
-# без jigsaw-пулов). Поля v_* — ВАНИЛЬНЫЕ значения (сверены с jar — нужны
+# (data/minecraft/worldgen/structure/*.json - остальные 24 типа генерятся кодом
+# без jigsaw-пулов). Поля v_* - ВАНИЛЬНЫЕ значения (сверены с jar - нужны
 # самотесту как регрессионный эталон); в форке случайны только size /
 # max_distance_from_center / terrain_adaptation / step / start_height /
 # spawn_overrides / biomes, а НЕ-случайные поля (start_pool,
 # use_expansion_hack, start_jigsaw_name, pool_aliases, dimension_padding,
 # liquid_settings, project_start_to_heightmap) переносятся из ванили:
-#   * start_pool — ВАНИЛЬНЫЙ стартовый пул: форк собирается ЦЕЛИКОМ из
-#     ванильного дерева кусков (town_centers → улицы → дома; bastion/starts
-#     → стадии; ancient_city/city_center → стены/structures; ...) — именно
+#   * start_pool - ВАНИЛЬНЫЙ стартовый пул: форк собирается ЦЕЛИКОМ из
+#     ванильного дерева кусков (town_centers -> улицы -> дома; bastion/starts
+#     -> стадии; ancient_city/city_center -> стены/structures; ...) - именно
 #     так «деревня появляется целиком», а не одним домом;
-#   * use_expansion_hack — вкл/выкл привязано к геометрии ванильных пулов:
+#   * use_expansion_hack - вкл/выкл привязано к геометрии ванильных пулов:
 #     включение у высоких пулов отбрасывает куски YSpan>16 (дыры),
 #     выключение у деревень меняет их поведение (см. ограничение 2 выше);
-#   * start_jigsaw_name — именованный якорь старта: ancient_city без
+#   * start_jigsaw_name - именованный якорь старта: ancient_city без
 #     "minecraft:city_anchor" размещается по origin куска, а ЯКОРЬ,
 #     отсутствующий в стартовом куске, даёт "No starting jigsaw found"
-#     → структура ВСЕГДА empty (якорь есть во всех 3 кусках city_center);
-#   * pool_aliases — обязательные биндинги спавнер-пулов: trial_chambers
+#     -> структура ВСЕГДА empty (якорь есть во всех 3 кусках city_center);
+#   * pool_aliases - обязательные биндинги спавнер-пулов: trial_chambers
 #     без них НЕ собирается (WARN "Empty or non-existent pool" + дыры);
-#     список — те же TRIAL_POOL_ALIASES (скопированы из её jar-JSON);
-#   * dimension_padding / liquid_settings — ванильные (trial_chambers:
+#     список - те же TRIAL_POOL_ALIASES (скопированы из её jar-JSON);
+#   * dimension_padding / liquid_settings - ванильные (trial_chambers:
 #     10 / ignore_waterlogging), подмешивают кускам отступ от границ мира.
-# Веса: деревни ×2 (юзер просил именно «огромные деревни»), прочие ×1.
+# Веса: деревни x2 (юзер просил именно «огромные деревни»), прочие x1.
 VANILLA_JIGSAW_FORKS = [
     {"key": "village_plains", "weight": 2,
      "start_pool": "minecraft:village/plains/town_centers",
@@ -1051,21 +1063,21 @@ VANILLA_JIGSAW_FORKS = [
      "dimension_padding": 10, "liquid_settings": "ignore_waterlogging"},
 ]
 
-# start_pool → запись форка (проверка самотестом: у структуры-форка
+# start_pool -> запись форка (проверка самотестом: у структуры-форка
 # start_pool обязан быть из этой таблицы)
 VANILLA_FORK_BY_POOL = {f["start_pool"]: f for f in VANILLA_JIGSAW_FORKS}
 
-# взвешенный выбор форка (веса — целые, разворачиваем в список выбора)
+# взвешенный выбор форка (веса - целые, разворачиваем в список выбора)
 _FORK_CHOICES = [f for f in VANILLA_JIGSAW_FORKS for _ in range(f["weight"])]
 
 # доля структур измерения, которые становятся форками (~30-40% по ТЗ)
 FORK_SHARE = 0.35
 
-# terrain_adaptation для форков — веса из ТЗ (none 40 / beard_thin 30 /
-# beard_box 15 / bury 10 / encapsulate 5); у своих jigsaw — свои веса
+# terrain_adaptation для форков - веса из ТЗ (none 40 / beard_thin 30 /
+# beard_box 15 / bury 10 / encapsulate 5); у своих jigsaw - свои веса
 # (TERRAIN_ADAPTATION_WEIGHTS выше)
 FORK_ADAPTATIONS = ["none", "beard_thin", "beard_box", "bury", "encapsulate"]
-FORK_ADAPTATION_WEIGHTS = [40, 30, 15, 10, 5]
+FORK_ADAPTATION_WEIGHTS = [3, 62, 25, 7, 3]
 
 
 # ---------------------------------------------------------------------------
@@ -1081,7 +1093,7 @@ def _gd():
 
 def _anchor(rng, y, min_y, max_y):
     """VerticalAnchor для абсолютной Y-координаты: absolute / above_bottom /
-    below_top (все три формы — как в ванильных carver/structure JSON)."""
+    below_top (все три формы - как в ванильных carver/structure JSON)."""
     r = rng.random()
     if r < 0.5:
         return {"absolute": y}
@@ -1109,15 +1121,15 @@ def _float_or_uniform(rng, lo, hi):
 # ---------------------------------------------------------------------------
 
 class _B(int):
-    """NBT-тег TAG_Byte — boolean-поля NBT (Glowing, italic, ...)."""
+    """NBT-тег TAG_Byte - boolean-поля NBT (Glowing, italic, ...)."""
 
 
 class _S(int):
-    """NBT-тег TAG_Short — например Fire (Entity.read: getShort)."""
+    """NBT-тег TAG_Short - например Fire (Entity.read: getShort)."""
 
 
 class _F(float):
-    """NBT-тег TAG_Float — Health, drop_chances, Rotation."""
+    """NBT-тег TAG_Float - Health, drop_chances, Rotation."""
 
 
 class _L(int):
@@ -1207,10 +1219,10 @@ def _rand_carver_json(rng, min_y, max_y, ctype):
     ya = rng.randint(min_y, max_y - 1)
     yb = rng.randint(ya + 1, max_y)
 
-    # replaceable: HolderSet — тег ИЛИ список ID блоков.
+    # replaceable: HolderSet - тег ИЛИ список ID блоков.
     # БЕДРОК ИСКЛЮЧАЕМ (в отличие от пулов рельефа): карверы режут
     # ПОСЛЕ surface-правил, и карвер с bedrock в replaceable пробивает
-    # bedrock_floor/roof — дыры в дне мира (падение в пустоту) и в кровле
+    # bedrock_floor/roof - дыры в дне мира (падение в пустоту) и в кровле
     if rng.random() < 0.65:
         replaceable = CARVER_REPLACEABLE_TAGS[ctype]
     else:
@@ -1231,7 +1243,7 @@ def _rand_carver_json(rng, min_y, max_y, ctype):
     }
 
     if ctype in ("minecraft:cave", "minecraft:nether_cave"):
-        # CaveCarverConfiguration: floor_level и множители — FloatProvider
+        # CaveCarverConfiguration: floor_level и множители - FloatProvider
         cfg["floor_level"] = _float_or_uniform(rng, -1.0, 0.2)
         cfg["horizontal_radius_multiplier"] = _float_or_uniform(rng, 0.5, 1.5)
         cfg["vertical_radius_multiplier"] = _float_or_uniform(rng, 0.5, 1.5)
@@ -1246,10 +1258,10 @@ def _rand_carver_json(rng, min_y, max_y, ctype):
             "type": "minecraft:uniform", "min_inclusive": rot_a,
             "max_exclusive": max(rot_b, rot_a + 0.01)}
         # plateau <= max-min ОБЯЗАТЕЛЕН (TrapezoidFloat: "Plateau can at
-        # most be the full span") — ловили на реальном сервере: у zelomire
+        # most be the full span") - ловили на реальном сервере: у zelomire
         # plateau 2.8 при размахе 2.4 валил загрузку ВСЕГО пака.
         # ПЛЮС: round(uniform(0, span), 1) может дать РОВНО span, а в double
-        # span бывает 5.999... — вычитаем страховочные 0.05, чтобы plateau
+        # span бывает 5.999... - вычитаем страховочные 0.05, чтобы plateau
         # был строго меньше размаха при любом округлении
         cfg["shape"] = {
             "distance_factor": _float_or_uniform(rng, 0.5, 1.0),
@@ -1265,8 +1277,8 @@ def _rand_carver_json(rng, min_y, max_y, ctype):
         }
 
     # debug_settings есть только у cave/canyon в ванили (не у nether_cave).
-    # air_state заполняет ВСЮ прорезанную карвером область — массовая
-    # заливка, поэтому только PALETTE_BLOCKS (replaceable выше — не трогаем:
+    # air_state заполняет ВСЮ прорезанную карвером область - массовая
+    # заливка, поэтому только PALETTE_BLOCKS (replaceable выше - не трогаем:
     # это «что можно прокопать», семантика другая)
     if ctype != "minecraft:nether_cave" and rng.random() < 0.08:
         cfg["debug_settings"] = {
@@ -1283,10 +1295,10 @@ def _rand_carver_json(rng, min_y, max_y, ctype):
 def rand_carvers(rng, ns, name, min_y, max_y, count=None):
     """Случайные configured_carver. Возвращает {id: json}.
 
-    count — сколько карверов создать (по умолчанию 0-4 — старое поведение;
+    count - сколько карверов создать (по умолчанию 0-4 - старое поведение;
     вызывается с числом из тяжело-хвостового распределения).
     Писать в data/<ns>/worldgen/configured_carver/<имя из id>.json;
-    ссылаться из биома (поле "carvers" — строка или список ID).
+    ссылаться из биома (поле "carvers" - строка или список ID).
     """
     out = {}
     n = count if count is not None else rng.randint(0, 4)
@@ -1302,9 +1314,9 @@ def rand_carvers(rng, ns, name, min_y, max_y, count=None):
 # ---------------------------------------------------------------------------
 
 def _rand_rule_processor(rng):
-    """minecraft:rule — аналог старого block_replace/block_swap:
+    """minecraft:rule - аналог старого block_replace/block_swap:
     input_predicate (block_match / random_block_match / tag_match)
-    → output_state."""
+    -> output_state."""
     gd = _gd()
     rules = []
     for _ in range(rng.randint(1, 5)):
@@ -1321,7 +1333,7 @@ def _rand_rule_processor(rng):
                    "predicate_type": "minecraft:tag_match"}
         out_r = rng.random()
         if out_r < 0.55:
-            # правило может заменить ЛЮБОЙ блок поставленного куска —
+            # правило может заменить ЛЮБОЙ блок поставленного куска -
             # массовая заливка, только безопасный пул (без block entity)
             output = gd.block_state(rng.choice(gd.PALETTE_BLOCKS))
         elif out_r < 0.8:
@@ -1338,10 +1350,10 @@ def _rand_rule_processor(rng):
 
 
 def _rand_processor_list(rng):
-    """0–6 процессоров. Типы — только те, что есть в ванильных
+    """0-6 процессоров. Типы - только те, что есть в ванильных
     processor_list 26.2: rule / block_rot / protected_blocks / capped.
-    Вариативность расширена: protected_blocks — разные ванильные
-    блок-теги (формат 26.2: value = TagKey<Block>), capped — делегат
+    Вариативность расширена: protected_blocks - разные ванильные
+    блок-теги (формат 26.2: value = TagKey<Block>), capped - делегат
     rule ИЛИ block_rot и лимиты 1-12."""
     gd = _gd()
     processors = []
@@ -1351,8 +1363,8 @@ def _rand_processor_list(rng):
             processors.append(_rand_rule_processor(rng))
         elif r < 0.72:
             # rottable_blocks ОБЯЗАТЕЛЬНЫ: без списка block_rot выедает
-            # ЛЮБЫЕ блоки куска (при integrity ~0.5 — почти половину);
-            # ограничиваем типовыми блоками шаблонов (образец —
+            # ЛЮБЫЕ блоки куска (при integrity ~0.5 - почти половину);
+            # ограничиваем типовыми блоками шаблонов (образец -
             # gen_jigsaw._rand_proc_list)
             processors.append({
                 "processor_type": "minecraft:block_rot",
@@ -1380,18 +1392,18 @@ def _rand_processor_list(rng):
 
 
 def _rand_template_pool(rng, proc_id, own_locations, is_start=True):
-    """template_pool СВОЕГО jigsaw-данжа: 2–10 элементов — ТОЛЬКО свои
-    .nbt-шаблоны (отдельные ванильные куски НЕ подмешиваются: юзер —
-    «один дом а не целиком деревня — это кринж»; ванильский контент
-    приходит ЦЕЛИКОМ через форки — ванильный start_pool из
-    VANILLA_JIGSAW_FORKS). own_locations — непустой список "ns:key".
-    is_start: пул используется как СТАРТОВЫЙ (start_pool структуры) — в
+    """template_pool СВОЕГО jigsaw-данжа: 2-10 элементов - ТОЛЬКО свои
+    .nbt-шаблоны (отдельные ванильные куски НЕ подмешиваются: юзер -
+    «один дом а не целиком деревня - это кринж»; ванильский контент
+    приходит ЦЕЛИКОМ через форки - ванильный start_pool из
+    VANILLA_JIGSAW_FORKS). own_locations - непустой список "ns:key".
+    is_start: пул используется как СТАРТОВЫЙ (start_pool структуры) - в
     стартовом пуле недопустим empty_pool_element: старт может выпасть
     пустым, findGenerationPoint вернёт empty и структура не сгенерится."""
     assert own_locations, "стартовый пул без своих шаблонов"
     elements = []
-    # projection всегда rigid — чтобы entity-мобы и сундуки не смещались
-    # по heightmap; element_type — только single_pool_element (legacy
+    # projection всегда rigid - чтобы entity-мобы и сундуки не смещались
+    # по heightmap; element_type - только single_pool_element (legacy
     # нужен ванильным деревням со старой сеткой bounding box)
     for loc in rng.sample(own_locations,
                           rng.randint(2, min(10, len(own_locations)))):
@@ -1405,8 +1417,8 @@ def _rand_template_pool(rng, proc_id, own_locations, is_start=True):
             },
             "weight": rng.randint(2, 12),
         })
-    # пустой элемент — только в ОБЫЧНЫХ пулах (как в ванильных): в стартовом
-    # он даёт пустой старт → структура не генерится вообще (аудит)
+    # пустой элемент - только в ОБЫЧНЫХ пулах (как в ванильных): в стартовом
+    # он даёт пустой старт -> структура не генерится вообще (аудит)
     if not is_start and rng.random() < 0.2:
         elements.append({"element": {"element_type":
                                      "minecraft:empty_pool_element"},
@@ -1415,21 +1427,21 @@ def _rand_template_pool(rng, proc_id, own_locations, is_start=True):
 
 
 def _rand_spawn_overrides(rng):
-    """~50%: 1-2 случайные категории спавнов (вторая — с шансом 35%:
+    """~50%: 1-2 случайные категории спавнов (вторая - с шансом 35%:
     расширение вариативности; из непустых пулов главного генератора;
-    SPAWN_POOLS — тир-списки (вес, [мобы]), поэтому мобы выбираются
+    SPAWN_POOLS - тир-списки (вес, [мобы]), поэтому мобы выбираются
     через _sample_mobs), 1-3 случайных моба на категорию."""
     if rng.random() >= 0.5:
         return {}
     gd = _gd()
     cats = [c for c, tiers in gd.SPAWN_POOLS.items() if tiers]
-    # monster — самая частая, как в ванильных структурах
+    # monster - самая частая, как в ванильных структурах
     first = "monster" if rng.random() < 0.6 else rng.choice(cats)
     chosen = [first]
     if rng.random() < 0.35 and len(cats) > 1:
         chosen.append(rng.choice([c for c in cats if c != first]))
     # фильтр по проверенному списку сущностей: в SPAWN_POOLS бывают ID,
-    # которых нет в реестре entity_type 26.2 (killer_bunny — это вариант
+    # которых нет в реестре entity_type 26.2 (killer_bunny - это вариант
     # кролика, а не отдельный тип; сервер: "Unknown registry key")
     valid = set(STRUCTURE_MOBS)
     out = {}
@@ -1459,22 +1471,27 @@ def _rand_spawn_overrides(rng):
 
 def _rand_structure_json(rng, stype, pool_id, min_y, max_y, biomes_ref,
                          has_ceiling=False, roof_bottom=None):
-    """JSON structure любого из 15 типов 26.2 (без ocean_monument — он
+    """JSON structure любого из 15 типов 26.2 (без ocean_monument - он
     всегда empty в случайных биомах, см. NON_JIGSAW_TYPES). Общие поля settingsCodec:
     biomes / step / spawn_overrides / terrain_adaptation; типоспецифичные
-    поля — по байткоду кодеков соответствующих классов."""
-    step = rng.choice(STRUCTURE_STEPS)
+    поля - по байткоду кодеков соответствующих классов."""
+    if stype in ("minecraft:mineshaft", "minecraft:stronghold"):
+        step = "underground_structures"
+    elif has_ceiling:
+        step = rng.choice(["underground_structures", "surface_structures"])
+    else:
+        step = "surface_structures"
     out = {
         "type": stype,
         "biomes": biomes_ref,
         "step": step,
         "spawn_overrides": _rand_spawn_overrides(rng),
     }
-    # terrain_adaptation — у ЛЮБОГО типа (TerrainAdjustment; none в ваниле
+    # terrain_adaptation - у ЛЮБОГО типа (TerrainAdjustment; none в ваниле
     # просто опускается). Взвешенный выбор вместо равновероятного choice:
     # раньше bury/encapsulate выпадали в 40% случаев (структуры целиком
-    # под землёй или в капсуле — аудит находимости), теперь суммарно 10%;
-    # бороды (beard_thin/beard_box) «доращивают» землю под структурой —
+    # под землёй или в капсуле - аудит находимости), теперь суммарно 10%;
+    # бороды (beard_thin/beard_box) «доращивают» землю под структурой -
     # суммарно 45%, чтобы постройки стояли на земле, а не висели в воздухе
     if rng.random() < 0.85:
         out["terrain_adaptation"] = rng.choices(
@@ -1489,15 +1506,15 @@ def _rand_structure_json(rng, stype, pool_id, min_y, max_y, biomes_ref,
         # ОГРАНИЧЕНИЕ ВЫСОТЫ (юзер: «структура обрезалась у почти
         # максимальной высоты»): куски пулов бывают до ~24 блоков (свои
         # башни gen_jigsaw, ванильные trial chambers / особняки) + запас
-        # 10 → старт не выше max_y - 34, иначе верхние блоки (и block
-        # entity спавнеров) выходят за границу мира → DUMMY-теги и WARN
+        # 10 -> старт не выше max_y - 34, иначе верхние блоки (и block
+        # entity спавнеров) выходят за границу мира -> DUMMY-теги и WARN
         # «Tried to load a DUMMY block entity» на каждой загрузке чанка
         lo_y, hi_y = min_y + 8, max_y - 34
-        # в мире с кровлей — та же дисциплина относительно кровли:
+        # в мире с кровлей - та же дисциплина относительно кровли:
         # roof_bottom - 24 - 10 (кусок 24 + тот же запас)
         if roof_bottom is not None:
             hi_y = min(hi_y, roof_bottom - 24 - 10)
-        if hi_y <= lo_y:  # очень низкий мир: потолок важнее — старт с тем
+        if hi_y <= lo_y:  # очень низкий мир: потолок важнее - старт с тем
             # же запасом 34, но не ниже дна мира (иначе пустой диапазон)
             lo_y = hi_y = max(min_y, max_y - 34)
         if rng.random() < 0.6:
@@ -1510,36 +1527,43 @@ def _rand_structure_json(rng, stype, pool_id, min_y, max_y, biomes_ref,
                 "min_inclusive": {"absolute": ya},
                 "max_inclusive": {"absolute": yb}}
         # опциональные поля, подтверждённые ванильными jigsaw-структурами.
-        # heightmap-проекция — ТОЛЬКО без кровли: в cavern-мирах
+        # heightmap-проекция - ТОЛЬКО без кровли: в cavern-мирах
         # WORLD_SURFACE_WG указывает на крышу, и вся структура целиком
-        # оказывается вне мира (там же — источник DUMMY-тегов).
-        # Поверхностный шаг — почти всегда (юзер: «слишком часто в
+        # оказывается вне мира (там же - источник DUMMY-тегов).
+        # Поверхностный шаг - почти всегда (юзер: «слишком часто в
         # воздухе, хочу чтоб с земли росли»); подземные шаги
-        # (underground_structures/underground_decoration) — как было,
+        # (underground_structures/underground_decoration) - как было,
         # absolute start_height
-        if step == "surface_structures" and rng.random() < 0.9 \
-                and not has_ceiling:
+        # heightmap-проекция: в мирах без кровли практически всегда привязываем к поверхности
+        # (параметр project_start_to_heightmap прижимает структуру к рельефу, а start_height 0 исключает парение)
+        if not has_ceiling and (step == "surface_structures" or rng.random() < 0.95):
             out["project_start_to_heightmap"] = "WORLD_SURFACE_WG"
+            if hi_y <= lo_y:
+                out["start_height"] = {"absolute": lo_y}
+            else:
+                out["start_height"] = {"absolute": 0}
+        elif not has_ceiling:
+            out["start_height"] = {"absolute": rng.randint(lo_y, min(hi_y, lo_y + 30))}
         if rng.random() < 0.12:
             out["dimension_padding"] = rng.choice([4, 6, 8, 10])
         if rng.random() < 0.15:
             out["liquid_settings"] = "ignore_waterlogging"
         # pool_aliases СВОИМ jigsaw не нужны: свои куски не содержат
         # jigsaw-блоков и не тянут ванильные цепочки до алиаса contents/*
-        # (алиасы обязательны только ФОРКАМ trial_chambers — см.
+        # (алиасы обязательны только ФОРКАМ trial_chambers - см.
         # _rand_fork_structure_json)
     elif stype == "minecraft:mineshaft":
         # MineshaftStructure$Type: NORMAL("normal") / MESA("mesa")
         out["mineshaft_type"] = rng.choice(["normal", "mesa"])
     elif stype == "minecraft:ocean_ruin":
         # OceanRuinStructure$Type: WARM("warm") / COLD("cold");
-        # large_probability/cluster_probability — Codec.floatRange(0, 1)
+        # large_probability/cluster_probability - Codec.floatRange(0, 1)
         out["biome_temp"] = rng.choice(["warm", "cold"])
-        # Codec.floatRange(0, 1) включительно — берём весь диапазон
+        # Codec.floatRange(0, 1) включительно - берём весь диапазон
         out["large_probability"] = round(rng.uniform(0.0, 1.0), 3)
         out["cluster_probability"] = round(rng.uniform(0.0, 1.0), 3)
     elif stype == "minecraft:nether_fossil":
-        # NetherFossilStructure: height — HeightProvider. Запас до
+        # NetherFossilStructure: height - HeightProvider. Запас до
         # потолка ~30 (как высоким не-jigsaw типам): окаменелость и
         # рельеф над точкой старта не должны резаться о height limit
         lo_y, hi_y = min_y + 8, max_y - 30
@@ -1555,13 +1579,13 @@ def _rand_structure_json(rng, stype, pool_id, min_y, max_y, biomes_ref,
                 "min_inclusive": _anchor(rng, ya, min_y, max_y),
                 "max_inclusive": _anchor(rng, yb, min_y, max_y)}
     elif stype == "minecraft:shipwreck":
-        # ShipwreckStructure: is_beached — Codec.BOOL
+        # ShipwreckStructure: is_beached - Codec.BOOL
         out["is_beached"] = rng.random() < 0.4
     elif stype == "minecraft:ruined_portal":
-        # RuinedPortalStructure: setups — nonEmptyList(Setup.CODEC)
+        # RuinedPortalStructure: setups - nonEmptyList(Setup.CODEC)
         # вариативность расширена: 1-6 сетов (было 1-4), mossiness 0..1,
-        # размещения — взвешенные (наземные чаще, «в незере»/на дне
-        # океана — реже)
+        # размещения - взвешенные (наземные чаще, «в незере»/на дне
+        # океана - реже)
         setups = []
         for _ in range(rng.randint(1, 6)):
             setups.append({
@@ -1579,46 +1603,14 @@ def _rand_structure_json(rng, stype, pool_id, min_y, max_y, biomes_ref,
         out["setups"] = setups
     # остальные типы (buried_treasure/desert_pyramid/end_city/fortress/
     # igloo/jungle_temple/woodland_mansion/stronghold/
-    # swamp_hut) собственных полей не имеют — только settingsCodec
+    # swamp_hut) собственных полей не имеют - только settingsCodec
     return out
 
 
 def _rand_fork_structure_json(rng, fork, min_y, max_y, biomes_ref,
                               has_ceiling=False, roof_bottom=None):
-    """ФОРК ванильной jigsaw-структуры (запись из VANILLA_JIGSAW_FORKS):
-    type minecraft:jigsaw со start_pool = ВАНИЛЬНЫЙ пул — структура
-    собирается ЦЕЛИКОМ из ванильного дерева кусков (деревня/бастион/
-    древний город/trial chambers/...), параметры случайные:
-
-      size             обычно randint(4,12), ~15% «гигантские» randint(13,20)
-                       (байткод JigsawStructure.CODEC: size =
-                       Codec.intRange(0, 20) — «40 шагов» НЕВОЗМОЖНЫ,
-                       потолок гиганта 20);
-      max_distance_from_center  randint(30, cap); cap = 116 при
-                       terrain_adaptation != none (verifyRange: md+12 <=
-                       128, иначе датапак не грузится ЦЕЛИКОМ), иначе 128;
-                       пол не ниже 4*size — при маленьком md дальние куски
-                       дерева молча отбрасываются (обрубленная деревня);
-      terrain_adaptation  взвешенно none 40 / beard_thin 30 / beard_box
-                       15 / bury 10 / encapsulate 5 (всегда присутствует);
-      start_height     как у своих jigsaw: absolute/uniform в границах
-                       мира, запас 34 до потолка, roof-ограничение
-                       (при heightmap-проекции движок игнорирует);
-      project_start_to_heightmap  ванильное значение с шансом 0.9 (и
-                       только в мире без кровли), иначе по текущим
-                       правилам (surface-шаг + 0.9 + без кровли);
-      spawn_overrides / step / biomes — существующие рандомайзеры.
-
-    Копируется из ванили (геометрия чужого дерева кусков хрупка):
-      use_expansion_hack — включение true ОТБРАСЫВАЕТ куски с YSpan > 16
-        (JigsawPlacement$Placer: doExpansionHack && box.getYSpan() > 16
-        → skip) — бастион/древний город/trial chambers получили бы дыры;
-        выключение у деревень меняет их поведение — ровно ванильное;
-      start_jigsaw_name — именованный якорь старта (ancient_city:
-        "minecraft:city_anchor"; якорь есть во всех кусках city_center);
-      pool_aliases — обязательные биндинги спавнер-пулов trial_chambers;
-      dimension_padding / liquid_settings — ванильные, иначе как у своих."""
-    step = rng.choice(STRUCTURE_STEPS)
+    """JSON structure for jigsaw fork blueprint."""
+    step = fork.get("v_step") or ("underground_structures" if has_ceiling else "surface_structures")
     out = {
         "type": JIGSAW_TYPE,
         "biomes": biomes_ref,
@@ -1627,17 +1619,17 @@ def _rand_fork_structure_json(rng, fork, min_y, max_y, biomes_ref,
         "start_pool": fork["start_pool"],
         "use_expansion_hack": fork["use_expansion_hack"],
     }
-    # terrain_adaptation — ВСЕГДА, веса из ТЗ
+    # terrain_adaptation
     adapt = rng.choices(FORK_ADAPTATIONS, weights=FORK_ADAPTATION_WEIGHTS)[0]
     out["terrain_adaptation"] = adapt
-    # size: обычно 4-12, ~15% гигантские 13-20 (потолок кодека — 20)
+    # size: обычно 4-12, ~15% гигантские 13-20 (потолок кодека - 20)
     out["size"] = (rng.randint(13, 20) if rng.random() < 0.15
                    else rng.randint(4, 12))
     # max_distance_from_center: verifyRange + пол 4*size
     md_cap = 116 if adapt != "none" else 128
     md_lo = min(md_cap, max(30, 4 * out["size"]))
     out["max_distance_from_center"] = rng.randint(md_lo, md_cap)
-    # start_height — как у своих jigsaw (в границах мира, запас до потолка)
+    # start_height - как у своих jigsaw (в границах мира, запас до потолка)
     lo_y, hi_y = min_y + 8, max_y - 34
     if roof_bottom is not None:
         hi_y = min(hi_y, roof_bottom - 24 - 10)
@@ -1653,16 +1645,21 @@ def _rand_fork_structure_json(rng, fork, min_y, max_y, biomes_ref,
             "min_inclusive": {"absolute": ya},
             "max_inclusive": {"absolute": yb}}
     # heightmap-проекция: ванильное значение (у деревень/аванпоста/
-    # trail_ruins — WORLD_SURFACE_WG) с шансом 0.9 и только без кровли
-    # (в cavern-мирах WORLD_SURFACE_WG = крыша); иначе — текущие правила
-    if fork["project_start_to_heightmap"] and not has_ceiling \
-            and rng.random() < 0.9:
-        out["project_start_to_heightmap"] = fork["project_start_to_heightmap"]
-    elif step == "surface_structures" and rng.random() < 0.9 \
-            and not has_ceiling:
+    # trail_ruins - WORLD_SURFACE_WG) с шансом 0.9 и только без кровли
+    # (в cavern-мирах WORLD_SURFACE_WG = крыша); иначе - текущие правила
+    if not has_ceiling and (fork.get("project_start_to_heightmap") or step == "surface_structures"):
         out["project_start_to_heightmap"] = "WORLD_SURFACE_WG"
-    # именованный якорь старта (ancient_city без него размещается по
-    # origin куска — копируем ванильное имя всегда)
+
+    # heightmap projection start_height snapping
+    if "project_start_to_heightmap" in out:
+        if hi_y <= lo_y:
+            out["start_height"] = {"absolute": lo_y}
+        elif fork.get("v_start_height") and _sh_max_val(fork["v_start_height"], min_y, max_y) <= 0:
+            out["start_height"] = fork["v_start_height"]
+        else:
+            out["start_height"] = {"absolute": 0}
+    elif not has_ceiling:
+        out["start_height"] = {"absolute": rng.randint(lo_y, min(hi_y, lo_y + 30))}
     if fork["start_jigsaw_name"]:
         out["start_jigsaw_name"] = fork["start_jigsaw_name"]
     # обязательные алиасы пулов (trial_chambers без них не собирается)
@@ -1682,60 +1679,21 @@ def _rand_fork_structure_json(rng, fork, min_y, max_y, biomes_ref,
 
 def _rand_structure_set_json(rng, structure_ids, ns, name, set_num,
                              biome_ids, biome_tags, biomes_ref=None):
-    """structure_set: random_spread или (редко, ~10%) concentric_rings
-    (как ванильный strongholds).
-
-    biomes_ref — поле "biomes" структуры (тег "#ns:..." ИЛИ список ID):
-    concentric_rings ищет позиции колец в preferred_biomes, поэтому кольца
-    берут ТЕ ЖЕ биомы, что и сама структура — независимый сэмпл давал
-    позиции, которые не проходят биом-чек структуры (пустые кольца)."""
-    # rings только для сета из ОДНОЙ структуры: раньше ids=structure_ids[:1]
-    # молча выкидывал остальные структуры сета — они оставались БЕЗ
-    # structure_set и не генерились ВООБЩЕ (аудит находимости)
-    if rng.random() < 0.10 and len(structure_ids) == 1:
-        # ConcentricRingsStructurePlacement (байткод):
-        #   distance  intRange(0, 1023), spread intRange(0, 1023),
-        #   count     intRange(1, 4095), preferred_biomes — HolderSet<Biome>
-        # (базовые поля placementCodec: salt и др.)
-        placement = {
-            "type": "minecraft:concentric_rings",
-            "distance": rng.randint(6, 16),
-            "spread": rng.randint(2, 6),
-            "count": rng.randint(8, 48),
-            "preferred_biomes": (biomes_ref if biomes_ref is not None
-                                 else sorted(biome_ids)),
-            "salt": rng.randrange(1 << 24),
-        }
-        ids = structure_ids
-    else:
-        # random_spread: spacing у 80% сетов «обычный» (12-34), у 20%
-        # редкий (34-48); separation = 15-35% spacing — плотная сетка
-        spacing = (rng.randint(12, 34) if rng.random() < 0.8
-                   else rng.randint(34, 48))
-        separation = round(spacing * rng.uniform(0.15, 0.35))
-        if separation >= spacing:   # инвариант random_spread: sep < spacing
-            separation = spacing - 1
-        placement = {"type": "minecraft:random_spread",
-                     "spacing": spacing,
-                     "separation": separation,
-                     "salt": rng.randrange(1 << 24)}
-        if rng.random() < 0.25:
-            placement["spread_type"] = "triangular"
-        # frequency только 0.3-0.8 и максимум у 10% сетов: низкая частота
-        # делает /locate почти бесполезным (аудит: freq < 0.1 — не найдёт)
-        if rng.random() < 0.10:
-            placement["frequency"] = round(rng.uniform(0.3, 0.8), 3)
-            placement["frequency_reduction_method"] = rng.choice(
-                ["legacy_type_1", "legacy_type_2", "legacy_type_3"])
-        ids = structure_ids
-    return {"structures": [{"structure": sid, "weight": rng.randint(1, 5)}
-                           for sid in ids],
+    """structure_set: clean random_spread placement with dedicated spacing and separation."""
+    spacing = rng.randint(18, 32)
+    separation = max(4, min(spacing - 2, round(spacing * 0.35)))
+    placement = {
+        "type": "minecraft:random_spread",
+        "spacing": spacing,
+        "separation": separation,
+        "salt": rng.randrange(1 << 24)
+    }
+    if rng.random() < 0.25:
+        placement["spread_type"] = "triangular"
+    return {"structures": [{"structure": sid, "weight": 1}
+                           for sid in structure_ids],
             "placement": placement}
 
-
-# ---------------------------------------------------------------------------
-# SNBT: предметы, мобы, постройки
-# ---------------------------------------------------------------------------
 
 def _rand_text_component(rng, text):
     """Текстовый компонент 26.2 (NBT-нативный, НЕ JSON-строка):
@@ -1768,35 +1726,39 @@ _SLOT_PART = {"head": "helmet", "chest": "chestplate",
 
 
 def _rand_item_stack(rng, kind, slot=None):
-    """ItemStack 26.2: {id, count, components:{...}}. Зачарования —
-    прямой map {"minecraft:sharpness":5} (ItemEnchantments.CODEC).
-
-    Слоты снаряжения (правила gen_loot): броня подбирается ПОД
-    запрошенный слот (шлем — в head и т.д., как в ванильных
-    equipment-таблицах — сапоги на голову не надеваем); в слоты рук
-    (mainhand/offhand) броня не попадает. Атрибут-модификаторы тут не
-    генерируются — ванильные базовые характеристики предмета (урон/
-    скорость атаки, броня) действуют как есть; equippable/
-    camera_overlay/max_stack_size тоже не трогаем."""
+    """ItemStack 26.2: {id, count, components:{...}}.
+    Зачарования согласованы с типом предмета (gen_loot.ENCHANTS):
+    шлем получает только зачарования для шлема/брони, меч - для меча и т.д.
+    Для одноуровневых зачарований (шёлковое касание, починка и др.) уровень всегда строго 1.
+    Для многоуровневых - 1..max_level с редким дропом (~5%) уровня до 20.
+    """
+    import gen_loot
     if kind == "armor":
         part = _SLOT_PART.get(slot)
         pool = ([i for i in ARMOR_ITEMS if i.endswith("_" + part)] if part
                 else ARMOR_ITEMS)
     elif kind == "weapon":
         pool = WEAPON_ITEMS
-    else:  # «любой» — слот руки: только оружие/щит/тотем
+    else:
         pool = WEAPON_ITEMS
-    out = {"id": rng.choice(pool), "count": 1}
+    item_id = rng.choice(pool)
+    out = {"id": item_id, "count": 1}
     comps = {}
     if rng.random() < 0.7:
         ench = {}
-        for name in rng.sample(ENCHANTMENTS, rng.randint(1, 3)):
-            ench["minecraft:" + name] = rng.randint(1, 5)
-        # кастомные зачарования измерения (связка с gen_enchantments;
-        # подмешивает generate_dimension.py через set_custom_enchants)
+        suitable = [(e, gen_loot.ENCHANTS[e][0]) for e in gen_loot.ENCHANTS
+                    if item_id in gen_loot.ENCHANTS[e][1]]
+        if suitable:
+            n_pick = min(len(suitable), rng.randint(1, 3))
+            for name, max_lvl in rng.sample(suitable, n_pick):
+                ench["minecraft:" + name] = gen_loot._enchant_levels(rng, name)
+        # Пользовательские зачарования измерения (если подходят)
         if CUSTOM_ENCHS and rng.random() < 0.35:
-            ench[rng.choice(CUSTOM_ENCHS)] = rng.randint(1, 2)
-        comps["minecraft:enchantments"] = ench
+            cpool = [e for e in CUSTOM_ENCHS if gen_loot._custom_ench_ok(e, item_id)]
+            if cpool:
+                ench[rng.choice(cpool)] = rng.randint(1, 2)
+        if ench:
+            comps["minecraft:enchantments"] = ench
     if rng.random() < 0.35:
         gd = _gd()
         noun = rng.choice(ITEM_NAME_NOUN)
@@ -1810,26 +1772,22 @@ def _rand_item_stack(rng, kind, slot=None):
     return out
 
 
-# ---------------------------------------------------------------------------
-# Счётчик уникальных слотов лут-таблиц измерения
-# ---------------------------------------------------------------------------
-
 class LootSlots:
     """Раздача уникальных id лут-таблиц "<ns>:<name>_lootN" (N с единицы).
 
     Требование: у каждой особой сущности/контейнера измерения (сундук,
-    бочка, волт, DeathLootTable моба-«босса», призы trial_spawner'а) —
+    бочка, волт, DeathLootTable моба-«босса», призы trial_spawner'а) -
     СВОЯ таблица, без повторов в рамках измерения. Генераторы занимают
     слоты ПО МЕРЕ создания ссылок (take()), а gen_loot.rand_loot потом
     одним вызовом создаёт таблицы для всех слотов 1..count (та же схема
     имён). Один экземпляр на измерение передаётся во ВСЕ генераторы
-    (trial_spawners → структуры → jigsaw), поэтому уникальность
+    (trial_spawners -> структуры -> jigsaw), поэтому уникальность
     гарантирует сам счётчик.
 
     release() возвращает занятый слот, если ссылка на него исчезла
     (например, сундук замещён волтом со своей таблицей, или блок
     не нашёлся): слот переиспользуется следующим take(), поэтому
-    «дырок» в нумерации 1..count не остаётся — каждый занятый в
+    «дырок» в нумерации 1..count не остаётся - каждый занятый в
     итоге id гарантированно имеет ровно одну живую ссылку."""
 
     def __init__(self, ns, name):
@@ -1863,15 +1821,15 @@ class LootSlots:
 
     @property
     def count(self):
-        """Сколько слотов реально занято (id — ровно 1..count без дырок)."""
+        """Сколько слотов реально занято (id - ровно 1..count без дырок)."""
         return len(self._ids) - len(self._free)
 
 
 def _rand_chest_nbt(rng, loot_alloc):
-    """NBT блочного энтити сундука/бочки: LootTable — точное имя тега
+    """NBT блочного энтити сундука/бочки: LootTable - точное имя тега
     (RandomizableContainer.tryLoadLootTable, подтверждено ванильными
-    шаблонами DataVersion 4903). loot_alloc — счётчик LootSlots: каждому
-    сундуку СВОЯ уникальная таблица (None → ванильная chest-таблица)."""
+    шаблонами DataVersion 4903). loot_alloc - счётчик LootSlots: каждому
+    сундуку СВОЯ уникальная таблица (None -> ванильная chest-таблица)."""
     if loot_alloc is not None:
         table = loot_alloc.take()
     else:
@@ -1896,7 +1854,7 @@ def _rand_spawner_stack(rng):
 
 
 def _boat_entity_id(rng, chest):
-    """Id лодки по породе: oak_boat/oak_chest_boat, а бамбук —
+    """Id лодки по породе: oak_boat/oak_chest_boat, а бамбук -
     bamboo_raft/bamboo_chest_raft (реестр 26.2, EntityTypeIds)."""
     wood = rng.choice(_BOAT_WOODS)
     if wood == "bamboo":
@@ -1906,7 +1864,7 @@ def _boat_entity_id(rng, chest):
 
 
 def _weighted_choice(rng, weights):
-    """Взвешенный выбор ключа dict {key: вес} (веса — float > 0)."""
+    """Взвешенный выбор ключа dict {key: вес} (веса - float > 0)."""
     total = sum(weights.values())
     r = rng.random() * total
     acc = 0.0
@@ -1918,8 +1876,8 @@ def _weighted_choice(rng, weights):
 
 
 def _gen_item_entity(rng):
-    """minecraft:item — Item {id, count, components} (ItemEntity:
-    put(Item) через ItemStack.CODEC; PickupDelay — short)."""
+    """minecraft:item - Item {id, count, components} (ItemEntity:
+    put(Item) через ItemStack.CODEC; PickupDelay - short)."""
     ent = {"id": "minecraft:item", "Item": _rand_spawner_stack(rng)}
     if rng.random() < 0.30:
         ent["PickupDelay"] = _S(rng.randint(10, 100))
@@ -1927,10 +1885,10 @@ def _gen_item_entity(rng):
 
 
 def _gen_armor_stand_entity(rng):
-    """minecraft:armor_stand — до 6 слотов equipment (EntityEquipment:
-    map слот→ItemStack, тот же формат что у мобов) + флаги ArmorStand
-    (ShowArms/NoBasePlate/Small/Invisible — byte; DisabledSlots int).
-    ~25% — совсем без NBT (ультракастом — не всегда)."""
+    """minecraft:armor_stand - до 6 слотов equipment (EntityEquipment:
+    map слот->ItemStack, тот же формат что у мобов) + флаги ArmorStand
+    (ShowArms/NoBasePlate/Small/Invisible - byte; DisabledSlots int).
+    ~25% - совсем без NBT (ультракастом - не всегда)."""
     ent = {"id": "minecraft:armor_stand"}
     if rng.random() < 0.25:
         return ent
@@ -1960,7 +1918,7 @@ def _gen_armor_stand_entity(rng):
 
 
 def _gen_tnt_entity(rng):
-    """minecraft:tnt — fuse (SHORT, 20-200 тиков; PrimedTnt 26.2 пишет
+    """minecraft:tnt - fuse (SHORT, 20-200 тиков; PrimedTnt 26.2 пишет
     putShort("fuse"), тег в нижнем регистре), иногда explosion_power
     (float) и маскировка block_state (рендер другим блоком)."""
     ent = {"id": "minecraft:tnt", "fuse": _S(rng.randint(20, 200))}
@@ -1976,8 +1934,8 @@ def _gen_tnt_entity(rng):
 
 
 def _gen_falling_block_entity(rng):
-    """minecraft:falling_block — BlockState {Name, Properties} из палитры
-    измерения (тег CamelCase — сверен FallingBlockEntity 26.2: store
+    """minecraft:falling_block - BlockState {Name, Properties} из палитры
+    измерения (тег CamelCase - сверен FallingBlockEntity 26.2: store
     "BlockState", putInt "Time", putBoolean DropItem/HurtEntities/
     CancelDrop, FallHurtAmount float, FallHurtMax int)."""
     bid, props = rng.choice(_gd().PALETTE_BLOCKS)
@@ -1999,7 +1957,7 @@ def _gen_falling_block_entity(rng):
 
 
 def _gen_experience_orb_entity(rng):
-    """minecraft:experience_orb — Value (SHORT 1-50; ExperienceOrb
+    """minecraft:experience_orb - Value (SHORT 1-50; ExperienceOrb
     26.2: putShort "Value"; Count при отсутствии = 1)."""
     return {"id": "minecraft:experience_orb",
             "Value": _S(rng.randint(1, 50))}
@@ -2007,7 +1965,7 @@ def _gen_experience_orb_entity(rng):
 
 def _gen_container_entity(rng, eid):
     """Сундук-сущности (chest_boat по породе дерева / chest_minecart):
-    Items — список 3-6 ItemStack'ов со Slot (byte, ContainerHelper →
+    Items - список 3-6 ItemStack'ов со Slot (byte, ContainerHelper ->
     ItemStackWithSlot.CODEC: Slot unsigned byte + id/count/components;
     у контейнера 27 слотов 0-26)."""
     items = []
@@ -2019,7 +1977,7 @@ def _gen_container_entity(rng, eid):
 
 
 def _gen_item_frame_entity(rng, eid):
-    """minecraft:item_frame / glow_item_frame — Item {...} (ItemStack),
+    """minecraft:item_frame / glow_item_frame - Item {...} (ItemStack),
     ItemRotation (int 0-7), иногда Invisible/Fixed (byte) и
     ItemDropChance (float; ItemFrame 26.2, сверен javap)."""
     ent = {"id": eid, "Item": _rand_spawner_stack(rng)}
@@ -2035,7 +1993,7 @@ def _gen_item_frame_entity(rng, eid):
 
 
 def _gen_firework_entity(rng):
-    """minecraft:firework_rocket — FireworksItem (ItemStack c
+    """minecraft:firework_rocket - FireworksItem (ItemStack c
     компонентом minecraft:fireworks: flight_duration byte + explosions
     [{shape (строковый id), colors [int], fade_colors, has_trail/
     has_twinkle byte}]; Fireworks/FireworkExplosion 26.2) + LifeTime
@@ -2064,7 +2022,7 @@ def _gen_firework_entity(rng):
 
 
 def _gen_aec_entity(rng):
-    """minecraft:area_effect_cloud — Radius (float) + Duration/
+    """minecraft:area_effect_cloud - Radius (float) + Duration/
     WaitTime/ReapplicationDelay (int) + potion_contents: готовое зелье
     (60%) или custom_effects [{id, amplifier byte, duration int}]
     (40%); формат AreaEffectCloud/PotionContents/MobEffectInstance$
@@ -2093,23 +2051,23 @@ def _gen_aec_entity(rng):
 
 
 def _gen_boat_entity(rng):
-    """minecraft:<wood>_boat — лёгкий NBT (только поворот)."""
+    """minecraft:<wood>_boat - лёгкий NBT (только поворот)."""
     return {"id": _boat_entity_id(rng, chest=False),
             "Rotation": [_F(round(rng.uniform(0.0, 360.0), 1)), _F(0.0)]}
 
 
 def _gen_minecart_entity(rng):
-    """minecraft:minecart — лёгкий NBT (только поворот)."""
+    """minecraft:minecart - лёгкий NBT (только поворот)."""
     return {"id": "minecraft:minecart",
             "Rotation": [_F(round(rng.uniform(0.0, 360.0), 1)), _F(0.0)]}
 
 
 def _gen_wind_charge_entity(rng):
-    """minecraft:wind_charge — без NBT (редкий тип)."""
+    """minecraft:wind_charge - без NBT (редкий тип)."""
     return {"id": "minecraft:wind_charge"}
 
 
-# Диспетчер спец-типов: ключ SPAWNER_SPECIAL_WEIGHTS → генератор
+# Диспетчер спец-типов: ключ SPAWNER_SPECIAL_WEIGHTS -> генератор
 _SPECIAL_ENTITY_GENS = {
     "item": _gen_item_entity,
     "armor_stand": _gen_armor_stand_entity,
@@ -2140,10 +2098,10 @@ def _rand_special_entity(rng):
 
 
 def _rand_spawner_mob(rng):
-    """Моб для спавнера — СМЕСЬ NBT-глубины (решение юзера):
+    """Моб для спавнера - СМЕСЬ NBT-глубины (решение юзера):
     40% вообще без NBT (просто тип), 40% лёгкий (CustomName или
     Health), 20% полный (генератор «особого» моба: атрибуты/
-    снаряжение/DeathLootTable...; loot_alloc=None → ванильная
+    снаряжение/DeathLootTable...; loot_alloc=None -> ванильная
     таблица моба как fallback)."""
     mob = rng.choice(STRUCTURE_MOBS)
     r = rng.random()
@@ -2156,7 +2114,7 @@ def _rand_spawner_mob(rng):
             if rng.random() < 0.6:
                 ent["CustomNameVisible"] = _B(1)
         else:
-            # выше max_health движок молча клампит — безопасно
+            # выше max_health движок молча клампит - безопасно
             ent["Health"] = _F(round(rng.uniform(5.0, 30.0), 1))
         if rng.random() < 0.15:
             ent["Glowing"] = _B(1)
@@ -2173,9 +2131,9 @@ def _rand_spawner_entity(rng):
 
 
 def _rand_spawner_nbt(rng):
-    """mob_spawner данжа с ОСОБОЙ сущностью — моб или спец-тип (см.
+    """mob_spawner данжа с ОСОБОЙ сущностью - моб или спец-тип (см.
     _rand_spawner_entity). Формат сверен с ванильным bastion/treasure/
-    bases/lava_basin.nbt; числовые поля — SHORT (BaseSpawner 26.2
+    bases/lava_basin.nbt; числовые поля - SHORT (BaseSpawner 26.2
     пишет их putShort'ом). Спавнер «быстрый» (решение юзера):
     MinSpawnDelay 40-100, MaxSpawnDelay 120-240 (диапазоны гарантируют
     max > min: min <= 100 < 120 <= max), SpawnCount 3-5,
@@ -2199,7 +2157,7 @@ def _rand_spawner_nbt(rng):
 def _ts_pairs(trial_spawner_ids):
     """Пары (normal, ominous) id конфигов trial_spawner по суффиксу "_om"
     (конвенция gen_trial_spawners: "<ns>:<name>_tsN" + "..._tsN_om").
-    Конфиг без пары используется как свой own ominous — это валидно,
+    Конфиг без пары используется как свой own ominous - это валидно,
     normal_config/ominous_config принимают любой id реестра."""
     ids = [i for i in (trial_spawner_ids or []) if i]
     normals = [i for i in ids if not i.endswith("_om")]
@@ -2209,7 +2167,7 @@ def _ts_pairs(trial_spawner_ids):
 def _rand_trial_spawner_nbt(rng, normal_id, ominous_id):
     """NBT блочного энтити trial_spawner для .nbt-шаблона. Формат сверен
     с ванильными trial_chambers/spawner/*.nbt (14 шаблонов в jar):
-    {id, normal_config, ominous_config} — ссылки на реестр
+    {id, normal_config, ominous_config} - ссылки на реестр
     data/<ns>/trial_spawner/. Доп. поля из TrialSpawner$FullConfig.
     MAP_CODEC (байткод): target_cooldown_length (неотр. int, деф. 36000),
     required_player_range (intRange, деф. 14)."""
@@ -2228,11 +2186,11 @@ def _rand_vault_nbt(rng, loot_alloc):
     """NBT блочного энтити vault. Формат сверен с ванильными
     trial_chambers/reward/{vault,ominous_vault}.nbt: config инлайново
     (VaultConfig.CODEC, байткод: loot_table / key_item (ItemStack) /
-    activation_range / deactivation_range — double, deact >= act).
-    key_item: trial_key / ominous_trial_key (тогда рядом нужен спавнер —
+    activation_range / deactivation_range - double, deact >= act).
+    key_item: trial_key / ominous_trial_key (тогда рядом нужен спавнер -
     ключ выпадает из него) или случайный предмет (волт-загадка).
-    loot_alloc — счётчик LootSlots: каждому волту СВОЯ уникальная
-    таблица (None → ванильная trial_chambers/reward)."""
+    loot_alloc - счётчик LootSlots: каждому волту СВОЯ уникальная
+    таблица (None -> ванильная trial_chambers/reward)."""
     r = rng.random()
     if r < 0.5:
         key = {"id": "minecraft:trial_key", "count": 1}
@@ -2256,9 +2214,9 @@ def _rand_vault_nbt(rng, loot_alloc):
 
 def _place_vault(rng, blocks, pal, loot_alloc, cell, nbt=None, stand_y=1):
     """Поставить блок vault на клетку (x, z) на уровне stand_y (по умолч.
-    1 — на полу), замещая при необходимости сундук. Свойства блока — как
+    1 - на полу), замещая при необходимости сундук. Свойства блока - как
     в ванильных trial_chambers/reward/*.nbt (facing/vault_state/ominous;
-    ominous согласован с ключом). nbt — готовый _rand_vault_nbt (иначе
+    ominous согласован с ключом). nbt - готовый _rand_vault_nbt (иначе
     новый с loot_alloc)."""
     if nbt is None:
         nbt = _rand_vault_nbt(rng, loot_alloc)
@@ -2273,7 +2231,7 @@ def _place_vault(rng, blocks, pal, loot_alloc, cell, nbt=None, stand_y=1):
     for blk in blocks:
         if blk["pos"][0] == x and blk["pos"][1] == stand_y \
                 and blk["pos"][2] == z:
-            # замещаем сундук? его слот лута больше никем не используется —
+            # замещаем сундук? его слот лута больше никем не используется -
             # освобождаем (волт несёт СВОЮ таблицу, взятую выше)
             if loot_alloc is not None:
                 old = blk.get("nbt") or {}
@@ -2281,7 +2239,7 @@ def _place_vault(rng, blocks, pal, loot_alloc, cell, nbt=None, stand_y=1):
             blk["state"] = pal(state)
             blk["nbt"] = nbt
             return True
-    # блок не нашёлся: слот, взятый для nbt, остался без ссылки — вернуть
+    # блок не нашёлся: слот, взятый для nbt, остался без ссылки - вернуть
     if loot_alloc is not None:
         loot_alloc.release(nbt["config"]["loot_table"])
     return False
@@ -2289,10 +2247,10 @@ def _place_vault(rng, blocks, pal, loot_alloc, cell, nbt=None, stand_y=1):
 
 def _rand_mob_nbt_full(rng, mob, loot_alloc):
     """Полный NBT «особого» моба для entities[] .nbt-шаблона и полного
-    варианта моба спавнера. mob — конкретный тип из STRUCTURE_MOBS;
-    набор полей случаен: не каждому мобу всё сразу. loot_alloc —
+    варианта моба спавнера. mob - конкретный тип из STRUCTURE_MOBS;
+    набор полей случаен: не каждому мобу всё сразу. loot_alloc -
     счётчик LootSlots: DeathLootTable каждого моба СВОЯ уникальная
-    таблица (None → ванильная entities/<mob>, если она есть)."""
+    таблица (None -> ванильная entities/<mob>, если она есть)."""
     nbt = {"id": "minecraft:" + mob}
 
     # имя (NBT-нативный текстовый компонент, ComponentSerialization.CODEC)
@@ -2301,7 +2259,7 @@ def _rand_mob_nbt_full(rng, mob, loot_alloc):
         if rng.random() < 0.7:
             nbt["CustomNameVisible"] = _B(1)
 
-    # атрибуты: attributes:[{id, base}] — формат AttributeInstance$Packed;
+    # атрибуты: attributes:[{id, base}] - формат AttributeInstance$Packed;
     # отсутствующие у моба атрибуты при загрузке молча пропускаются
     attrs = []
     max_health = None
@@ -2316,12 +2274,12 @@ def _rand_mob_nbt_full(rng, mob, loot_alloc):
         attrs.append({"id": "minecraft:max_health", "base": max_health})
     nbt["attributes"] = attrs
     if max_health is not None:
-        # Health — float и не выше max_health (иначе движок клампит)
+        # Health - float и не выше max_health (иначе движок клампит)
         nbt["Health"] = _F(max_health)
 
     # экипировка: equipment:{<слот>:{id,count,components}} (EntityEquipment.
-    # CODEC = unboundedMap(EquipmentSlot, ItemStack)); drop_chances —
-    # отдельный map слот->float (DropChances.CODEC). Броня — строго по
+    # CODEC = unboundedMap(EquipmentSlot, ItemStack)); drop_chances -
+    # отдельный map слот->float (DropChances.CODEC). Броня - строго по
     # слоту (см. _rand_item_stack)
     equip = {}
     if rng.random() < 0.55:
@@ -2347,7 +2305,7 @@ def _rand_mob_nbt_full(rng, mob, loot_alloc):
         elif mob in MOB_LOOT_TABLES:
             nbt["DeathLootTable"] = "minecraft:entities/" + mob
 
-    # прочие флаги (каждый — со своим шансом). NoAI/Invulnerable НЕ
+    # прочие флаги (каждый - со своим шансом). NoAI/Invulnerable НЕ
     # генерируются ВООБЩЕ: мобы должны жить своей жизнью и быть уязвимыми
     if rng.random() < 0.6:
         nbt["PersistenceRequired"] = _B(1)
@@ -2361,53 +2319,53 @@ def _rand_mob_nbt_full(rng, mob, loot_alloc):
         nbt["LeftHanded"] = _B(1)
     if rng.random() < 0.05:
         nbt["Silent"] = _B(1)
-    # поворот (yaw, pitch) — float
+    # поворот (yaw, pitch) - float
     nbt["Rotation"] = [_F(round(rng.uniform(0.0, 360.0), 1)), _F(0.0)]
     return nbt
 
 
 def _rand_mob_nbt(rng, loot_alloc):
     """Полный NBT случайного «особого» моба (для entities[] шаблонов
-    и gen_jigsaw): тип выбирается из STRUCTURE_MOBS, содержимое —
+    и gen_jigsaw): тип выбирается из STRUCTURE_MOBS, содержимое -
     _rand_mob_nbt_full."""
     return _rand_mob_nbt_full(rng, rng.choice(STRUCTURE_MOBS), loot_alloc)
 
 
 # Планировки своих .nbt-шаблонов (смешиваются с ванильными в пулы):
-# hut — хижина с дверью/окнами/крышей; ruin — рваные стены без крыши,
-# обломки; tower — башенка с лестницей и площадкой наверху; platform —
-# помост на сваях с перилами (этаж декора — над землёй); shrine —
+# hut - хижина с дверью/окнами/крышей; ruin - рваные стены без крыши,
+# обломки; tower - башенка с лестницей и площадкой наверху; platform -
+# помост на сваях с перилами (этаж декора - над землёй); shrine -
 # открытый павильон с колоннами и крышей-плитой
 _NBT_LAYOUTS = ("hut", "ruin", "tower", "platform", "shrine")
 
 
 def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
     """СВОЙ шаблон постройки (gzip-NBT, как ванильные .nbt): маленькое
-    здание из случайных полных блоков (5 планировок — см. _NBT_LAYOUTS),
+    здание из случайных полных блоков (5 планировок - см. _NBT_LAYOUTS),
     со случайными сундуками и (с шансом ~40-70%) 1-3 особыми мобами.
-    kind — планировка (None → случайная). Возвращает bytes gzip-NBT для
+    kind - планировка (None -> случайная). Возвращает bytes gzip-NBT для
     data/<ns>/structure/<ключ>.nbt.
 
-    loot_alloc — счётчик LootSlots: каждый сундук/волт/моб шаблона
-    занимает СВОЙ уникальный слот лут-таблицы (None → ванильские
-    fallback-таблицы). Материалы — только gd.PALETTE_BLOCKS: стены/пол
+    loot_alloc - счётчик LootSlots: каждый сундук/волт/моб шаблона
+    занимает СВОЙ уникальный слот лут-таблицы (None -> ванильские
+    fallback-таблицы). Материалы - только gd.PALETTE_BLOCKS: стены/пол
     заливаются массово, block-entity блоки (spawner/copper_golem_statue/
     chest/...) недопустимы (жалоба: данж со стенами из медных статуй
     грузил FPS).
 
-    trial_spawner_ids — список id конфигов trial_spawner вида "ns:name_tsN"
+    trial_spawner_ids - список id конфигов trial_spawner вида "ns:name_tsN"
     (пары normal/ominous по суффиксу "_om", см. gen_trial_spawners.py).
     Если список не пуст, «особый» блок в центре постройки выбирается из
     ~20% mob_spawner / ~25% trial_spawner / ~25% vault (волт с ключом
-    trial_key ставится ПАРОЙ со спавнером — ключ выпадает из спавнера
-    через loot_tables_to_eject) / ~30% ничего. None/пусто — прежнее
+    trial_key ставится ПАРОЙ со спавнером - ключ выпадает из спавнера
+    через loot_tables_to_eject) / ~30% ничего. None/пусто - прежнее
     поведение (только ~18% mob_spawner)."""
     gd = _gd()
     solid = gd.PALETTE_BLOCKS
     if kind is None:
         kind = rng.choice(_NBT_LAYOUTS)
 
-    # материалы: пол / стены / колонны (полные кубы из PALETTE_BLOCKS —
+    # материалы: пол / стены / колонны (полные кубы из PALETTE_BLOCKS -
     # безопасные для массовой заливки, без block entity)
     floor_b = rng.choice(solid)
     wall_b = rng.choice(solid)
@@ -2468,7 +2426,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                     elif corner and (has_roof or y < h - 1):
                         state = col_i                    # колонны по углам
                     elif edge and y <= h - 2:
-                        # стены; окна и дверь — «дыры»
+                        # стены; окна и дверь - «дыры»
                         if (door_pos and (x, z) == door_pos and y in (1, 2)):
                             state = air_i
                         elif y >= 1 and rng.random() < 0.15:
@@ -2506,7 +2464,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                     blocks.append({"pos": [x, y, z], "state": state})
                     if y == 1 and not edge:
                         interior_cells.append((x, z))
-        for _ in range(rng.randint(2, 4)):    # обломки (центр — особый блок)
+        for _ in range(rng.randint(2, 4)):    # обломки (центр - особый блок)
             x, z = rng.randint(1, sx - 2), rng.randint(1, sz - 2)
             if (x, z) == (sx // 2, sz // 2):
                 continue
@@ -2516,7 +2474,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                     occupied.add((x, z))
                     break
     elif kind == "tower":
-        # башенка: угловые колонны, бойницы, лестница у стены — сквозь
+        # башенка: угловые колонны, бойницы, лестница у стены - сквозь
         # дыру в площадке наверху; перила по периметру площадки
         s = rng.randint(5, 7)
         sx = sz = s
@@ -2536,7 +2494,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                     corner = x in (0, s - 1) and z in (0, s - 1)
                     if y == 0:
                         state = floor_i
-                    elif y == h - 2:      # площадка (дыра — над лестницей)
+                    elif y == h - 2:      # площадка (дыра - над лестницей)
                         state = ladder_i if (x, z) == (1, lz) else floor_i
                     elif y == h - 1:      # перила
                         state = col_i if (x, z) in rail else air_i
@@ -2563,7 +2521,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                                       id="minecraft:chest")
                     break
     elif kind == "platform":
-        # помост на сваях: этаж декора — над землёй (stand_y = k+1)
+        # помост на сваях: этаж декора - над землёй (stand_y = k+1)
         sx, sz = rng.randint(7, 11), rng.randint(7, 11)
         k = rng.randint(3, 5)
         h = k + 2
@@ -2639,7 +2597,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
     entities = []
     # «особый» блок постройки (в центре, на полу). С конфигами trial_spawner:
     # ~20% mob_spawner / ~25% trial_spawner / ~25% vault / ~30% ничего;
-    # без конфигов — прежние ~18% mob_spawner.
+    # без конфигов - прежние ~18% mob_spawner.
     ts_pairs = _ts_pairs(trial_spawner_ids)
     special = None
     if sx >= 5 and sz >= 5:
@@ -2658,7 +2616,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
         for blk in blocks:
             if blk["pos"][0] == cx and blk["pos"][1] == stand_y \
                     and blk["pos"][2] == cz:
-                # центр мог занять сундук — его слот лута освобождаем
+                # центр мог занять сундук - его слот лута освобождаем
                 if loot_alloc is not None:
                     loot_alloc.release(
                         (blk.get("nbt") or {}).get("LootTable", ""))
@@ -2668,13 +2626,13 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
     elif special == "trial":
         # trial_spawner: блок + ссылки normal_config/ominous_config на наши
         # конфиги (формат = ванильные trial_chambers/spawner/*.nbt);
-        # properties — как в ванильных шаблонах
+        # properties - как в ванильных шаблонах
         normal_id, ominous_id = rng.choice(ts_pairs)
         cx, cz = sx // 2, sz // 2
         for blk in blocks:
             if blk["pos"][0] == cx and blk["pos"][1] == stand_y \
                     and blk["pos"][2] == cz:
-                # центр мог занять сундук — его слот лута освобождаем
+                # центр мог занять сундук - его слот лута освобождаем
                 if loot_alloc is not None:
                     loot_alloc.release(
                         (blk.get("nbt") or {}).get("LootTable", ""))
@@ -2686,14 +2644,14 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                 blk["nbt"] = _rand_trial_spawner_nbt(rng, normal_id,
                                                      ominous_id)
                 break
-        # если спавнер есть — сундук иногда заменяем на волт: спавнер даст
-        # ключ (loot_tables_to_eject в config), волт — награду (ПАРА)
+        # если спавнер есть - сундук иногда заменяем на волт: спавнер даст
+        # ключ (loot_tables_to_eject в config), волт - награду (ПАРА)
         if chest_cells and rng.random() < 0.5:
             _place_vault(rng, blocks, pal, loot_alloc,
                          rng.choice(chest_cells), stand_y=stand_y)
     elif special == "vault":
-        # волт; с trial_key/ominous_trial_key — обязательно ПАРОЙ со
-        # спавнером (иначе ключ не достать), со случайным предметом — соло
+        # волт; с trial_key/ominous_trial_key - обязательно ПАРОЙ со
+        # спавнером (иначе ключ не достать), со случайным предметом - соло
         v_nbt = _rand_vault_nbt(rng, loot_alloc)
         key_id = v_nbt["config"]["key_item"]["id"]
         if key_id in ("minecraft:trial_key", "minecraft:ominous_trial_key"):
@@ -2702,7 +2660,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
             for blk in blocks:
                 if (blk["pos"][0] == cx and blk["pos"][1] == stand_y
                         and blk["pos"][2] == cz):
-                    # центр мог занять сундук — его слот лута освобождаем
+                    # центр мог занять сундук - его слот лута освобождаем
                     if loot_alloc is not None:
                         loot_alloc.release(
                             (blk.get("nbt") or {}).get("LootTable", ""))
@@ -2714,14 +2672,14 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                     blk["nbt"] = _rand_trial_spawner_nbt(rng, normal_id,
                                                          ominous_id)
                     break
-        # сам волт — на клетке сундука (замещаем его) или у стены
+        # сам волт - на клетке сундука (замещаем его) или у стены
         v_cells = [c for c in near_wall if c not in chest_cells]
         v_cells = v_cells or chest_cells or interior_cells
         if v_cells:
             _place_vault(rng, blocks, pal, loot_alloc, rng.choice(v_cells),
                          nbt=v_nbt, stand_y=stand_y)
         else:
-            # поставить волт некуда — слот, взятый для него, освобождаем
+            # поставить волт некуда - слот, взятый для него, освобождаем
             if loot_alloc is not None:
                 loot_alloc.release(v_nbt["config"]["loot_table"])
 
@@ -2755,33 +2713,33 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
 def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
                     loot_alloc=None, trial_spawner_ids=None, has_ceiling=False,
                     roof_bottom=None):
-    """Случайные структуры 15 из 16 типов 26.2 (ocean_monument исключён —
+    """Случайные структуры 15 из 16 типов 26.2 (ocean_monument исключён -
     всегда empty), привязанные к биомам ЭТОГО измерения, плюс:
       * ФОРКИ ванильных jigsaw-структур (~35% структур, VANILLA_JIGSAW_FORKS):
-        деревни/бастион/древний город/trial chambers/... ЦЕЛИКОМ — start_pool
-        ванильный, параметры случайные (size до 20 — огромные деревни);
+        деревни/бастион/древний город/trial chambers/... ЦЕЛИКОМ - start_pool
+        ванильный, параметры случайные (size до 20 - огромные деревни);
       * свои jigsaw-данжи из СВОИХ .nbt-шаблонов с особыми мобами
         (отдельные ванильные куски в свои пулы НЕ подмешиваются).
 
-    biome_ids — список ID биомов измерения; count — сколько структур
-    создать (по умолчанию 0-3 — старое поведение; вызывается с числом из
-    тяжело-хвостового распределения). loot_alloc — общий на измерение
+    biome_ids - список ID биомов измерения; count - сколько структур
+    создать (по умолчанию 0-3 - старое поведение; вызывается с числом из
+    тяжело-хвостового распределения). loot_alloc - общий на измерение
     счётчик LootSlots: каждый сундук/бочка/волт/моб .nbt-шаблонов
-    занимает СВОЙ уникальный слот "<ns>:<name>_lootN" (None → ванильные
+    занимает СВОЙ уникальный слот "<ns>:<name>_lootN" (None -> ванильные
     chest-таблицы и entities/<mob>); итоговое число занятых ЭТИМ вызовом
     слотов возвращается в ключе "loot_slots".
-    trial_spawner_ids — опциональный список id конфигов trial_spawner
+    trial_spawner_ids - опциональный список id конфигов trial_spawner
     (реестр data/<ns>/trial_spawner/, генерирует gen_trial_spawners.py):
     тогда в .nbt-постройках появляются блоки trial_spawner и vault
-    (пара спавнер+волт); None/пусто → прежнее поведение (только
-    mob_spawner). has_ceiling — мир с кровлей (запрещает
+    (пара спавнер+волт); None/пусто -> прежнее поведение (только
+    mob_spawner). has_ceiling - мир с кровлей (запрещает
     project_start_to_heightmap: WORLD_SURFACE_WG там = крыша);
-    roof_bottom — нижняя граница кровли (Y): jigsaw-старты не выше
+    roof_bottom - нижняя граница кровли (Y): jigsaw-старты не выше
     roof_bottom-24, чтобы куски не пересекали потолок мира.
     Возвращает dict с ключами "structures",
     "structure_sets", "template_pools", "processor_lists", "biome_tags",
-    "nbt_files" (ключи nbt_files — пути относительно data/<ns>/structure/
-    без расширения, значения — bytes gzip-NBT; файл <ключ>.nbt доступен
+    "nbt_files" (ключи nbt_files - пути относительно data/<ns>/structure/
+    без расширения, значения - bytes gzip-NBT; файл <ключ>.nbt доступен
     из пулов как "<ns>:<ключ>") и "loot_slots" (int)."""
     gd = _gd()
     biome_ids = list(biome_ids) or ["minecraft:plains"]
@@ -2795,13 +2753,13 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
     if n <= 0:
         return result
 
-    # Свои .nbt-шаблоны (постройки с особыми мобами/сундуками) — ЛЕНИВО,
-    # при первом СВОЁМ jigsaw (куски своих пулов — только свои .nbt):
+    # Свои .nbt-шаблоны (постройки с особыми мобами/сундуками) - ЛЕНИВО,
+    # при первом СВОЁМ jigsaw (куски своих пулов - только свои .nbt):
     # 4-14 штук с планировками hut/ruin/tower/platform/shrine. Раньше их
     # генерировали заранее с шансом 85% и подмешивали в пулы к ванильным
-    # кускам — теперь ванильских кусков в своих пулах нет (решение юзера:
-    # «один дом а не целиком деревня — кринж»), а без своего jigsaw они
-    # и не нужны вовсе (форкам — тоже: у них ванильные start_pool).
+    # кускам - теперь ванильских кусков в своих пулах нет (решение юзера:
+    # «один дом а не целиком деревня - кринж»), а без своего jigsaw они
+    # и не нужны вовсе (форкам - тоже: у них ванильные start_pool).
     own_keys = []
 
     def _gen_own_templates():
@@ -2813,7 +2771,7 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
             own_keys.append("%s:%s" % (ns, key))
 
     # пул не-jigsaw типов ПОД ИЗМЕРЕНИЕ: woodland_mansion/end_city требуют
-    # АБСОЛЮТНУЮ высоту getLowestY >= 60 (бокс 5x5 чанков) — при max_y < 100
+    # АБСОЛЮТНУЮ высоту getLowestY >= 60 (бокс 5x5 чанков) - при max_y < 100
     # рельеф туда не дотягивается, структуры ВСЕГДА empty (аудит)
     non_jigsaw = ([t for t in NON_JIGSAW_TYPES if t not in Y_GATED_TYPES]
                   if max_y < 100 else NON_JIGSAW_TYPES)
@@ -2827,9 +2785,9 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
         sid = "%s:%s_str%d" % (ns, name, num)
         struct_ids.append(sid)
 
-        # тип структуры: ~35% — ФОРК ванильной jigsaw-структуры (деревня/
+        # тип структуры: ~35% - ФОРК ванильной jigsaw-структуры (деревня/
         # бастион/древний город/trial chambers/... ЦЕЛИКОМ, параметры
-        # случайны — например огромные деревни size 13-20); из остальных
+        # случайны - например огромные деревни size 13-20); из остальных
         # 40% jigsaw (свои .nbt-пулы) / 60% прочие типы равновероятно
         fork = None
         if rng.random() < FORK_SHARE:
@@ -2840,31 +2798,32 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
         else:
             stype = rng.choice(non_jigsaw)
 
-        # привязка к биомам измерения: СВОИ биомы у каждой структуры —
+        # привязка к биомам измерения: СВОИ биомы у каждой структуры -
         # сэмпл 2-5 биомов (было 1-3: маленькие сэмплы часто целиком
-        # попадали в биомы, не выигрывающие Voronoi, — площадь ~0,
-        # аудит находимости). Первая структура — ЯКОРНАЯ: ей ВСЕ биомы
+        # попадали в биомы, не выигрывающие Voronoi, - площадь ~0,
+        # аудит находимости). Первая структура - ЯКОРНАЯ: ей ВСЕ биомы
         # измерения; климат (continentalness) в модуль не передаётся, а
-        # крупнейшие по площади биомы — «центральные» кластера (ближайшие
-        # к медиане continentalness 0), поэтому полный охват — единственная
+        # крупнейшие по площади биомы - «центральные» кластера (ближайшие
+        # к медиане continentalness 0), поэтому полный охват - единственная
         # ГАРАНТИЯ, что хотя бы одна структура измерения их получает
         if num == 1:
             tag_name = "has_structure/%s_str%d" % (name, num)
             result["biome_tags"][tag_name] = {"values": sorted(biome_ids)}
             biomes_ref = "#%s:%s" % (ns, tag_name)
-        elif rng.random() < 0.55:
+        elif rng.random() < 0.65 or fork is not None:
             tag_name = "has_structure/%s_str%d" % (name, num)
-            k = min(len(biome_ids), rng.randint(2, 5))
+            # Surface structures & village forks should be widely distributed
+            k = max(min(len(biome_ids), 4), int(len(biome_ids) * 0.75))
             result["biome_tags"][tag_name] = {
-                "values": sorted(rng.sample(biome_ids, k))}
+                "values": sorted(rng.sample(biome_ids, min(len(biome_ids), k)))}
             biomes_ref = "#%s:%s" % (ns, tag_name)
         else:
-            k = min(len(biome_ids), rng.randint(2, 5))
-            biomes_ref = sorted(rng.sample(biome_ids, k))
+            k = max(min(len(biome_ids), 3), int(len(biome_ids) * 0.60))
+            biomes_ref = sorted(rng.sample(biome_ids, min(len(biome_ids), k)))
         struct_biomes.append(biomes_ref)
 
         if fork is not None:
-            # ФОРК ванильной jigsaw-структуры: start_pool ванильный — свои
+            # ФОРК ванильной jigsaw-структуры: start_pool ванильный - свои
             # пул/процессоры/.nbt не нужны (лут ванильский, зашит в кусках)
             result["structures"][sid] = _rand_fork_structure_json(
                 rng, fork, min_y, max_y, biomes_ref,
@@ -2879,8 +2838,8 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
                 pid = "%s:%s/pool%d" % (ns, name, num)
                 plid = "%s:%s_proc%d" % (ns, name, num)
                 result["processor_lists"][plid] = _rand_processor_list(rng)
-                # пул становится start_pool структуры — пустой элемент
-                # запрещён; куски — ТОЛЬКО свои .nbt
+                # пул становится start_pool структуры - пустой элемент
+                # запрещён; куски - ТОЛЬКО свои .nbt
                 result["template_pools"][pid] = _rand_template_pool(
                     rng, plid, own_keys, is_start=True)
                 pool_id = pid
@@ -2894,16 +2853,11 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
     # ванильный nether_complexes: fortress + bastion в одном сете;
     # объединённый сет из нескольких структур всегда random_spread).
     # biomes_ref нужен concentric_rings: preferred_biomes = биомы структуры
-    if len(struct_ids) > 1 and rng.random() < 0.3:
-        ssid = "%s:%s_set1" % (ns, name)
+    for i, sid in enumerate(struct_ids):
+        ssid = "%s:%s_set%d" % (ns, name, i + 1)
         result["structure_sets"][ssid] = _rand_structure_set_json(
-            rng, struct_ids, ns, name, 1, biome_ids, result["biome_tags"])
-    else:
-        for i, sid in enumerate(struct_ids):
-            ssid = "%s:%s_set%d" % (ns, name, i + 1)
-            result["structure_sets"][ssid] = _rand_structure_set_json(
-                rng, [sid], ns, name, i + 1, biome_ids,
-                result["biome_tags"], biomes_ref=struct_biomes[i])
+            rng, [sid], ns, name, i + 1, biome_ids,
+            result["biome_tags"], biomes_ref=struct_biomes[i])
     # сколько слотов лута заняли сундуки/волты/мобы .nbt-шаблонов
     result["loot_slots"] = (loot_alloc.count if loot_alloc is not None
                             else 0) - _slots0
@@ -2942,7 +2896,7 @@ def _self_test(seeds=20):
         min_y = -64
         max_y = 320
         # общий счётчик слотов (как в интеграции из generate_dimension):
-        # trial_spawner'ы → структуры; каждый id-ссылка уникальна
+        # trial_spawner'ы -> структуры; каждый id-ссылка уникальна
         import gen_trial_spawners
         alloc = LootSlots("rndim", "testdim")
         ts_data = gen_trial_spawners.rand_trial_spawners(
@@ -3014,11 +2968,11 @@ def _self_test(seeds=20):
         # инварианты
         for sid, sj in st["structures"].items():
             if sj["type"] == "minecraft:jigsaw":
-                # start_pool — ЛИБО свой пул (реестр template_pools), ЛИБО
+                # start_pool - ЛИБО свой пул (реестр template_pools), ЛИБО
                 # ванильный из таблицы форков (извлечена из jar 26.2)
                 assert sj["start_pool"] in st["template_pools"] \
                     or sj["start_pool"] in VANILLA_FORK_BY_POOL, sid
-                # (б) size — в диапазоне кодека intRange(0, 20)
+                # (б) size - в диапазоне кодека intRange(0, 20)
                 assert 0 <= sj["size"] <= 20, (sid, sj["size"])
                 # (в) verifyRange: при адаптации != none md+12 <= 128
                 md = sj["max_distance_from_center"]
@@ -3030,8 +2984,8 @@ def _self_test(seeds=20):
                     fk = VANILLA_FORK_BY_POOL[sj["start_pool"]]
                     # (а) форк ссылается на РЕАЛЬНЫЙ ванильный start_pool
                     # (таблица = все 10 jigsaw-структур из jar 26.2);
-                    # use_expansion_hack — ванильный (апгрейд true роняет
-                    # куски YSpan > 16 → дыры)
+                    # use_expansion_hack - ванильный (апгрейд true роняет
+                    # куски YSpan > 16 -> дыры)
                     assert sj["use_expansion_hack"] == fk["use_expansion_hack"], sid
                     # именованный якорь старта скопирован (ancient_city:
                     # без city_anchor структура размещается по origin)
@@ -3043,7 +2997,7 @@ def _self_test(seeds=20):
                         assert sj.get("pool_aliases") == fk["pool_aliases"], sid
                     else:
                         assert "pool_aliases" not in sj, sid
-                    # md-пол 4*size — иначе обрубленное дерево кусков
+                    # md-пол 4*size - иначе обрубленное дерево кусков
                     cap = (116 if sj.get("terrain_adaptation", "none") != "none"
                            else 128)
                     assert sj["max_distance_from_center"] \
@@ -3061,7 +3015,7 @@ def _self_test(seeds=20):
                 [JIGSAW_TYPE] + NON_JIGSAW_TYPES), sid
             assert sj.get("terrain_adaptation", "none") in TERRAIN_ADAPTATIONS
         # стартовые высоты ВСЕГДА оставляют запас до потолка мира:
-        # jigsaw — 24 (самый высокий кусок) + 10, nether_fossil — 30
+        # jigsaw - 24 (самый высокий кусок) + 10, nether_fossil - 30
         # (якоря above_bottom/below_top раскрываются в те же absolute)
         for sid, sj in st["structures"].items():
             if sj["type"] == JIGSAW_TYPE:
@@ -3069,7 +3023,7 @@ def _self_test(seeds=20):
                     <= max_y - 34, sid
             elif sj["type"] == "minecraft:nether_fossil":
                 assert _sh_max(sj["height"], min_y, max_y) <= max_y - 30, sid
-        # находимость (аудит): каждая структура хотя бы в одном structure_set —
+        # находимость (аудит): каждая структура хотя бы в одном structure_set -
         # иначе она не генерится ВООБЩЕ (баг концентрических колец)
         in_set = set()
         for ss in st["structure_sets"].values():
@@ -3091,7 +3045,7 @@ def _self_test(seeds=20):
                 sid0 = ss["structures"][0]["structure"]
                 assert p["preferred_biomes"] == \
                     st["structures"][sid0]["biomes"], ssid
-        # якорная структура (первая) покрывает ВСЕ биомы измерения —
+        # якорная структура (первая) покрывает ВСЕ биомы измерения -
         # климат в модуль не передаётся, полный охват гарантирует самые
         # крупные «центральные» биомы (continentalness ~ 0) хотя бы одной
         # структуре измерения
@@ -3109,13 +3063,13 @@ def _self_test(seeds=20):
                     if isinstance(ref, str) else ref)
             assert 2 <= len(vals) <= 5, (sid, len(vals))
         # nbt-шаблоны адресуются пулами корректно; в стартовых пулах
-        # (все наши — стартовые) нет пустых элементов
+        # (все наши - стартовые) нет пустых элементов
         own = {"rndim:%s" % k for k in st["nbt_files"]}
         for pid, pool in st["template_pools"].items():
             for el in pool["elements"]:
                 loc = el["element"].get("location")
-                # (д) в своих пулах — ТОЛЬКО свои .nbt: ни одного ванильского
-                # куска (NBT_LOCATIONS) и вообще никаких чужих путей —
+                # (д) в своих пулах - ТОЛЬКО свои .nbt: ни одного ванильского
+                # куска (NBT_LOCATIONS) и вообще никаких чужих путей -
                 # отдельные ванильские дома давали «обрубки» структур
                 if loc is not None:
                     assert loc in own, (pid, loc)
@@ -3123,12 +3077,12 @@ def _self_test(seeds=20):
                 assert el["element"]["element_type"] != \
                     "minecraft:empty_pool_element", pid
         # block_rot всегда с rottable_blocks (без списка выедает ЛЮБЫЕ
-        # блоки куска — аудит)
+        # блоки куска - аудит)
         for plid, pl in st["processor_lists"].items():
             for pr in pl["processors"]:
                 if pr["processor_type"] == "minecraft:block_rot":
                     assert pr.get("rottable_blocks"), plid
-        # воспроизводимость (свежий счётчик слотов — тот же порядок rng)
+        # воспроизводимость (свежий счётчик слотов - тот же порядок rng)
         rng2 = random.Random(seed)
         alloc2 = LootSlots("rndim", "testdim")
         gen_trial_spawners.rand_trial_spawners(
@@ -3139,14 +3093,14 @@ def _self_test(seeds=20):
                               loot_alloc=alloc2,
                               trial_spawner_ids=ts_ids)
         assert st2 == st, seed
-        # обратносовместимость: без trial_spawner_ids — без новых блоков
+        # обратносовместимость: без trial_spawner_ids - без новых блоков
         rng3 = random.Random(seed + 1000)
         st3 = rand_structures(rng3, "rndim", "testdim", min_y, max_y,
                               ["rndim:t_b1", "rndim:t_b2"], count=4)
         for k, b in st3["nbt_files"].items():
             raw = _gz.decompress(b)
             assert b"normal_config" not in raw and b"minecraft:vault" not in raw, k
-        # низкий мир (max_y < 100): mansion/end_city не выдаются — их
+        # низкий мир (max_y < 100): mansion/end_city не выдаются - их
         # findGenerationPoint требует getLowestY >= 60 АБСОЛЮТНОЙ высоты
         rng4 = random.Random(seed + 5000)
         st4 = rand_structures(rng4, "rndim", "testdim", min_y, 80,
@@ -3167,7 +3121,7 @@ def _self_test(seeds=20):
             if sj["type"] == JIGSAW_TYPE:
                 assert _sh_max(sj["start_height"], min_y, 256) \
                     <= 200 - 24 - 10, sid
-        # крошечный мир (высота 40 <= 42): fallback — старт с тем же
+        # крошечный мир (высота 40 <= 42): fallback - старт с тем же
         # запасом 34, но не ниже дна (24-блочный кусок не режется)
         rng6 = random.Random(seed + 777)
         st6 = rand_structures(rng6, "rndim", "testdim", 0, 40,
@@ -3194,14 +3148,14 @@ def _self_test(seeds=20):
         assert f["v_step"] in STRUCTURE_STEPS, f["key"]
         assert isinstance(f["weight"], int) and f["weight"] >= 1, f["key"]
     # (г) trial_chambers: алиасы обязательны (куски тянут цепочку до
-    # несуществующих пулов contents/* — без биндингов WARN и дыры)
+    # несуществующих пулов contents/* - без биндингов WARN и дыры)
     fk_tc = VANILLA_FORK_BY_POOL["minecraft:trial_chambers/chamber/end"]
     assert fk_tc["pool_aliases"] == TRIAL_POOL_ALIASES, \
         "trial_chambers-форок без алиасов не соберётся"
     assert fk_tc["dimension_padding"] == 10
     assert fk_tc["liquid_settings"] == "ignore_waterlogging"
     # ancient_city: именованный якорь есть во всех 3 кусках city_center
-    # (проверено по jar) — копируем всегда
+    # (проверено по jar) - копируем всегда
     fk_ac = VANILLA_FORK_BY_POOL["minecraft:ancient_city/city_center"]
     assert fk_ac["start_jigsaw_name"] == "minecraft:city_anchor"
     # деревни ванильно beard_thin + heightmap + expansion hack
@@ -3212,7 +3166,7 @@ def _self_test(seeds=20):
                 and f["v_terrain_adaptation"] == "beard_thin", f["key"]
 
     # прямые вызовы: случайные параметры в границях кодека, ванильские
-    # поля скопированы; 60 сэмплов на форк (600 всего) — и статистика
+    # поля скопированы; 60 сэмплов на форк (600 всего) - и статистика
     rng = random.Random(31337)
     giants = 0
     village_hm = 0
@@ -3234,7 +3188,7 @@ def _self_test(seeds=20):
             cap = 116 if adapt != "none" else 128
             assert 30 <= md <= cap, (md, cap)
             assert md >= min(cap, max(30, 4 * sj["size"])), (md, sj["size"])
-            # ванильные поля — копии
+            # ванильные поля - копии
             assert sj["use_expansion_hack"] == f["use_expansion_hack"]
             if f["start_jigsaw_name"]:
                 assert sj["start_jigsaw_name"] == f["start_jigsaw_name"]
@@ -3246,11 +3200,11 @@ def _self_test(seeds=20):
                 assert sj["dimension_padding"] == f["dimension_padding"]
             if f["liquid_settings"]:
                 assert sj["liquid_settings"] == f["liquid_settings"]
-            # старт-высота — в границах мира с запасом 34
+            # старт-высота - в границах мира с запасом 34
             assert _sh_max(sj["start_height"], -64, 320) <= 320 - 34
             # heightmap: у деревень (ванильный WORLD_SURFACE_WG, мир без
-            # кровли) — почти всегда; у бастиона (ванильного нет) — только
-            # через surface-шаг (≈⅓)
+            # кровли) - почти всегда; у бастиона (ванильного нет) - только
+            # через surface-шаг (??)
             if f["key"].startswith("village"):
                 village_n += 1
                 village_hm += 1 if "project_start_to_heightmap" in sj else 0
@@ -3271,8 +3225,8 @@ def _self_test(seeds=20):
         assert _sh_max(sj["start_height"], -64, 256) <= 200 - 24 - 10
         sj = _rand_fork_structure_json(rng, f, 0, 40, ["rndim:t_b1"])
         assert _sh_max(sj["start_height"], 0, 40) == 6, f["key"]
-    # доля форков среди всех структур ~35% (агрегат по seeds×50 структур;
-    # p=0.35, σ на 1000 сэмплах ≈ 1.5% — допуск широкие 25-45%)
+    # доля форков среди всех структур ~35% (агрегат по seedsx50 структур;
+    # p=0.35, ? на 1000 сэмплах ? 1.5% - допуск широкие 25-45%)
     fork_share = total_fk / max(1, total_str)
     assert 0.25 < fork_share < 0.45, fork_share
     print("форки: таблица %d ванильных jigsaw-структур, доля среди "
@@ -3316,7 +3270,7 @@ def _self_test(seeds=20):
     # спавнеры (прямые вызовы _rand_spawner_nbt): валидность id
     # сущностей, разнообразие спектра, скорости и смесь NBT-глубины мобов
     # ------------------------------------------------------------------
-    # id всех спец-типов (лодки раскрыты по породам; бамбук — рафт,
+    # id всех спец-типов (лодки раскрыты по породам; бамбук - рафт,
     # как в _boat_entity_id)
     boat_ids = set()
     for _w in _BOAT_WOODS:
@@ -3333,21 +3287,21 @@ def _self_test(seeds=20):
                    "minecraft:glow_item_frame", "minecraft:firework_rocket",
                    "minecraft:area_effect_cloud", "minecraft:wind_charge"} \
         | boat_ids
-    # STRUCTURE_MOBS и спец-id — только существующие типы реестра 26.2
+    # STRUCTURE_MOBS и спец-id - только существующие типы реестра 26.2
     assert set("minecraft:" + m for m in STRUCTURE_MOBS) \
         <= ENTITY_TYPE_IDS, "моб вне реестра entity_type"
     assert special_ids <= ENTITY_TYPE_IDS, "спец-тип вне реестра"
     assert set(_SPECIAL_ENTITY_GENS) == set(SPAWNER_SPECIAL_WEIGHTS)
 
     rng = random.Random(2024)
-    n_sp = 200                     # разнообразие — на 200 спавнерах
-    n_share = 1200                 # доли — на большой выборке (устойчиво)
+    n_sp = 200                     # разнообразие - на 200 спавнерах
+    n_share = 1200                 # доли - на большой выборке (устойчиво)
     kinds = {}                      # entity id -> сколько раз (первые 200)
     mob_depth = {"none": 0, "light": 0, "full": 0}
     mob_n = special_n = 0
     for i in range(n_share):
         nbt = _rand_spawner_nbt(rng)
-        # скорости — в заданных диапазонах (и max > min гарантирован)
+        # скорости - в заданных диапазонах (и max > min гарантирован)
         assert 40 <= nbt["MinSpawnDelay"] <= 100, nbt
         assert 120 <= nbt["MaxSpawnDelay"] <= 240, nbt
         assert nbt["MaxSpawnDelay"] > nbt["MinSpawnDelay"], nbt

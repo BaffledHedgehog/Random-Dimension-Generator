@@ -1,1 +1,0 @@
-probe direct named write_file invocation

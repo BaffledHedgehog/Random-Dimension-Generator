@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Java decompilation artifacts
+*.class
+
+# Temporary bridge scripts & scratch
+_bridge_work/
+_bridge_backups/
+_run*.ps1
+_testwf*.txt
+_diff_check*.py
+_probe*
+test_write.txt
+*.tmp
+*.bak
+
+# Datapack generated output data
+datapacks/random_dim/data/

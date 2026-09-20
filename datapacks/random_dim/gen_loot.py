@@ -1,53 +1,53 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_loot.py — генератор случайных лут-таблиц для Minecraft 26.2
-(data format 107, каталог data/<ns>/loot_table/ — в 26.2 он в ЕДИНСТВЕННОМ
-числе, не loot_tables!; в имени файла — ТОЛЬКО basename, без префикса
+gen_loot.py - генератор случайных лут-таблиц для Minecraft 26.2
+(data format 107, каталог data/<ns>/loot_table/ - в 26.2 он в ЕДИНСТВЕННОМ
+числе, не loot_tables!; в имени файла - ТОЛЬКО basename, без префикса
 namespace: на Windows id с двоеточием молча превращается в NTFS
 ADS-артефакт вместо файла).
 
 Формат КАЖДОГО поля сверен с ванильным jar 26.2
-(minecraft-26.2-client.jar, data/minecraft/loot_table/** — 1355 таблиц),
+(minecraft-26.2-client.jar, data/minecraft/loot_table/** - 1355 таблиц),
 классами net/minecraft/world/item/component/*.class (javap) и реальным
 сервером (loot spawn каждой таблицы):
   * верхний уровень: {"type", "pools", "random_sequence"};
   * типы таблиц, реально встречающиеся в ванильных данных:
     chest, entity, block, gift, archaeology, fishing, barter, equipment;
-  * пул: {"rolls", "entries", "conditions", "functions"}; rolls — число
+  * пул: {"rolls", "entries", "conditions", "functions"}; rolls - число
     (float) ИЛИ NumberProvider {"type": "minecraft:uniform",
     "min": 1.0, "max": 4.0} (в ванили именно min/max, не min_inclusive!);
   * записи: item / loot_table (value: строка-id или вложенный объект) /
     empty / tag {"name", "expand"} / group / alternatives (children);
-  * функции: ключ "function" (не "name"!), set_count (count —
+  * функции: ключ "function" (не "name"!), set_count (count -
     NumberProvider: constant/uniform/binomial), set_damage (damage),
     set_potion (id), set_components (components), set_enchantments
     (enchantments: {id: float}), enchant_randomly (options, опционально),
     enchant_with_levels (levels), furnace_smelt (+conditions на функции),
     apply_bonus (enchantment + formula: ore_drops / uniform_bonus_count
-    / binomial_with_bonus_count — параметры формулы лежат ВЛОЖЕННО
+    / binomial_with_bonus_count - параметры формулы лежат ВЛОЖЕННО
     в объекте "parameters": {"bonusMultiplier": int} либо
     {"probability": float, "extra": int}; сверено с ванильными
     таблицами и ApplyBonusCount.class),
     set_ominous_bottle_amplifier (amplifier), set_instrument (options);
   * условия: random_chance (chance), killed_by_player, any_of (terms),
-    inverted (term), table_bonus (chances — длина = max_level+1);
-  * компоненты — по классам net/minecraft/world/item/component/*.class и
+    inverted (term), table_bonus (chances - длина = max_level+1);
+  * компоненты - по классам net/minecraft/world/item/component/*.class и
     net/minecraft/core/component/DataComponents.class (всего 111 полей;
     сверен каждый кодек javap'ом + серверной пробой set_components):
-      custom_name, item_name, lore [строка, ...] — ПЛОСКИЙ массив
+      custom_name, item_name, lore [строка, ...] - ПЛОСКИЙ массив
       текстовых компонентов (обёртки "lines" в 26.2 НЕТ), rarity,
-      enchantments / stored_enchantments — ПРЯМАЯ карта {id: уровень}
-      (в 26.2 обёртки "levels" НЕТ — ItemEnchantments.CODEC это
+      enchantments / stored_enchantments - ПРЯМАЯ карта {id: уровень}
+      (в 26.2 обёртки "levels" НЕТ - ItemEnchantments.CODEC это
       Codec.unboundedMap с intRange(1,255)),
-      attribute_modifiers — ПЛОСКИЙ массив [{"type": атрибут, "id",
+      attribute_modifiers - ПЛОСКИЙ массив [{"type": атрибут, "id",
       "amount", "operation", "slot"}]: поля модификатора лежат РЯДОМ
       с type/slot, вложенного объекта "modifier" в 26.2 НЕТ
       ("slot" опционален, по умолчанию any). ВНИМАНИЕ: компонент
       ЗАМЕНЯЕТ ванильные дефолтные модификаторы предмета ЦЕЛИКОМ,
       поэтому при его генерации ванильные базовые характеристики
       (урон/скорость атаки оружия, броня/твёрдость брони) ВСЕГДА
-      включаются В НАЧАЛО списка — см. _BASE_ATTRS, unbreakable {},
+      включаются В НАЧАЛО списка - см. _BASE_ATTRS, unbreakable {},
       enchantment_glint_override (bool), custom_data (произвольный NBT),
       max_damage, max_stack_size, damage, repair_cost (int),
       damage_resistant {"types": "#minecraft:is_fire"}
@@ -64,7 +64,7 @@ ADS-артефакт вместо файла).
       knockback_conditions {min_speed, max_duration_ticks},
       dismount_conditions {min_relative_speed, max_duration_ticks}},
       minimum_attack_charge (float), swing_animation {type: none|stab|
-      whack — БЕЗ namespace!, duration}, blocks_attacks
+      whack - БЕЗ namespace!, duration}, blocks_attacks
       {block_delay_seconds, disable_cooldown_scale, item_damage
       {threshold, base, factor}, damage_reductions [{type:
       HolderSet-типов-урона, factor, base, horizontal_blocking_angle}],
@@ -82,7 +82,7 @@ ADS-артефакт вместо файла).
       cooldown_group}, use_effects {can_sprint, interact_vibrations,
       speed_multiplier<=1.0}, glider {}, intangible_projectile {},
       equippable {slot, asset_id (id EQUIPMENT-ассета
-      assets/<ns>/equipment/<id>.json — в генерации НЕ задаётся НИКОГДА:
+      assets/<ns>/equipment/<id>.json - в генерации НЕ задаётся НИКОГДА:
       без него игра берёт ассет по id предмета, т.е. родную текстуру
       брони; случайный asset_id ломал текстуру на игроке), equip_sound,
       dispensable, swappable, damage_on_hurt, equip_on_interact},
@@ -94,17 +94,17 @@ ADS-артефакт вместо файла).
       firework_explosion {shape, colors, fade_colors, has_trail,
       has_twinkle}, charged_projectiles [стеки], bundle_contents
       [стеки], container [{slot, item: {id, count, components}}],
-      container_loot {loot_table, seed}, lock — «ГОЛЫЙ» ItemPredicate
-      {"items": "#minecraft:planks"} (LockCode.CODEC — xmap от
+      container_loot {loot_table, seed}, lock - «ГОЛЫЙ» ItemPredicate
+      {"items": "#minecraft:planks"} (LockCode.CODEC - xmap от
       ItemPredicate.CODEC, обёртки "lock" НЕТ), jukebox_playable
-      (СТРОКА — id песни), instrument (СТРОКА — id инструмента
+      (СТРОКА - id песни), instrument (СТРОКА - id инструмента
       рога из реестра instrument: прямая ссылка или «#тег»),
       map_color (int), map_decorations {имя: {type, x, z, rotation}},
       map_id (int), suspicious_stew_effects [{id, duration}],
       writable_book_content {pages: [{raw, filtered}]},
       written_book_content {title: {raw, filtered}, author,
       generation, resolved, pages: [{raw: компонент, filtered}]}
-      (поля "book" у кодека НЕТ), banner_patterns — ПЛОСКИЙ массив
+      (поля "book" у кодека НЕТ), banner_patterns - ПЛОСКИЙ массив
       [{pattern, color}], base_color,
       block_state {свойство: значение}, custom_model_data {floats,
       flags, strings, colors}, profile {name}, bees [{entity_data:
@@ -112,17 +112,17 @@ ADS-артефакт вместо файла).
       предметно-специфичные с путевыми id (модель «сущность/поле»; сами
       id компонентов доказаны байткодом регистрации DataComponents):
       horse/variant ("white"|"creamy"|"chestnut"|"brown"|"black"|
-      "gray"|"dark_brown" — БЕЗ namespace), sheep/color, wolf/collar,
+      "gray"|"dark_brown" - БЕЗ namespace), sheep/color, wolf/collar,
       cat/collar, shulker/color, tropical_fish/base_color,
       tropical_fish/pattern, tropical_fish/pattern_color, dye (цвет
       DyeColor), sulfur_cube_content {id, count}, bucket_entity_data
       {entity: {id}}, ominous_bottle_amplifier (int 0-4),
       pot_decorations [4 предмета], note_block_sound (id звука),
       painting/variant (id из реестра painting_variant), axolotl/variant
-      ("lucy"|"wild"|"gold"|"cyan"|"blue" — enum, БЕЗ namespace),
+      ("lucy"|"wild"|"gold"|"cyan"|"blue" - enum, БЕЗ namespace),
       salmon/size ("small"|"medium"|"large"), варианты спавн-яиц:
       chicken|cow|pig|frog/variant = "minecraft:temperate"|"warm"|"cold"
-      (файловые реестры — С namespace), wolf/variant и cat/variant
+      (файловые реестры - С namespace), wolf/variant и cat/variant
       (id реестров jar), villager/variant ("minecraft:plains" и т.п.),
       llama|fox|rabbit|parrot|mooshroom/variant (enum),
       zombie_nautilus/variant, звуковые cat|wolf|cow|pig|chicken/
@@ -133,90 +133,90 @@ ADS-артефакт вместо файла).
 Логика («не фул рандом»): у каждой таблицы есть характер
 (weapons-heavy / treasure / junk / food / mixed / mob), под который
 согласованно подбираются предметы; entity-таблицы строятся как дроп моба
-(еда/мусор + редкая награда за killed_by_player), археология — черепки
-и хлам, бартер — сокровища. Основные пулы — курируемые, плюс «дикий
+(еда/мусор + редкая награда за killed_by_player), археология - черепки
+и хлам, бартер - сокровища. Основные пулы - курируемые, плюс «дикий
 тир»: с малым шансом может выпасть ЛЮБОЙ предмет полного каталога
-(1523 id — весь реестр minecraft:item минус технические: air, barrier,
+(1523 id - весь реестр minecraft:item минус технические: air, barrier,
 light, командные/структурные блоки, debug_stick, knowledge_book,
 test_*). Специфичные компоненты ставятся только на «свои» предметы
-(баннеры, книги, фейерверки, вёдра, спавн-яйца и т.д.) — 98 из 111
+(баннеры, книги, фейерверки, вёдра, спавн-яйца и т.д.) - 98 из 111
 полей DataComponents (tooltip_display и tooltip_style убраны из
-генерации: прятатьTooltip-трюки запутывали игроков); недостающие —
+генерации: прятатьTooltip-трюки запутывали игроков); недостающие -
 технические (recipes,
 map_postprocessing, debug_stick_state и др.) либо не выдаваемые
 намеренно, лутом не выдаются. Вложенность
-ГЛУБОКАЯ — компоненты внутри компонентов: арбалет заряжен
+ГЛУБОКАЯ - компоненты внутри компонентов: арбалет заряжен
 зачарованными зельевыми стрелами (potion_contents с кастомными
-комбинациями эффектов) и фейерверками С взрывами; мешок и сундук —
+комбинациями эффектов) и фейерверками С взрывами; мешок и сундук -
 с книгой, рогом, пластинкой, арбалетом внутри (тематические заливки
 «припасы/дары земли/коллекция»); еда превращается (use_remainder)
-в другой предмет — с шансом 40-60% оставляя после себя посуду,
+в другой предмет - с шансом 40-60% оставляя после себя посуду,
 остаток из пула или КАСТОМНЫЙ именной остаток («Косточка от
-похлёбки»); у предмета есть «истинное имя» (item_name — базовое имя,
+похлёбки»); у предмета есть «истинное имя» (item_name - базовое имя,
 его перекрывает custom_name).
 
 Инварианты генерации (жалобы юзеров, сверяются самотестом):
   * БАЗОВЫЕ АТРИБУТЫ: attribute_modifiers на предмете с ванильными
     дефолтами всегда НАЧИНАЕТСЯ с них (броня: armor+armor_toughness
     своего слота, нэзерит + knockback_resistance; оружие/инструменты:
-    attack_damage+attack_speed по ванильным значениям) — «не урезать,
+    attack_damage+attack_speed по ванильным значениям) - «не урезать,
     а ДОПОЛНИТЬ»;
-  * СЛОТЫ атрибутов — только работающие: armor-слоты (head/chest/legs/
-    feet/armor) — предметам, которые реально туда надеваются (броне
-    или «дикой» диковине с equippable), hand-слоты — оружию/инструментам
-    и «рукастым» предметам; слот any — где угодно;
+  * СЛОТЫ атрибутов - только работающие: armor-слоты (head/chest/legs/
+    feet/armor) - предметам, которые реально туда надеваются (броне
+    или «дикой» диковине с equippable), hand-слоты - оружию/инструментам
+    и «рукастым» предметам; слот any - где угодно;
   * equippable.asset_id НЕ рандомится (текстура брони на игроке
     соответствует предмету); у настоящей брони компонент equippable
-    вообще не трогаем — ванильный уже на месте;
+    вообще не трогаем - ванильный уже на месте;
   * camera_overlay не генерируется; компонент stackable не ставится
-    никогда; max_stack_size — только «бонусный» (65-99) и только
+    никогда; max_stack_size - только «бонусный» (65-99) и только
     недamageable предметам с >=2 другими кастомными компонентами;
   * tooltip_display / tooltip_style / hide_tooltip / hidden_components
     НЕ генерируются НИКОГДА (самотест грепает сгенерированный JSON);
-  * имена и lore РАСКРЫВАЮТ фактическое содержимое (зелья — эффект,
-    атрибуты — величина, чары, еда, планер...), а не полностью
+  * имена и lore РАСКРЫВАЮТ фактическое содержимое (зелья - эффект,
+    атрибуты - величина, чары, еда, планер...), а не полностью
     рандомные; упоминаний trim в именах/лоре нет (trim виден и так);
   * НЕ БЫВАЕТ предметов «только с визуалом»: если после генерации
     компонентов у предмета остались лишь косметические особенности
     (rarity, item_name, custom_name, lore, окраска, глинт, custom_data,
-    орнаменты...), ему добавляется РАБОЧАЯ фича — приоритетно
+    орнаменты...), ему добавляется РАБОЧАЯ фича - приоритетно
     пассивное зачарование измерения (attributes/tick/location_changed/
-    damage_immunity/prevent_* — действуют при ношении/удержании),
-    фолбэк — функциональный компонент (attribute_modifiers с базовыми
+    damage_immunity/prevent_* - действуют при ношении/удержании),
+    фолбэк - функциональный компонент (attribute_modifiers с базовыми
     значениями, potion_contents, glider, consumable с эффектами);
   * КАЖДОЕ кастомное зачарование измерения (id не из minecraft:)
-    получает lore-строку «Имя зачарования — описание действия»
-    (описание — gen_enchantments.summarize_enchantment); ванильные
+    получает lore-строку «Имя зачарования - описание действия»
+    (описание - gen_enchantments.summarize_enchantment); ванильные
     зачарования в lore НЕ описываются (игроки их знают);
-  * КАПЫ (жалоба: «слишком много rolls — контейнеры ПУСТЫЕ от передозировки,
-    игра ВИСНЕТ после убийства моба») — жёсткие пределы, проверяются
+  * КАПЫ (жалоба: «слишком много rolls - контейнеры ПУСТЫЕ от передозировки,
+    игра ВИСНЕТ после убийства моба») - жёсткие пределы, проверяются
     самотестом на КАЖДОЙ таблице:
-      - пулов ≤ 8 (mob 1-2, chest 3-6, treasure 4-8, прочие 2-5);
-      - rolls ≤ 6 (и min ≥ 1: роллы никогда не «съедают» пул),
-        bonus_rolls ≤ 2 (только не-mob пула, редко);
-      - вложенные loot_table-записи: ≤ 2 на таблицу, глубина ровно 1
+      - пулов <= 8 (mob 1-2, chest 3-6, treasure 4-8, прочие 2-5);
+      - rolls <= 6 (и min >= 1: роллы никогда не «съедают» пул),
+        bonus_rolls <= 2 (только не-mob пула, редко);
+      - вложенные loot_table-записи: <= 2 на таблицу, глубина ровно 1
         (таблица-цель сама ссылок не имеет; ссылки только «вперёд» или
-        на ванильные id — план ссылок строится заранее в rand_loot);
+        на ванильные id - план ссылок строится заранее в rand_loot);
       - mob-таблицы (entity): 1-2 пула, rolls 1-2, БЕЗ вложенных таблиц
-        и group/alternatives (суммарно ≤ ~6 предметов с убийства),
-        предметы «лёгкие» — ≤ 2 функциональных компонентов
+        и group/alternatives (суммарно <= ~6 предметов с убийства),
+        предметы «лёгкие» - <= 2 функциональных компонентов
         (имя/lore-подсказки не в счёт), без контейнеров/зарядов/NBT-мобов;
   * ПУСТЫЕ КОНТЕЙНЕРЫ невозможны: в КАЖДОЙ таблице есть «гарантийный»
-    пул (первый) — rolls ≥ 1, БЕЗ условий пула, БЕЗ empty-записей, с
+    пул (первый) - rolls >= 1, БЕЗ условий пула, БЕЗ empty-записей, с
     хотя бы одной безусловной item-записью (plain item не вылетает и
-    из контекстной чистки _strip_table). Пустые записи (empty) — только
+    из контекстной чистки _strip_table). Пустые записи (empty) - только
     в НЕпервом пуле и с малым весом; unconditional-альтернативы
-    (перехват выбора) не генерируются в принципе — не-последний ребёнок
+    (перехват выбора) не генерируются в принципе - не-последний ребёнок
     alternatives ВСЕГДА с условием;
   * ЗАЧАРОВАНИЯ ТОЛЬКО НА СОВМЕСТИМЫХ ПРЕДМЕТАХ (жалоба: «не надо мечу
-    давать защиту — его нельзя экипировать»), проверяется самотестом
+    давать защиту - его нельзя экипировать»), проверяется самотестом
     по ВСЕМ таблицам:
       - ванильные: каждый id зачарования несёт точный список предметов
-        из jar 26.2 (data/minecraft/enchantment/*.json — supported_items
+        из jar 26.2 (data/minecraft/enchantment/*.json - supported_items
         через теги #minecraft:enchantable/*, содержимое тегов захардкожено
         по data/minecraft/tags/item/enchantable/*.json): sharpness не
-        попадёт на кирку, protection — на меч, knockback/looting — на
-        топор; enchanted_book — исключение-носитель (любые, применяются
+        попадёт на кирку, protection - на меч, knockback/looting - на
+        топор; enchanted_book - исключение-носитель (любые, применяются
         наковальней только к совместимому);
       - кастомные (rndim:*): предмет обязан входить в supported_items
         зачарования (кэш _ENCH_INFO: тег|#id|список разрешается картой
@@ -226,25 +226,25 @@ map_postprocessing, debug_stick_state и др.) либо не выдаваемы
         явных опций валиден сам по себе;
   * ТЕМАТИЧЕСКИЕ ПУЛЫ: у каждой таблицы 2-4 темы (арсенал/провизия/
     сокровища/инструменты/алхимия/письмена/хлам/реликвии), каждая со
-    своим весом; пул целиком одной темы — наборы записей согласованы
+    своим весом; пул целиком одной темы - наборы записей согласованы
     по смыслу, а не полный рандом;
   * РАЗНООБРАЗИЕ ФУНКЦИЙ/УСЛОВИЙ: цепочки set_count+limit_count+
     set_damage+enchant_*, кривые количества constant/uniform/binomial,
     bonus_rolls, условия random_chance / random_chance_with_enchanted_
     bonus (только entity: нужен ATTACKING_ENTITY) / table_bonus (только
     fishing/archaeology/vault: нужен TOOL) / killed_by_player (entity) /
-    any_of/all_of/inverted — контекст каждого условия сверен с
+    any_of/all_of/inverted - контекст каждого условия сверен с
     LootContextParamSets 26.2 (javap), чистка _strip_cond снимает
     несовместимое при вложенности;
-  * ПУЛЫ/РОЛЛЫ дифференцированы по типу таблицы: entity (дроп моба) —
-    1-2 пула и rolls 1-2; chest — 3-6 пулов и rolls 1-6 (в среднем 2-4);
-    таблицы сокровищ (характер treasure у chest-типа) — самые богатые
-    (4-8 пулов, rolls 2-6); прочие — 2-5 пулов, rolls 1-6;
+  * ПУЛЫ/РОЛЛЫ дифференцированы по типу таблицы: entity (дроп моба) -
+    1-2 пула и rolls 1-2; chest - 3-6 пулов и rolls 1-6 (в среднем 2-4);
+    таблицы сокровищ (характер treasure у chest-типа) - самые богатые
+    (4-8 пулов, rolls 2-6); прочие - 2-5 пулов, rolls 1-6;
   * USE_REMAINDER: съедобный предмет (vanilla-еда или компонент food/
     consumable) с шансом 40-60% оставляет остаток: базовая посуда
     (миска у супов, бутылка у мёда), любой из пула остатков (bone,
     paper, candle, charcoal, feather, flint, string, leather,
-    clay_ball, gold_nugget) или — с шансом 35% — КАСТОМНЫЙ именной
+    clay_ball, gold_nugget) или - с шансом 35% - КАСТОМНЫЙ именной
     остаток («Косточка от похлёбки», изредка с lore); count всегда 1
     (_STACK1; именной остаток в стае копий быть не может).
 
@@ -252,30 +252,30 @@ map_postprocessing, debug_stick_state и др.) либо не выдаваемы
 
     rand_loot(rng, ns, name, count=None) -> {"loot_tables": {id: json, ...}}
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace ('rndim');
-    name   — имя измерения (префикс id таблиц);
-    count  — сколько таблиц создать (None → 1-2).
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace ('rndim');
+    name   - имя измерения (префикс id таблиц);
+    count  - сколько таблиц создать (None -> 1-2).
 
-    set_custom_enchants(ids)      — id кастомных зачарований измерения
+    set_custom_enchants(ids)      - id кастомных зачарований измерения
                                      (подмешивает generate_dimension);
-    set_ench_summaries(info)      — сведения о них: {id: описание} или
+    set_ench_summaries(info)      - сведения о них: {id: описание} или
                                      {id: {"name", "desc", "passive",
                                      "supported_items"}}; без явного вызова
-                                     модуль находит их сам — ленивым
+                                     модуль находит их сам - ленивым
                                      импортом gen_enchantments
                                      (LAST_ENCHANTMENTS в том же процессе).
-                                     supported_items ("#тег"|id|[id,...]) —
+                                     supported_items ("#тег"|id|[id,...]) -
                                      для проверки совместимости: предмет
                                      обязан входить в него, иначе зачарование
                                      ставится только на enchanted_book.
 
-Вложенные loot_table-ссылки — только «вперёд» (на таблицы с бОльшим
+Вложенные loot_table-ссылки - только «вперёд» (на таблицы с бОльшим
 номером) или на ванильные id: так рекурсия физически невозможна.
-Файлы на диск модуль не пишет — возвращает dict.
+Файлы на диск модуль не пишет - возвращает dict.
 """
 
-# (модуль math больше не нужен — «тяжёлый хвост» пулов убран вместе с
+# (модуль math больше не нужен - «тяжёлый хвост» пулов убран вместе с
 # жалобой на передоз роллов)
 
 # ---------------------------------------------------------------------------
@@ -338,17 +338,17 @@ TOOLS = PICKAXES + SHOVELS + HOES + ["minecraft:shears",
 # Damageable-предметы: в дефолтных компонентах есть minecraft:max_damage.
 # ВАЛИДАТОР 26.2 (ItemStack.validateComponents): max_stack_size > 1 у предмета
 # с max_damage (дефолтным ИЛИ добавленным патчем) = «Item cannot be both
-# damageable and stackable» — предмет вообще не создастся. Список получен
-# ЭМПИРИЧЕСКИ: серверная проба 26.2 — все 1523 предмета реестра выданы
+# damageable and stackable» - предмет вообще не создастся. Список получен
+# ЭМПИРИЧЕСКИ: серверная проба 26.2 - все 1523 предмета реестра выданы
 # через loot spawn с set_components {max_stack_size: 2, custom_data.probe};
-# ровно эти 84 предмета упали с этой ошибкой (байткод Items ненадёжен —
+# ровно эти 84 предмета упали с этой ошибкой (байткод Items ненадёжен -
 # часть регистраций через лямбды). Обновлять при смене версии той же пробой.
 _DAMAGEABLE = frozenset(
     WEAPONS + ARMOR + TOOLS + SHIELDS + ELYTRA + CROSSBOWS +
     ["minecraft:turtle_helmet", "minecraft:wolf_armor",
      "minecraft:warped_fungus_on_a_stick", "minecraft:trident"])
 
-# еда (в т.ч. гнилая — для моб-столов)
+# еда (в т.ч. гнилая - для моб-столов)
 FOOD = ["minecraft:bread", "minecraft:apple", "minecraft:golden_apple",
         "minecraft:enchanted_golden_apple", "minecraft:cooked_beef",
         "minecraft:cooked_porkchop", "minecraft:cooked_chicken",
@@ -382,8 +382,8 @@ JUNK = ["minecraft:string", "minecraft:stick", "minecraft:bowl",
         "minecraft:resin_clump", "minecraft:copper_nugget",
         "minecraft:gold_nugget", "minecraft:iron_nugget"]
 
-# ресурсы (средняя ценность; tipped_arrow — ради potion_contents:
-# зачарованные/зельевые стрелы — самостоятельный класс лута)
+# ресурсы (средняя ценность; tipped_arrow - ради potion_contents:
+# зачарованные/зельевые стрелы - самостоятельный класс лута)
 RESOURCES = ["minecraft:coal", "minecraft:iron_ingot", "minecraft:raw_iron",
              "minecraft:copper_ingot", "minecraft:raw_copper",
              "minecraft:gold_ingot", "minecraft:raw_gold",
@@ -396,8 +396,8 @@ RESOURCES = ["minecraft:coal", "minecraft:iron_ingot", "minecraft:raw_iron",
              "minecraft:firework_rocket"]
 
 # сокровища (включая ПУСТЫЕ КОНТЕЙНЕРЫ-сокровищницы: сундук/шалкер/
-# медный сундук — им достанется container/container_loot/lock с нашими
-# тематическими заливками; шалкеры — стек-1, см. _STACK1)
+# медный сундук - им достанется container/container_loot/lock с нашими
+# тематическими заливками; шалкеры - стек-1, см. _STACK1)
 VALUABLES = ["minecraft:diamond", "minecraft:emerald",
              "minecraft:netherite_scrap", "minecraft:netherite_ingot",
              "minecraft:echo_shard", "minecraft:nether_star",
@@ -435,7 +435,7 @@ POTIONS = ["minecraft:potion", "minecraft:splash_potion",
 BOOKS = ["minecraft:book", "minecraft:writable_book"]
 ENCH_BOOKS = ["minecraft:enchanted_book"]
 
-# id зелий — реестр Potions.class 26.2 (strong_/long_ вариантов больше нет)
+# id зелий - реестр Potions.class 26.2 (strong_/long_ вариантов больше нет)
 POTIONS_IDS = ["water", "mundane", "thick", "awkward", "night_vision",
                "invisibility", "leaping", "fire_resistance", "swiftness",
                "slowness", "turtle_master", "water_breathing", "healing",
@@ -494,7 +494,7 @@ MISC = ["minecraft:compass", "minecraft:clock", "minecraft:spyglass",
         "minecraft:decorated_pot", "minecraft:firework_star",
         "minecraft:sulfur_cube_bucket"]
 # голого minecraft:harness НЕТ в реестре item 26.2 (только цветные
-# *_harness) — «Unknown registry key in minecraft:item» на загрузке пака
+# *_harness) - «Unknown registry key in minecraft:item» на загрузке пака
 
 # ванильные таблицы для вложенных loot_table-записей (все id из jar)
 VANILLA_TABLES = [
@@ -549,7 +549,7 @@ VANILLA_TABLES = [
     "minecraft:gameplay/hero_of_the_village/librarian_gift",
 ]
 
-# теги предметов для tag-записей — все есть в data/minecraft/tags/item/ 26.2
+# теги предметов для tag-записей - все есть в data/minecraft/tags/item/ 26.2
 ITEM_TAGS = [
     "minecraft:planks", "minecraft:logs", "minecraft:flowers",
     "minecraft:small_flowers", "minecraft:wool", "minecraft:wool_carpets",
@@ -575,53 +575,65 @@ ITEM_TAGS = [
 # Зачарования: id -> (max_level по jar, ТОЧНЫЙ набор предметов).
 # Набор = содержимое supported_items зачарования из jar 26.2
 # (data/minecraft/enchantment/*.json), развёрнутое через теги
-# #minecraft:enchantable/* (карты тегов — см. ENCH_TAG_ITEMS ниже):
+# #minecraft:enchantable/* (карты тегов - см. ENCH_TAG_ITEMS ниже):
 #   sharpness = sharp_weapon (мечи/копья/топоры), knockback/looting =
 #   melee_weapon (ТОЛЬКО мечи/копья), fire_aspect = без топоров и т.д.
 # Инвариант самотеста: ванильное зачарование ставится на предмет
-# только если предмет ∈ набору (sharpness не на кирке, protection
-# не на мече); enchanted_book — исключение-носитель.
+# только если предмет ? набору (sharpness не на кирке, protection
+# не на мече); enchanted_book - исключение-носитель.
 # ---------------------------------------------------------------------------
 
-# кастомные зачарования текущего измерения (id "ns:name_enchN") — их
+# кастомные зачарования текущего измерения (id "ns:name_enchN") - их
 # подмешивает generate_dimension.py перед вызовом rand_loot
 CUSTOM_ENCHS = []
 
 # ЯВНЫЕ сведения о кастомных зачарованиях: {id: {"name", "desc",
-# "passive", "slots"}} — задаёт set_ench_summaries (образец —
+# "passive", "slots"}} - задаёт set_ench_summaries (образец -
 # set_custom_enchants). Без явного вызова gen_loot строит их сам:
 # ленивым импортом gen_enchantments (в одном процессе generate_dimension
 # вызывает rand_enchantments ДО rand_loot, и последний результат лежит
 # в gen_enchantments.LAST_ENCHANTMENTS).
 ENCH_SUMMARIES = {}
+# Atomic explicit snapshot from the dimension generator; None retains the
+# standalone module's legacy LAST_* discovery, {} means explicitly no data.
+ENCH_CONTEXT = None
 
-# рабочий кэш сведений (имя + описание + пассивность + слоты) — строится
+
+def set_enchantment_context(enchantments, function_metadata):
+    """Pass the exact world snapshot; metadata remains Python-side, never JSON."""
+    global ENCH_CONTEXT
+    ENCH_CONTEXT = (dict(enchantments or {}), dict(function_metadata or {}))
+
+
+# рабочий кэш сведений (имя + описание + пассивность + слоты) - строится
 # заново при каждом rand_loot слиянием явных ENCH_SUMMARIES и найденного
 _ENCH_INFO = {}
 
 
 def set_custom_enchants(ids):
     """Задать кастомные зачарования измерения для последующей генерации
-    лута (связка лут ↔ зачарования). Вызывать до rand_loot."""
-    global CUSTOM_ENCHS
+    лута (связка лут ? зачарования). Вызывать до rand_loot."""
+    global CUSTOM_ENCHS, ENCH_CONTEXT
     CUSTOM_ENCHS = [i for i in (ids or []) if i]
+    ENCH_CONTEXT = None  # new ID set invalidates the old explicit snapshot
 
 
 def set_ench_summaries(info):
     """Задать краткие сведения о кастомных зачарованиях измерения
     (по образцу set_custom_enchants; вызывать до rand_loot).
 
-    info — {id: описание-строка} или {id: {"name": имя зачарования,
+    info - {id: описание-строка} или {id: {"name": имя зачарования,
     "desc": описание действия (до 8 слов), "passive": bool (действует
     при ношении/удержании), "slots": [слоты], "supported_items":
-    "#тег" | id | [id, ...] — те же формы, что в JSON зачарования
+    "#тег" | id | [id, ...] - те же формы, что в JSON зачарования
     (26.2 HolderSet<Item>); без supported_items зачарование ставится
-    только на enchanted_book-носители — безопасный отказ)}. Служит для
-    lore-подсказок «Имя — описание действия», фикса «предмет только с
-    визуалом» и ПРОВЕРКИ СОВМЕСТИМОСТИ (предмет ∈ supported_items).
+    только на enchanted_book-носители - безопасный отказ)}. Служит для
+    lore-подсказок «Имя - описание действия», фикса «предмет только с
+    визуалом» и ПРОВЕРКИ СОВМЕСТИМОСТИ (предмет ? supported_items).
     Ключи name/desc/passive/slots/supported_items необязательны; явные
-    сведения перекрывают автопоиск по gen_enchantments.
-    LAST_ENCHANTMENTS."""
+    сведения перекрывают автопоиск по gen_enchantments.LAST_ENCHANTMENTS,
+    кроме desc для известных сгенерированных command families: достоверный
+    COMMAND_FAMILIES / LAST_FUNCTION_METADATA имеет приоритет."""
     global ENCH_SUMMARIES
     ENCH_SUMMARIES = {}
     for k, v in (info or {}).items():
@@ -644,17 +656,22 @@ def _build_ench_info():
     """{id: {"name","desc","passive","slots","support"}} по CUSTOM_ENCHS:
     явные ENCH_SUMMARIES + автопоиск по gen_enchantments.
     LAST_ENCHANTMENTS (name = description.text, desc =
-    summarize_enchantment, passive — passive_enchants, slots — поле slots
-    зачарования, support — разобранный supported_items, см.
+    summarize_enchantment, passive - passive_enchants, slots - поле slots
+    зачарования, support - разобранный supported_items, см.
     _resolve_supported). Автопоиск молчит, если gen_enchantments
-    недоступен или ничего не генерировал — тогда работают только явные
+    недоступен или ничего не генерировал - тогда работают только явные
     set_ench_summaries."""
     info = {}
     try:
         import gen_enchantments as _ge
-        last = getattr(_ge, "LAST_ENCHANTMENTS", None) or {}
+        if ENCH_CONTEXT is None:
+            last = getattr(_ge, "LAST_ENCHANTMENTS", None) or {}
+            command_meta = getattr(_ge, "LAST_FUNCTION_METADATA", {})
+        else:
+            last, command_meta = ENCH_CONTEXT
         passive = set(getattr(_ge, "passive_enchants", lambda d: [])(last))
         summ = getattr(_ge, "summarize_enchantment", None)
+        command_lore = getattr(_ge, "command_family_lore", None)
         for eid in CUSTOM_ENCHS:
             ejson = last.get(eid)
             if not isinstance(ejson, dict):
@@ -669,7 +686,15 @@ def _build_ench_info():
                     desc = str(summ(ejson) or "")
                 except Exception:
                     desc = ""
+            # Authoritative structured metadata, not guesses from names or
+            # mcfunction substring parsing. @s is the affected entity, not
+            # necessarily the bearer/player. Native summary remains fallback.
+            meta = command_meta.get(eid)
+            if meta and command_lore:
+                native = _ge.summarize_native_enchantment(ejson)
+                desc = ". ".join(part for part in (native, command_lore(meta)) if part)
             info[eid] = {"name": name, "desc": desc,
+                         "command_families": list(meta["families"]) if meta else [],
                          "passive": eid in passive,
                          "slots": [s for s in (ejson.get("slots") or [])
                                    if isinstance(s, str)],
@@ -678,7 +703,7 @@ def _build_ench_info():
     except ImportError:
         pass
     # явные сведения сильнее автопоиска (по ключам; только непустые
-    # значения — строковый API {id: описание} не должен гасить
+    # значения - строковый API {id: описание} не должен гасить
     # автонайденные passive/имя/support; поддержа из явного API
     # используется, только если автопоиск её не нашёл)
     for eid, v in ENCH_SUMMARIES.items():
@@ -686,6 +711,10 @@ def _build_ench_info():
                               "passive": False, "slots": [],
                               "support": None})
         for k in ("name", "desc", "passive", "slots"):
+            # Generated family metadata wins over stale generic "ritual"
+            # descriptions; explicit summaries still work for external enchants.
+            if k == "desc" and base.get("command_families"):
+                continue
             if v.get(k):
                 base[k] = v[k]
         if base.get("support") is None and v.get("supported_items") \
@@ -696,17 +725,17 @@ def _build_ench_info():
 
 # ---------------------------------------------------------------------------
 # СОВМЕСТИМОСТЬ ЗАЧАРОВАНИЙ С ПРЕДМЕТАМИ (жалоба: «не надо мечу давать
-# защиту — его нельзя экипировать»). Всё захардкожено из jar 26.2:
-#   * data/minecraft/tags/item/enchantable/*.json — 22 тега (внутри —
+# защиту - его нельзя экипировать»). Всё захардкожено из jar 26.2:
+#   * data/minecraft/tags/item/enchantable/*.json - 22 тега (внутри -
 #     вложенные #minecraft:swords/#minecraft:chest_armor/...);
 #   * data/minecraft/tags/item/{swords,pickaxes,axes,shovels,hoes,
 #     spears,chest_armor,leg_armor,head_armor,foot_armor,skulls,
-#     breaks_decorated_pots}.json — простые теги;
-#   * data/minecraft/enchantment/*.json — supported_items каждого
+#     breaks_decorated_pots}.json - простые теги;
+#   * data/minecraft/enchantment/*.json - supported_items каждого
 #     ванильного зачарования (см. ENCHANTS ниже).
 # gen_enchantments использует в supported_items только "#minecraft:
 # enchantable/*", "#minecraft:{swords,pickaxes,axes,shovels,hoes,
-# breaks_decorated_pots}", одиночные id и списки id — всё покрыто.
+# breaks_decorated_pots}", одиночные id и списки id - всё покрыто.
 # ---------------------------------------------------------------------------
 
 _SKULL_ITEMS = frozenset([
@@ -752,7 +781,7 @@ _TAG_MINING = _TAG_AXES | _TAG_PICKAXES | _TAG_SHOVELS | _TAG_HOES | \
 _TAG_MINING_LOOT = _TAG_AXES | _TAG_PICKAXES | _TAG_SHOVELS | _TAG_HOES
 
 # карта ВСЕХ тегов, которые gen_enchantments может поставить в
-# supported_items ("#...") — незнакомый тег = зачарование не ставим
+# supported_items ("#...") - незнакомый тег = зачарование не ставим
 ENCH_TAG_ITEMS = {
     "#minecraft:enchantable/melee_weapon": _TAG_MELEE,
     "#minecraft:enchantable/sharp_weapon": _TAG_SHARP,
@@ -794,9 +823,9 @@ ENCH_TAG_ITEMS = {
 
 def _resolve_supported(sup):
     """supported_items зачарования -> frozenset предметов ИЛИ None
-    (неразрешимо: незнакомый тег/мусор — тогда зачарование на предметы
+    (неразрешимо: незнакомый тег/мусор - тогда зачарование на предметы
     НЕ ставим: гарантия валидности важнее щедрости).
-    Формат 26.2 (HolderSet<Item>): "#тег" | "id" | [id, ...] — внутри
+    Формат 26.2 (HolderSet<Item>): "#тег" | "id" | [id, ...] - внутри
     списка тегов НЕ бывает (проверено gen_enchantments'ом и сервером)."""
     if isinstance(sup, str):
         if sup.startswith("#"):
@@ -812,9 +841,9 @@ def _resolve_supported(sup):
 def _custom_ench_ok(eid, item):
     """Можно ли поставить кастомное зачарование измерения на предмет:
     предмет обязан входить в supported_items зачарования (кэш _ENCH_INFO,
-    поле support). Книги-носители (enchanted_book) — всегда да: чары
+    поле support). Книги-носители (enchanted_book) - всегда да: чары
     применятся наковальней лишь к совместимому. Нет сведений/тег не
-    разрешён — НЕТ (безопасный отказ)."""
+    разрешён - НЕТ (безопасный отказ)."""
     if item in ENCH_BOOKS:
         return True
     info = _ENCH_INFO.get(eid)
@@ -824,13 +853,13 @@ def _custom_ench_ok(eid, item):
     return bool(sup) and item in sup
 
 ENCHANTS = {
-    # прочность (вся экипировка и инструменты; vanishing шире — черепа,
-    # компас, тыква) — сверен с supported_items каждого зачарования
+    # прочность (вся экипировка и инструменты; vanishing шире - черепа,
+    # компас, тыква) - сверен с supported_items каждого зачарования
     # в jar 26.2 (data/minecraft/enchantment/*.json)
     "unbreaking":      (3, _TAG_DURABILITY),
     "mending":         (1, _TAG_DURABILITY),
     "vanishing_curse": (1, _TAG_VANISHING),
-    # броня (binding_curse — equippable: и черепа/тыква/элитры)
+    # броня (binding_curse - equippable: и черепа/тыква/элитры)
     "protection":            (4, _TAG_ARMOR),
     "fire_protection":       (4, _TAG_ARMOR),
     "blast_protection":      (4, _TAG_ARMOR),
@@ -844,10 +873,10 @@ ENCHANTS = {
     "depth_strider":         (3, _TAG_FOOT),
     "frost_walker":          (2, _TAG_FOOT),
     "soul_speed":            (3, _TAG_FOOT),
-    # ближний бой: sharpness — sharp_weapon (мечи/копья/ТОПОРЫ),
-    # smite/bane — weapon (+ булава), knockback/looting — ТОЛЬКО
-    # melee_weapon (мечи/копья, НЕ топоры), fire_aspect — без топоров,
-    # sweeping — только мечи, lunge — только копья (всё по jar!)
+    # ближний бой: sharpness - sharp_weapon (мечи/копья/ТОПОРЫ),
+    # smite/bane - weapon (+ булава), knockback/looting - ТОЛЬКО
+    # melee_weapon (мечи/копья, НЕ топоры), fire_aspect - без топоров,
+    # sweeping - только мечи, lunge - только копья (всё по jar!)
     "sharpness":          (5, _TAG_SHARP),
     "smite":              (5, _TAG_WEAPON),
     "bane_of_arthropods": (5, _TAG_WEAPON),
@@ -860,7 +889,7 @@ ENCHANTS = {
     "density":    (5, _TAG_MACES),
     "breach":     (4, _TAG_MACES),
     "wind_burst": (3, _TAG_MACES),
-    # добыча (efficiency — и ножницы; fortune/silk — без них)
+    # добыча (efficiency - и ножницы; fortune/silk - без них)
     "efficiency": (5, _TAG_MINING),
     "fortune":    (3, _TAG_MINING_LOOT),
     "silk_touch": (1, _TAG_MINING_LOOT),
@@ -882,42 +911,62 @@ ENCHANTS = {
 }
 
 # ПРОВЕРКА СОВМЕСТИМОСТИ: id зачарования -> предмет поддерживается?
-# (кники-носители — исключение, см. _enchantments_map: enchanted_book
+# (кники-носители - исключение, см. _enchantments_map: enchanted_book
 # хранит любые зачарования, наковальня применит лишь совместимые)
 def _ench_supports(ench, item):
     """Валидно ли ванильное зачарование `ench` (без префикса) для
-    предмета — по точным supported_items из jar 26.2 (ENCHANTS)."""
+    предмета - по точным supported_items из jar 26.2 (ENCHANTS)."""
     spec = ENCHANTS.get(str(ench).split(":")[-1])
     return spec is not None and item in spec[1]
 
 # ---------------------------------------------------------------------------
 # Атрибуты: id -> (мин, макс). Имена подтверждены Attributes.class 26.2
-# (префикса generic. больше нет). Величины — с разумными пределами.
+# (префикса generic. больше нет). Величины - с разумными пределами.
 # ---------------------------------------------------------------------------
 
 ATTRIBUTES = [
-    ("minecraft:max_health", 1.0, 100.0),
-    ("minecraft:max_absorption", 1.0, 60.0),
-    ("minecraft:attack_damage", 1.0, 50.0),
-    ("minecraft:attack_speed", 0.5, 6.0),
-    ("minecraft:attack_knockback", 0.5, 8.0),
-    ("minecraft:knockback_resistance", 0.05, 1.5),
-    ("minecraft:armor", 1.0, 30.0),
-    ("minecraft:armor_toughness", 1.0, 20.0),
-    ("minecraft:movement_speed", 0.01, 0.6),
-    ("minecraft:flying_speed", 0.05, 0.4),
-    ("minecraft:jump_strength", 0.05, 2.0),
-    ("minecraft:step_height", 0.5, 3.0),
-    ("minecraft:block_break_speed", 0.5, 10.0),
-    ("minecraft:block_interaction_range", 0.5, 4.0),
-    ("minecraft:entity_interaction_range", 0.5, 4.0),
-    ("minecraft:explosion_knockback_resistance", 0.1, 1.0),
-    ("minecraft:fall_damage_multiplier", 0.25, 2.0),
-    ("minecraft:safe_fall_distance", 1.0, 30.0),
-    ("minecraft:submerged_mining_speed", 0.2, 4.0),
-    ("minecraft:sneaking_speed", 0.05, 0.6),
-    ("minecraft:oxygen_bonus", 1.0, 10.0),
-    ("minecraft:mining_efficiency", 0.2, 5.0),
+    # (id, lo, mid, peak, can_neg, neg_mid, neg_peak)
+    # Здоровье и атака
+    ("minecraft:max_health", 1.0, 4.0, 14.0, True, 2.0, 6.0),
+    ("minecraft:max_absorption", 1.0, 3.0, 8.0, False, 0.0, 0.0),
+    ("minecraft:attack_damage", 1.0, 3.0, 10.0, True, 1.5, 4.0),
+    ("minecraft:attack_speed", 0.1, 0.4, 1.2, True, 0.2, 0.6),
+    ("minecraft:attack_knockback", 0.3, 0.8, 2.2, False, 0.0, 0.0),
+    ("minecraft:sweeping_damage_ratio", 0.1, 0.3, 0.8, False, 0.0, 0.0),
+
+    # Защита и броня (не могут быть отрицательными - клампятся в 0)
+    ("minecraft:armor", 1.0, 3.0, 8.0, False, 0.0, 0.0),
+    ("minecraft:armor_toughness", 1.0, 2.0, 5.0, False, 0.0, 0.0),
+    ("minecraft:knockback_resistance", 0.05, 0.12, 0.35, False, 0.0, 0.0),
+    ("minecraft:explosion_knockback_resistance", 0.05, 0.15, 0.40, False, 0.0, 0.0),
+
+    # Движение и мобильность
+    ("minecraft:movement_speed", 0.005, 0.020, 0.065, True, 0.015, 0.035),
+    ("minecraft:flying_speed", 0.005, 0.015, 0.045, False, 0.0, 0.0),
+    ("minecraft:jump_strength", 0.02, 0.07, 0.22, False, 0.0, 0.0),
+    ("minecraft:step_height", 0.2, 0.5, 1.2, False, 0.0, 0.0),
+    ("minecraft:sneaking_speed", 0.03, 0.08, 0.25, False, 0.0, 0.0),
+    ("minecraft:movement_efficiency", 0.1, 0.3, 0.8, False, 0.0, 0.0),
+    ("minecraft:water_movement_efficiency", 0.1, 0.3, 0.8, False, 0.0, 0.0),
+    ("minecraft:bounciness", 0.1, 0.3, 0.8, False, 0.0, 0.0),
+
+    # Физика, размер и гравитация
+    ("minecraft:scale", 0.1, 0.3, 0.8, True, 0.2, 0.5),
+    ("minecraft:gravity", 0.01, 0.025, 0.06, True, 0.025, 0.06),
+    ("minecraft:fall_damage_multiplier", 0.05, 0.20, 0.50, True, 0.15, 0.40),
+
+    # Инструменты и добыча
+    ("minecraft:block_break_speed", 0.1, 0.35, 1.2, False, 0.0, 0.0),
+    ("minecraft:mining_efficiency", 0.5, 1.5, 4.0, False, 0.0, 0.0),
+    ("minecraft:submerged_mining_speed", 0.1, 0.4, 1.0, False, 0.0, 0.0),
+    ("minecraft:block_interaction_range", 0.5, 1.0, 2.5, True, 0.5, 1.2),
+    ("minecraft:entity_interaction_range", 0.5, 0.8, 2.0, True, 0.5, 1.0),
+
+    # Полезности и выживание
+    ("minecraft:safe_fall_distance", 1.0, 3.0, 10.0, False, 0.0, 0.0),
+    ("minecraft:oxygen_bonus", 1.0, 2.0, 6.0, False, 0.0, 0.0),
+    ("minecraft:luck", 1.0, 2.0, 5.0, True, 1.0, 3.0),
+    ("minecraft:burning_time", 0.1, 0.25, 0.6, True, 0.2, 0.5),
 ]
 
 _KIND_SLOTS = {
@@ -931,7 +980,7 @@ _KIND_SLOTS = {
 }
 
 # слоты для «диких» модификаторов на НЕоружии (EquipmentSlotGroup 26.2):
-# offhand оставлен только «рукастым» диковинам — атакующие атрибуты
+# offhand оставлен только «рукастым» диковинам - атакующие атрибуты
 # оружия работают лишь в mainhand
 _HAND_SLOTS_MAIN = ["mainhand", "hand", "any"]
 _HAND_SLOTS_ANY = ["mainhand", "offhand", "hand", "any"]
@@ -941,19 +990,19 @@ _HAND_SLOTS_ANY = ["mainhand", "offhand", "hand", "any"]
 # кислороду, но БЕЗ атрибутов брони вообще»). Механика 26.2: компонент
 # attribute_modifiers ЗАМЕНЯЕТ дефолтные модификаторы предмета ЦЕЛИКОМ,
 # поэтому при генерации собственных модификаторов ванильные дефолты
-# ВСЕГДА включаются В НАЧАЛО списка — «не урезать, а ДОПОЛНИТЬ».
+# ВСЕГДА включаются В НАЧАЛО списка - «не урезать, а ДОПОЛНИТЬ».
 #
 # ИСТОЧНИК ЗНАЧЕНИЙ: регистрации Items в jar 26.2
-# (minecraft-26.2-client.jar, net/minecraft/world/item/Items.class —
+# (minecraft-26.2-client.jar, net/minecraft/world/item/Items.class -
 # Item.Properties.attributes(...) / SwordItem.createAttributes(...) /
-# AxeItem/HoeItem/PickaxeItem/ShovelItem/MaceItem; броня — ArmorItem
+# AxeItem/HoeItem/PickaxeItem/ShovelItem/MaceItem; броня - ArmorItem
 # ArmorMaterial: очки брони по (материал, слот), armor_toughness по
 # материалу, нэзерит дополнительно knockback_resistance 0.1 на часть).
-# amount = ИТОГОВОЕ значение − база игрока: attack_damage база 1
-# (алмазный меч 7 урона → модификатор +6), attack_speed база 4.0
-# (меч 1.6 → −2.4). Медь (Copper Age, 26.x) — промеждуточный тир между
-# stone и iron (урон меча 5, броня 2/5/4/2); копьё (26.x) — копейное
-# оружие: урон «меч + 1», скорость 1.0. Таблица захардкожена — при
+# amount = ИТОГОВОЕ значение ? база игрока: attack_damage база 1
+# (алмазный меч 7 урона -> модификатор +6), attack_speed база 4.0
+# (меч 1.6 -> ?2.4). Медь (Copper Age, 26.x) - промеждуточный тир между
+# stone и iron (урон меча 5, броня 2/5/4/2); копьё (26.x) - копейное
+# оружие: урон «меч + 1», скорость 1.0. Таблица захардкожена - при
 # смене версии переписать по новому jar.
 # ---------------------------------------------------------------------------
 
@@ -1001,7 +1050,7 @@ _BASE_TOOL_ATTRS = {
     "minecraft:diamond_shovel": (4.5, -3.0),
     "minecraft:netherite_shovel": (5.5, -3.0),
     "minecraft:copper_shovel": (2.5, -3.0),
-    # мотыги (урон = база игрока 1 — модификатора урона нет;
+    # мотыги (урон = база игрока 1 - модификатора урона нет;
     # скорость растёт с тиром: 1/2/3/1/4/4, медь 2)
     "minecraft:wooden_hoe": (None, -3.0),
     "minecraft:stone_hoe": (None, -2.0),
@@ -1016,7 +1065,7 @@ _BASE_TOOL_ATTRS = {
 }
 
 # броня: материал -> (очки head/chest/legs/feet, armor_toughness,
-# knockback_resistance) — ArmorItem/ArmorMaterial из jar 26.2
+# knockback_resistance) - ArmorItem/ArmorMaterial из jar 26.2
 _BASE_ARMOR_ATTRS = {
     "leather": ((1, 3, 2, 1), 0, 0.0),    # итог 7
     "chainmail": ((2, 5, 4, 1), 0, 0.0),  # итог 12
@@ -1030,7 +1079,7 @@ _BASE_ARMOR_ATTRS = {
 
 def _build_base_attrs():
     """Собрать item -> [(атрибут, amount), ...] из таблиц выше.
-    (черепаший шлем — 2 брони, без твёрдости; элитра/щит/лук и прочее —
+    (черепаший шлем - 2 брони, без твёрдости; элитра/щит/лук и прочее -
     ванильных модификаторов не имеют, в таблицу не попадают)."""
     out = {}
     for it, (dmg, spd) in _BASE_TOOL_ATTRS.items():
@@ -1057,7 +1106,7 @@ def _build_base_attrs():
 _BASE_ATTRS = _build_base_attrs()
 
 # слот ванильного equippable у «настоящей» носимой брони (генератор сам
-# компонент не ставит — дефолтный уже на предмете; нужно аудиту слотов
+# компонент не ставит - дефолтный уже на предмете; нужно аудиту слотов
 # атрибутов и базовых модификаторов)
 _VANILLA_EQUIP = {}
 for _part, _slot in (("helmet", "head"), ("chestplate", "chest"),
@@ -1067,17 +1116,24 @@ for _part, _slot in (("helmet", "head"), ("chestplate", "chest"),
 _VANILLA_EQUIP["minecraft:turtle_helmet"] = "head"
 _VANILLA_EQUIP["minecraft:elytra"] = "chest"
 _VANILLA_EQUIP["minecraft:wolf_armor"] = "body"
+for _h in ("minecraft:skeleton_skull", "minecraft:wither_skeleton_skull",
+           "minecraft:zombie_head", "minecraft:creeper_head",
+           "minecraft:dragon_head", "minecraft:piglin_head",
+           "minecraft:player_head", "minecraft:carved_pumpkin"):
+    _VANILLA_EQUIP[_h] = "head"
+for _mat in ("leather", "copper", "iron", "golden", "diamond", "netherite"):
+    _VANILLA_EQUIP["minecraft:%s_horse_armor" % _mat] = "body"
 
 
 def _base_attr_slot(item):
-    """Слот для ванильных базовых модификаторов: броня — свой слот,
-    оружие/инструменты — mainhand (как в Items.class 26.2)."""
+    """Слот для ванильных базовых модификаторов: броня - свой слот,
+    оружие/инструменты - mainhand (как в Items.class 26.2)."""
     return _KIND_SLOTS.get(_kind_of(item), "mainhand")
 
 
 def _vanilla_base_mods(item, tag_prefix):
     """Ванильные дефолт-модификаторы предмета (см. _BASE_TOOL_ATTRS /
-    _BASE_ARMOR_ATTRS) в формате компонента 26.2. id с суффиксом _base —
+    _BASE_ARMOR_ATTRS) в формате компонента 26.2. id с суффиксом _base -
     по нему lore и имена отличают базу от собственных модификаторов."""
     specs = _BASE_ATTRS.get(item)
     if not specs:
@@ -1088,13 +1144,13 @@ def _vanilla_base_mods(item, tag_prefix):
             for i, (a, amt) in enumerate(specs)]
 
 # ---------------------------------------------------------------------------
-# «Дикий тир»: ПОЛНЫЙ каталог предметов 26.2 — весь реестр minecraft:item
+# «Дикий тир»: ПОЛНЫЙ каталог предметов 26.2 - весь реестр minecraft:item
 # (1523 id из reports/registries.json реального сервера; он посимвольно
 # совпадает с assets/minecraft/items/*.json клиентского jar) минус
 # технические предметы, которые нельзя выдавать лутом:
-#   air — сервер ругается «Item must not be minecraft:air»;
+#   air - сервер ругается «Item must not be minecraft:air»;
 #   barrier, light, командные/структурные блоки, jigsaw, debug_stick,
-#   knowledge_book, test_block, test_instance_block — недоступны в обычной
+#   knowledge_book, test_block, test_instance_block - недоступны в обычной
 #   игре. Спавн-яйца оставлены: это валидные предметы из креатива.
 # ---------------------------------------------------------------------------
 
@@ -1105,8 +1161,8 @@ _TECH_ITEMS = frozenset([
     "test_block", "test_instance_block"])
 
 # ФАНТОМНЫЕ предметы: есть в lang-файле (имя-подсказка), НЕТ в реестре
-# item 26.2 — серверная проба всех 1523 id (лут-таблица на предмет +
-# loot spawn → «Unknown registry key»). Ловушка суперсета lang-файлов,
+# item 26.2 - серверная проба всех 1523 id (лут-таблица на предмет +
+# loot spawn -> «Unknown registry key»). Ловушка суперсета lang-файлов,
 # как entity-killer_bunny. В 26.2 лодстоун-компас = компас с компонентом
 # lodestone_tracker, отдельного предмета нет
 _PHANTOM_ITEMS = frozenset(["lodestone_compass"])
@@ -1115,7 +1171,7 @@ ALL_ITEMS = []  # заполняется ниже из _ALL_ITEM_NAMES
 
 
 # полный реестр предметов (дамп сервера 26.2), по 6 id в строке;
-# фильтрация технических — ниже при сборке ALL_ITEMS
+# фильтрация технических - ниже при сборке ALL_ITEMS
 _ALL_ITEM_NAMES = [
     "acacia_boat", "acacia_button", "acacia_chest_boat", "acacia_door", "acacia_fence", "acacia_fence_gate",
     "acacia_hanging_sign", "acacia_leaves", "acacia_log", "acacia_planks", "acacia_pressure_plate", "acacia_sapling",
@@ -1377,13 +1433,13 @@ ALL_ITEMS = ["minecraft:" + n for n in _ALL_ITEM_NAMES
              if n not in _TECH_ITEMS and n not in _PHANTOM_ITEMS]
 
 # Предметы со стеком 1 (внутренности container/bundle_contents не могут
-# иметь count > 1 — validateContainedItemSizes: «Item stack with count of
+# иметь count > 1 - validateContainedItemSizes: «Item stack with count of
 # N was larger than maximum: 1», патч отвергается целиком). Список из
 # серверной пробы 26.2: каждый предмет клали в container с count 2;
 # ровно эти 240 предметов упали. = damageable-снаряжение + кровати,
 # лодки, шалкеры, вёдра-с-сущностью, зелья, диски, супы, конские и
 # наутилусовые брони, узоры знамён, книги, тотем, подзорная труба...
-# (written_book здесь НЕТ — он стакается; writable_book — нет)
+# (written_book здесь НЕТ - он стакается; writable_book - нет)
 _STACK1 = frozenset("""minecraft:acacia_boat minecraft:acacia_chest_boat
 minecraft:axolotl_bucket minecraft:bamboo_chest_raft minecraft:bamboo_raft
 minecraft:beetroot_soup minecraft:birch_boat minecraft:birch_chest_boat
@@ -1480,18 +1536,18 @@ minecraft:wooden_spear minecraft:wooden_sword minecraft:writable_book
 minecraft:yellow_bed minecraft:yellow_bundle minecraft:yellow_harness
 minecraft:yellow_shulker_box""".split())
 
-# спавн-яйца из полного каталога — для «сюрпризных» записей (варианты
+# спавн-яйца из полного каталога - для «сюрпризных» записей (варианты
 # сущностей на яйцах: cat/variant, wolf/variant и т.д.)
 SPAWN_EGGS = [i for i in ALL_ITEMS if i.endswith("_spawn_egg")]
 
 # ---------------------------------------------------------------------------
 # Данные реестров для компонентов (всё выверено по jar / дампу сервера):
-#   jukebox_song — data/minecraft/jukebox_song/*.json (22 песни);
-#   instrument — data/minecraft/instrument/*.json (8 рогов);
-#   banner_pattern — data/minecraft/banner_pattern/*.json (43 узора);
-#   mob_effect — реестр сервера (39 эффектов) — для stew/consumable;
-#   map_decoration_type — реестр сервера (36 типов);
-#   звуковые события — реестр сервера (1968, здесь кураторская подборка).
+#   jukebox_song - data/minecraft/jukebox_song/*.json (22 песни);
+#   instrument - data/minecraft/instrument/*.json (8 рогов);
+#   banner_pattern - data/minecraft/banner_pattern/*.json (43 узора);
+#   mob_effect - реестр сервера (39 эффектов) - для stew/consumable;
+#   map_decoration_type - реестр сервера (36 типов);
+#   звуковые события - реестр сервера (1968, здесь кураторская подборка).
 # ---------------------------------------------------------------------------
 
 JUKEBOX_SONGS = ["13", "cat", "blocks", "chirp", "far", "mall", "mellohi",
@@ -1540,7 +1596,7 @@ MOB_EFFECTS = ["absorption", "bad_omen", "blindness",
                "wither"]
 
 # полный реестр map_decoration_type 26.2 (34 типа: маркеры игроков/рамок,
-# цели, 16 цветных знамён, структуры и деревни) — раньше брали 17
+# цели, 16 цветных знамён, структуры и деревни) - раньше брали 17
 MAP_DECORATION_TYPES = ["player", "frame", "red_marker", "blue_marker",
                         "target_x", "target_point", "player_off_map",
                         "player_off_limits", "red_x", "mansion",
@@ -1601,7 +1657,7 @@ BLOCK_STATE_PROPS = {
 }
 
 # контейнеры для container/container_loot/lock (+ медные сундуки 26.2:
-# RandomizableContainer, как обычный сундук — держат NBT LootTable)
+# RandomizableContainer, как обычный сундук - держат NBT LootTable)
 _COPPER_CHESTS = [
     "minecraft:copper_chest", "minecraft:exposed_copper_chest",
     "minecraft:weathered_copper_chest", "minecraft:oxidized_copper_chest",
@@ -1636,8 +1692,8 @@ TOOL_BLOCK_TAGS = ["minecraft:mineable/pickaxe", "minecraft:mineable/axe",
                    "minecraft:logs", "minecraft:planks",
                    "minecraft:stone_bricks", "minecraft:wool",
                    "minecraft:dirt", "minecraft:sand"]
-# варианты для repairable {items} — теги предметные ИЛИ списки id
-# (теги вида iron_ingots/diamonds в 26.2 НЕ существуют — проверено!)
+# варианты для repairable {items} - теги предметные ИЛИ списки id
+# (теги вида iron_ingots/diamonds в 26.2 НЕ существуют - проверено!)
 REPAIR_VARIANTS = [
     "#minecraft:planks", "#minecraft:logs", "#minecraft:wool",
     ["minecraft:iron_ingot"], ["minecraft:gold_ingot"],
@@ -1645,8 +1701,8 @@ REPAIR_VARIANTS = [
     ["minecraft:copper_ingot"], ["minecraft:leather"],
     ["minecraft:string", "minecraft:phantom_membrane"]]
 
-# «диковины» — предметы-носители редких компонентов (головы → profile,
-# книги → *_book_content, улей → bees, блоки → block_state/note_block_sound)
+# «диковины» - предметы-носители редких компонентов (головы -> profile,
+# книги -> *_book_content, улей -> bees, блоки -> block_state/note_block_sound)
 ODDITIES = ["minecraft:player_head", "minecraft:creeper_head",
             "minecraft:zombie_head", "minecraft:skeleton_skull",
             "minecraft:written_book", "minecraft:writable_book",
@@ -1873,7 +1929,7 @@ _ADJ = [
     ("Квасной", "Квасная", "Квасное", "Квасные"),
 ]
 
-# существительные по типу предмета: (слово, род) — м/ж/ср/мн
+# существительные по типу предмета: (слово, род) - м/ж/ср/мн
 _KIND_NOUNS = {
     "sword":     [("Клинок", "м"), ("Бритва", "ж"), ("Жало", "ср"),
                   ("Клык", "м"), ("Резак", "м"), ("Шип", "м"),
@@ -2003,7 +2059,7 @@ _NAME_SYLL = ["Гхар", "зул", "мор", "вен", "ак", "хольт", "�
               "щур", "юр", "ам", "ем", "ир", "ом", "ун", "эр", "юс",
               "бек"]
 
-# цвета текста имён (именованные — как в чате, или hex)
+# цвета текста имён (именованные - как в чате, или hex)
 _NAME_COLORS = ["gold", "gold", "aqua", "aqua", "light_purple",
                 "light_purple", "red", "yellow", "green", "dark_aqua",
                 "dark_purple", "dark_red", "blue", "white"]
@@ -2016,7 +2072,7 @@ _LORE_LINES = [
     "Слишком острое для осторожных.", "Метка мастера стёрлась.",
     "Внутри что-то гремит.", "Проклято. Наверное.",
     "Кто-то очень старался.", "Помнит прошлое. Не спрашивай.",
-    "Слегка дымится.", "Продано дважды. Оба раза — тайно.",
+    "Слегка дымится.", "Продано дважды. Оба раза - тайно.",
     "Держи крепче.", "Ему одиноко.", "Счёт гномов на внутренней стороне.",
     "Пахнет мокрым камнем.", "Тяжелее, чем кажется.",
     "Украдено у того, кто не заметил.", "Точить бесполезно.",
@@ -2030,9 +2086,9 @@ _LORE_LINES = [
     "Найдено в желудке рыбы.", "Им заколачивали дверь. Изнутри.",
     "Умеет ждать.", "О нём молчат в тавернах.",
     "Старше города, в котором найдено.", "Пахнет полынью и дымом.",
-    "Служило трём королям. Всем — плохо.", "Его боится огонь.",
+    "Служило трём королям. Всем - плохо.", "Его боится огонь.",
     "От него шарахаются лошади.", "Роса на нём не высыхает.",
-    "Оставлено на перекрёстке. Зря.", "Кто его потерял — тот рад.",
+    "Оставлено на перекрёстке. Зря.", "Кто его потерял - тот рад.",
     "Найдётся само. Когда захочет.", "Говорят, оно из-под земли.",
     "Им нельзя бить по своему отражению.", "Теплеет перед рассветом.",
     "Считает дни до новолуния.", "Отпечаток ладони на лезвии.",
@@ -2040,13 +2096,13 @@ _LORE_LINES = [
 ]
 
 # страницы книг (written/writable_book_content): короткий русский
-# флейвор — 1-2 предложения на страницу, из них собирается «дневник».
+# флейвор - 1-2 предложения на страницу, из них собирается «дневник».
 # В text-компонентах страниц 26.2 разрешены text/color/italic/bold
 _BOOK_PAGE_SENTENCES = [
     "День третий. Дождь не прекращается.",
     "Слышал шаги за стеной. Проверять не стал.",
     "Мел истончился. Осталась половина.",
-    "Съел последний сухарь. На вкус — бумага.",
+    "Съел последний сухарь. На вкус - бумага.",
     "Карта врёт: реки здесь нет.",
     "Факелы тают быстрее, чем я иду.",
     "Ночью стены дышали. Я не спал.",
@@ -2058,10 +2114,10 @@ _BOOK_PAGE_SENTENCES = [
     "Мост обрушился ещё до дождей.",
     "Здесь эхо отзывается на имя.",
     "Печь всё ещё тёплая. Значит, я не первый.",
-    "Не считай звёзды — их тут больше, чем нужно.",
+    "Не считай звёзды - их тут больше, чем нужно.",
     "Соль кончилась. Суп теперь мстит.",
     "Дракон был стар. Старше этой записи.",
-    "Спустился ниже — и забыл, зачем.",
+    "Спустился ниже - и забыл, зачем.",
     "Свет меркнет, когда я отворачиваюсь.",
     "Выменял компас на ужин. Не жалею.",
     "Сундук был пуст. Кроме письма.",
@@ -2072,10 +2128,10 @@ _BOOK_PAGE_SENTENCES = [
     "Оставил монету на удачу. Не помогло.",
     "Внизу кто-то поёт. Без слов.",
     "Записываю, пока горит свеча.",
-    "Эта страница — последняя чистая.",
+    "Эта страница - последняя чистая.",
     # --- пополнение: странники, глубины, звёзды, долгие зимы ---
     "День седьмой. Ветер не меняет направления.",
-    "Нашёл гвоздь. Прибил к столу — спокойнее.",
+    "Нашёл гвоздь. Прибил к столу - спокойнее.",
     "Компас показывает вниз.",
     "Сосед считает звёзды. Сбивается и злится.",
     "Мороз нарисовал на стекле чей-то профиль.",
@@ -2132,14 +2188,14 @@ _BOOK_PAGE_SENTENCES = [
     "Тетрадь тяжелеет с каждой страницей.",
     "Часы соседа тикают в такт моему сердцу.",
     "Пыль в луче света падает вверх.",
-    "Сухарь с царапиной. В царапине — соль.",
+    "Сухарь с царапиной. В царапине - соль.",
     "Мой дневник читают. Я не против.",
     "Коза смотрит с укором. Проверил: не моя.",
-    "Печка благодарно гудит. За что — не спрашиваю.",
+    "Печка благодарно гудит. За что - не спрашиваю.",
     "Зима длинная. Записей хватит.",
 ]
 
-# чернила страниц (бумага светлая — тёмная палитра, как в ванильных книгах)
+# чернила страниц (бумага светлая - тёмная палитра, как в ванильных книгах)
 _BOOK_PAGE_COLORS = ["black", "dark_gray", "gray", "dark_blue",
                      "dark_green", "dark_aqua", "dark_red", "dark_purple",
                      "blue"]
@@ -2152,21 +2208,21 @@ _GENDER_IDX = {"м": 0, "ж": 1, "ср": 2, "мн": 3}
 
 
 # ---------------------------------------------------------------------------
-# ЖЁСТКИЕ КАПЫ (жалоба: «слишком много rolls — контейнеры ПУСТЫЕ от
+# ЖЁСТКИЕ КАПЫ (жалоба: «слишком много rolls - контейнеры ПУСТЫЕ от
 # передозировки, игра ВИСНЕТ после убийства моба»). Проверяются
 # самотестом на КАЖДОЙ таблице; генерация ниже никогда их не превышает
-# (капы — не «подрезка после», а форма распределений)
+# (капы - не «подрезка после», а форма распределений)
 # ---------------------------------------------------------------------------
-CAP_MAX_POOLS = 8      # пулов в таблице — не больше
+CAP_MAX_POOLS = 8      # пулов в таблице - не больше
 CAP_MAX_ROLLS = 6.0    # rolls любого пула (и min, и max провайдера)
 CAP_MAX_BONUS = 2.0    # bonus_rolls (иногда 1-2, только не-mob пулы)
 CAP_MAX_ITEMS_MOB = 6  # суммарный предел предметов с одного убийства
-CAP_NESTED_PER_TABLE = 2  # loot_table-записей на таблицу (глубина ≤ 1)
+CAP_NESTED_PER_TABLE = 2  # loot_table-записей на таблицу (глубина <= 1)
 
 
 def _clamped_rolls(rng, lo, hi):
     """Число ИЛИ uniform-провайдер в [lo; hi], зажатый в глобальный
-    кап CAP_MAX_ROLLS (и min ≥ 1 — роллы никогда не обнуляют пул)."""
+    кап CAP_MAX_ROLLS (и min >= 1 - роллы никогда не обнуляют пул)."""
     hi = min(hi, CAP_MAX_ROLLS)
     lo = max(1.0, min(lo, hi))
     if rng.random() < 0.55:
@@ -2176,13 +2232,13 @@ def _clamped_rolls(rng, lo, hi):
 
 
 def _rolls(rng, tier=None):
-    """rolls пула — дифференцировано ПО ТИПУ ТАБЛИЦЫ (мобы не дропают
-    горы вещей, сундуки щедрее мусорок, сокровища — самые богатые),
-    ВСЕГДА в глобальном капе ≤ CAP_MAX_ROLLS и с min ≥ 1:
-      tier="mob"      — дроп моба: 1-2;
-      tier="chest"    — сундук: 1-4 (в среднем ~2-3);
-      tier="treasure" — сокровище: 2-6 (самые богатые);
-      tier=None       — прочие (gift/fishing/equipment/archaeology/
+    """rolls пула - дифференцировано ПО ТИПУ ТАБЛИЦЫ (мобы не дропают
+    горы вещей, сундуки щедрее мусорок, сокровища - самые богатые),
+    ВСЕГДА в глобальном капе <= CAP_MAX_ROLLS и с min >= 1:
+      tier="mob"      - дроп моба: 1-2;
+      tier="chest"    - сундук: 1-4 (в среднем ~2-3);
+      tier="treasure" - сокровище: 2-6 (самые богатые);
+      tier=None       - прочие (gift/fishing/equipment/archaeology/
                         barter): 1-4, изредка до 6."""
     r = rng.random()
     if tier == "mob":
@@ -2205,10 +2261,10 @@ def _rolls(rng, tier=None):
 
 
 def _pool_count(rng, tier=None):
-    """Сколько пулов у таблицы тира (жёстко ≤ CAP_MAX_POOLS):
-      mob — 1-2; chest — 3-6; treasure — 4-8; None — 2-5.
+    """Сколько пулов у таблицы тира (жёстко <= CAP_MAX_POOLS):
+      mob - 1-2; chest - 3-6; treasure - 4-8; None - 2-5.
     Прежний «тяжёлый хвост» до 100 пулов убран (жалоба на передоз
-    rolls — богатство теперь в ТЕМАХ и разнообразии записей, а не в
+    rolls - богатство теперь в ТЕМАХ и разнообразии записей, а не в
     количестве роллов)."""
     if tier == "mob":
         return rng.randint(1, 2)
@@ -2220,7 +2276,7 @@ def _pool_count(rng, tier=None):
 
 
 def _num_provider(rng, lo, hi):
-    """NumberProvider (uniform / binomial / константа) — формат как в
+    """NumberProvider (uniform / binomial / константа) - формат как в
     ванильных set_count."""
     r = rng.random()
     if r < 0.55:
@@ -2307,13 +2363,13 @@ def _leather(item):
 def _proper_name(rng):
     n = rng.randint(2, 4)
     s = "".join(rng.choice(_NAME_SYLL) for _ in range(n))
-    # первый слог может быть строчным — имя обязано начинаться с заглавной
+    # первый слог может быть строчным - имя обязано начинаться с заглавной
     return s[0].upper() + s[1:]
 
 
 def rand_name(rng, item):
     """Крутое имя предмета (text component). Род согласован.
-    Базовое существительное — через _base_noun: спец-предметы (лодки/
+    Базовое существительное - через _base_noun: спец-предметы (лодки/
     попоны/черепки/стрелы/пластинки/яйца...) получают своё слово и здесь,
     а не только в раскрывающем _reveal_name."""
     kind = _kind_of(item)
@@ -2345,24 +2401,36 @@ def rand_name(rng, item):
 # Компоненты предметов
 # ---------------------------------------------------------------------------
 
+SINGLE_LEVEL_ENCHANTS = frozenset({
+    "silk_touch", "mending", "infinity", "flame", "channeling",
+    "multishot", "aqua_affinity", "binding_curse", "vanishing_curse"
+})
+
 def _enchant_levels(rng, ench):
-    """Уровень: 1-2 частые, высокие редки; изредка «перегрев» до 10."""
-    max_lvl = ENCHANTS[ench][0]
-    if rng.random() < 0.10:  # дикий перегрев (движок позволяет до 255)
-        cap = max(max_lvl, min(10, max_lvl * 2))
+    """Уровень зачарования:
+    - Зачарования, не дающие бонуса выше 1-го уровня (шёлковое касание и др.),
+      всегда строго уровня 1.
+    - Масштабируемые зачарования: обычно 1..max_level, редкий дроп (~5%)
+      сверхвысокого уровня вплоть до 20 с убывающей вероятностью."""
+    max_lvl = ENCHANTS.get(ench, (1,))[0]
+    if max_lvl == 1 or ench in SINGLE_LEVEL_ENCHANTS:
+        return 1
+    if rng.random() < 0.05:
+        u = min(1.0, abs(rng.gauss(0, 0.38)))
+        bonus = int(u * (20 - max_lvl))
+        return min(20, max_lvl + 1 + bonus)
     else:
-        cap = max_lvl
-    return _decaying_int(rng, cap)
+        return _decaying_int(rng, max_lvl)
 
 
 def _enchantments_map(rng, item):
-    """Карта {id зачарования: уровень} под предмет. enchanted_book —
+    """Карта {id зачарования: уровень} под предмет. enchanted_book -
     носитель ЛЮБЫХ зачарований (применится наковальней лишь к
-    совместимому); обычные предметы — ТОЛЬКО подходящие по точным
+    совместимому); обычные предметы - ТОЛЬКО подходящие по точным
     supported_items из jar 26.2 (жалоба: «не надо мечу давать защиту"):
     sharpness не на кирке, knockback не на топоре, unbreaking не на
     хлебе. Предмет без единого совместимого зачарования (черепки,
-    блоки, еда...) остаётся без чар — осмысленность важнее хаоса."""
+    блоки, еда...) остаётся без чар - осмысленность важнее хаоса."""
     if item in ENCH_BOOKS:
         pool = list(ENCHANTS)
     else:
@@ -2388,9 +2456,9 @@ def _enchantments_map(rng, item):
     # кастомные зачарования ИЗМЕРЕНИЯ (связка с gen_enchantments: главный
     # скрипт подмешивает их через set_custom_enchants перед rand_loot).
     # ТОЛЬКО совместимые с предметом: предмет обязан входить в
-    # supported_items зачарования (жалоба: «не надо мечу давать защиту —
-    # касается и сгенерированных зачарований»); книги — исключение-носитель.
-    # Свой уровень 1–3 с убывающей вероятностью (max_level чужого модуля
+    # supported_items зачарования (жалоба: «не надо мечу давать защиту -
+    # касается и сгенерированных зачарований»); книги - исключение-носитель.
+    # Свой уровень 1-3 с убывающей вероятностью (max_level чужого модуля
     # мы не знаем, берём безопасный низкий)
     cpool = [e for e in CUSTOM_ENCHS if _custom_ench_ok(e, item)]
     if cpool and rng.random() < 0.45:
@@ -2399,66 +2467,120 @@ def _enchantments_map(rng, item):
 
 
 # тематические пулы атрибутов: атака считывается только с предметов В
-# руках (mainhand/offhand), защита/жизнь — с предметов В слотах брони.
+# руках (mainhand/offhand), защита/жизнь - с предметов В слотах брони.
 # Чтобы модификаторы РАБОТАЛИ, а не висели мёртвым грузом (жалоба:
-# «attribute_modifiers со слотом chest — только на equippable»), пул
+# «attribute_modifiers со слотом chest - только на equippable»), пул
 # атрибутов и допустимые слоты подбираются под класс предмета
 _ATTR_POOL_WEAPON = ["minecraft:attack_damage", "minecraft:attack_speed",
-                     "minecraft:attack_knockback", "minecraft:max_health",
-                     "minecraft:movement_speed",
-                     "minecraft:knockback_resistance"]
-_ATTR_POOL_TOOL = ["minecraft:block_break_speed",
-                   "minecraft:mining_efficiency",
-                   "minecraft:submerged_mining_speed",
-                   "minecraft:block_interaction_range",
-                   "minecraft:entity_interaction_range",
-                   "minecraft:max_health", "minecraft:movement_speed"]
-# луки/арбалеты/удочки: melee-атаки у них нет (переработка оружия
-# 1.21.2+) — только «удерживаемые» атрибуты, которые работают в руке
+                     "minecraft:attack_knockback", "minecraft:sweeping_damage_ratio",
+                     "minecraft:entity_interaction_range", "minecraft:max_health",
+                     "minecraft:movement_speed", "minecraft:knockback_resistance",
+                     "minecraft:luck", "minecraft:scale"]
+_ATTR_POOL_TOOL = ["minecraft:block_break_speed", "minecraft:mining_efficiency",
+                   "minecraft:submerged_mining_speed", "minecraft:block_interaction_range",
+                   "minecraft:entity_interaction_range", "minecraft:max_health",
+                   "minecraft:movement_speed", "minecraft:luck",
+                   "minecraft:movement_efficiency"]
 _ATTR_POOL_RANGED = ["minecraft:max_health", "minecraft:movement_speed",
-                     "minecraft:knockback_resistance",
-                     "minecraft:sneaking_speed",
-                     "minecraft:entity_interaction_range",
-                     "minecraft:safe_fall_distance"]
+                     "minecraft:knockback_resistance", "minecraft:sneaking_speed",
+                     "minecraft:entity_interaction_range", "minecraft:safe_fall_distance",
+                     "minecraft:luck", "minecraft:scale", "minecraft:gravity"]
 _ATTR_POOL_ARMOR = ["minecraft:armor", "minecraft:armor_toughness",
                     "minecraft:max_health", "minecraft:max_absorption",
                     "minecraft:knockback_resistance",
                     "minecraft:explosion_knockback_resistance",
                     "minecraft:movement_speed", "minecraft:jump_strength",
-                    "minecraft:sneaking_speed",
-                    "minecraft:safe_fall_distance",
-                    "minecraft:fall_damage_multiplier",
-                    "minecraft:oxygen_bonus", "minecraft:step_height",
-                    "minecraft:flying_speed"]
-_ATTR_POOL_GENERIC = ["minecraft:max_health", "minecraft:movement_speed",
+                    "minecraft:sneaking_speed", "minecraft:safe_fall_distance",
+                    "minecraft:fall_damage_multiplier", "minecraft:oxygen_bonus",
+                    "minecraft:step_height", "minecraft:flying_speed",
+                    "minecraft:scale", "minecraft:gravity", "minecraft:bounciness",
+                    "minecraft:movement_efficiency", "minecraft:water_movement_efficiency",
+                    "minecraft:burning_time", "minecraft:luck"]
+_ATTR_POOL_MATERIAL = ["minecraft:max_health", "minecraft:movement_speed",
+                      "minecraft:attack_damage", "minecraft:armor", "minecraft:armor_toughness",
+                      "minecraft:luck", "minecraft:jump_strength", "minecraft:knockback_resistance",
+                      "minecraft:safe_fall_distance", "minecraft:mining_efficiency",
+                      "minecraft:scale", "minecraft:gravity", "minecraft:step_height"]
+_ATTR_POOL_GENERIC = ["minecraft:max_health", "minecraft:movement_speed", 
                       "minecraft:jump_strength", "minecraft:step_height",
-                      "minecraft:knockback_resistance"]
+                      "minecraft:knockback_resistance", "minecraft:scale",
+                      "minecraft:gravity", "minecraft:luck", "minecraft:bounciness"]
 _HAND_SLOTS = _HAND_SLOTS_ANY  # «рукастые» диковины (не оружие)
-# id -> (id, lo, hi) — для распаковки attr, lo, hi
+# id -> (id, lo, hi) - для распаковки attr, lo, hi
 _ATTR_RANGE = {a[0]: a for a in ATTRIBUTES}
 
 
-def _attribute_modifiers(rng, item, tag_prefix, equip_slot=None):
-    """Компонент attribute_modifiers 26.2: ПЛОСКИЙ массив записей, где
-    поля модификатора (id, amount, operation) лежат РЯДОМ с type/slot,
-    без вложенного объекта "modifier" (ItemAttributeModifiers$Entry.CODEC
-    = group(Attribute.fieldOf("type"), AttributeModifier.MAP_CODEC,
-    optionalFieldOf("slot"), optionalFieldOf("display"))).
+def _decaying_roll(rng, lo, mid, peak):
+    """Убывающее (полунормальное) распределение для величины атрибута:
+    - большинство (~70%) предметов получают малый сбалансированный прирост [lo, mid];
+    - около 25% получают хороший прирост в диапазоне (mid, mid + (peak-mid)*0.5];
+    - около 5% получают редкие высокие броски (god-roll), приближающиеся к peak."""
+    z = min(abs(rng.gauss(0, 1.0)), 3.8)
+    if z <= 1.0:
+        return lo + (mid - lo) * z
+    else:
+        t = (z - 1.0) / 2.8
+        return mid + (peak - mid) * (t ** 1.8)
 
-    ГЛАВНОЕ: компонент ЗАМЕНЯЕТ ванильные дефолты предмета, поэтому
-    список ВСЕГДА начинается с базовых характеристик предмета
-    (_vanilla_base_mods: броня → armor+armor_toughness своего слота,
-    нэзерит + knockback_resistance; оружие/инструменты → attack_damage
-    + attack_speed) — «не урезать, а ДОПОЛНИТЬ» собственными бонусами.
 
-    Атрибуты и слоты — тематические по классу предмета (пулы выше):
-    weapon-атрибуты (attack_*) — оружию и инструментам, защитные — броне;
-    слот chest/head/... достаётся только предметам, которые реально
-    оказываются в этом слоте (настоящей броне — ванильный equippable,
-    «дикой» диковине — слот её equippable из _item_components; копьё
-    обуть нельзя — оружие получает только hand-слоты)."""
+def _gen_attribute_amount(rng, spec, op, strong=False):
+    """Генерирует значение атрибута. Для сильных материалов (strong=True)
+    значения берутся из верхней трети диапазона и положительны (кроме fall_damage)."""
+    aid, lo, mid, peak, can_neg, neg_mid, neg_peak = spec
+    digits = 3 if peak <= 1.0 else (1 if peak >= 10.0 else 2)
+    
+    is_neg = False
+    if aid == "minecraft:fall_damage_multiplier":
+        is_neg = (rng.random() < 0.85)
+    elif not strong:
+        if aid in ("minecraft:scale", "minecraft:gravity"):
+            is_neg = (rng.random() < 0.40)
+        elif can_neg:
+            is_neg = (rng.random() < 0.07)
+        
+    if op != "add_value":
+        if is_neg:
+            return -round(rng.uniform(0.05, 0.25), 3)
+        else:
+            if strong:
+                return round(_decaying_roll(rng, 0.20, 0.45, 0.85), 3)
+            else:
+                return round(_decaying_roll(rng, 0.05, 0.15, 0.40), 3)
+    else:
+        if is_neg:
+            raw = _decaying_roll(rng, lo * 0.8 if lo < neg_mid else lo, neg_mid, neg_peak)
+            return -round(raw, digits)
+        else:
+            if strong:
+                strong_lo = mid if mid > lo else lo
+                strong_mid = (mid + peak) * 0.55
+                raw = _decaying_roll(rng, strong_lo, strong_mid, peak)
+                return round(raw, digits)
+            else:
+                raw = _decaying_roll(rng, lo, mid, peak)
+                return round(raw, digits)
+def _armor_slot_for_item(item, kind):
+    """Определяет канонический слот брони. Шлем никогда не получает слот legs/feet/chest."""
+    if kind == "helmet" or item.endswith("_helmet") or item.endswith("_skull") or item.endswith("_head") or item == "minecraft:carved_pumpkin":
+        return "head"
+    elif kind == "chestplate" or item.endswith("_chestplate") or kind == "elytra" or item == "minecraft:elytra":
+        return "chest"
+    elif kind == "leggings" or item.endswith("_leggings"):
+        return "legs"
+    elif kind == "boots" or item.endswith("_boots"):
+        return "feet"
+    elif item.endswith("_horse_armor") or item == "minecraft:wolf_armor":
+        return "body"
+    return None
+
+
+def _attribute_modifiers(rng, item, tag_prefix, equip_slot=None, strong=False):
+    """Генерация модификаторов атрибутов 26.2."""
     kind = _kind_of(item)
-    if equip_slot:
+    aslot = _armor_slot_for_item(item, kind)
+    if aslot:
+        pool, slots = _ATTR_POOL_ARMOR, [aslot, "armor", "any"]
+    elif equip_slot:
         pool, slots = _ATTR_POOL_ARMOR, [equip_slot, "armor", "any"]
     elif kind in _MELEE_KINDS:
         pool, slots = _ATTR_POOL_WEAPON, _HAND_SLOTS_MAIN
@@ -2470,30 +2592,27 @@ def _attribute_modifiers(rng, item, tag_prefix, equip_slot=None):
         pool, slots = _ATTR_POOL_ARMOR, [_KIND_SLOTS[kind], "armor", "any"]
     elif kind == "shield":
         pool, slots = _ATTR_POOL_ARMOR, ["offhand", "any"]
+    elif _is_material(item):
+        pool, slots = _ATTR_POOL_MATERIAL, ["any", "mainhand", "offhand", "hand"]
     else:
         pool, slots = _ATTR_POOL_GENERIC, _HAND_SLOTS_ANY
-    # базовые ванильные характеристики — В НАЧАЛО списка
     modifiers = _vanilla_base_mods(item, tag_prefix)
-    n = _weighted(rng, [(1, 40), (2, 32), (3, 18), (4, 10)])
+    if strong:
+        n = _weighted(rng, [(1, 25), (2, 50), (3, 25)])
+    else:
+        n = _weighted(rng, [(1, 40), (2, 32), (3, 18), (4, 10)])
     for i in range(n):
-        attr, lo, hi = _ATTR_RANGE[rng.choice(pool)]
-        op = "add_value" if rng.random() < 0.8 else rng.choice(
+        spec = _ATTR_RANGE[rng.choice(pool)]
+        attr = spec[0]
+        op = "add_value" if rng.random() < 0.75 else rng.choice(
             ["add_multiplied_base", "add_multiplied_total"])
-        if op != "add_value":
-            # умножающие операции работают с малыми коэффициентами
-            amount = round(rng.uniform(0.05, 0.35), 3)
-        else:
-            amount = round(lo + (hi - lo) * _decaying_frac(rng), 2)
-            if rng.random() < 0.03:  # редкий «перегрев»
-                amount = round(min(hi * 1.5, hi + 10.0), 2)
+        amount = _gen_attribute_amount(rng, spec, op, strong=strong)
         modifiers.append({
             "type": attr,
             "id": "%s_a%d%d" % (tag_prefix, i, rng.randint(0, 999)),
             "amount": amount, "operation": op,
             "slot": rng.choice(slots)})
     return modifiers
-
-
 def _rarity(rng):
     return _weighted(rng, [("common", 45), ("uncommon", 30),
                            ("rare", 18), ("epic", 7)])
@@ -2509,9 +2628,9 @@ def _consume_effect(rng):
     r = rng.random()
     if r < 0.35:  # apply_effects
         effects = []
-        for _ in range(rng.randint(1, 2)):
+        for eid in rng.sample(MOB_EFFECTS, rng.randint(1, 2)):
             effects.append({
-                "id": "minecraft:" + rng.choice(MOB_EFFECTS),
+                "id": "minecraft:" + eid,
                 "amplifier": rng.randint(0, 2),
                 "duration": int(_decaying_int(rng, 400, 0.5) + 20)})
         return {"type": "minecraft:apply_effects", "effects": effects,
@@ -2544,7 +2663,7 @@ def _consumable(rng):
 
 def _tool_rules(rng, kind):
     """Компонент tool для инструмента (kind: pickaxe/shovel/hoe/axe).
-    ВАЖНО: blocks — тег С РЕШЁТКОЙ («#minecraft:mineable/pickaxe») или
+    ВАЖНО: blocks - тег С РЕШЁТКОЙ («#minecraft:mineable/pickaxe») или
     СПИСОК id блоков; голая строка без # парсится как id блока."""
     tag = {"pickaxe": "minecraft:mineable/pickaxe",
            "axe": "minecraft:mineable/axe",
@@ -2564,19 +2683,19 @@ def _tool_rules(rng, kind):
 
 def _equippable(rng, slot):
     """Компонент equippable для «дикого» надеваемого предмета
-    (не-брони): slot — слот экипировки (head/chest/legs/feet).
+    (не-брони): slot - слот экипировки (head/chest/legs/feet).
 
     asset_id НЕ задаём НИКОГДА (жалоба: «текстура брони на игроке
     должна соответствовать предмету»): без поля игра берёт
-    equipment-ассет по id предмета — для настоящей брони это её родная
-    текстура, для диковины — слоя просто нет, предмет носится «как
+    equipment-ассет по id предмета - для настоящей брони это её родная
+    текстура, для диковины - слоя просто нет, предмет носится «как
     есть». Случайный asset_id натягивал бы на игрока чужую текстуру.
-    allowed_entities тоже не ставим — диковина должна надеваться кем
-    угодно, иначе её атрибуты — мёртвый груз. camera_overlay из
+    allowed_entities тоже не ставим - диковина должна надеваться кем
+    угодно, иначе её атрибуты - мёртвый груз. camera_overlay из
     генерации удалён полностью."""
     return {
         "slot": slot,
-        # звук надевания — любой из ванильных equip_* (не привязан к
+        # звук надевания - любой из ванильных equip_* (не привязан к
         # материалу: предмет может звучать «не своим» звуком)
         "equip_sound": "minecraft:item.armor.equip_" + rng.choice(
             ["leather", "iron", "gold", "diamond", "netherite"]),
@@ -2623,7 +2742,7 @@ def _blocks_attacks(rng):
 
 
 def _kinetic_weapon(rng):
-    """Компонент kinetic_weapon (булава). ВАЖНО: условия — одиночные
+    """Компонент kinetic_weapon (булава). ВАЖНО: условия - одиночные
     объекты (не массивы), и max_duration_ticks обязателен."""
     out = {"damage_multiplier": round(rng.uniform(1.0, 4.0), 2),
            "forward_movement": round(rng.uniform(0.1, 1.0), 2),
@@ -2662,23 +2781,39 @@ def _firework_explosion(rng):
 
 
 def _potion_effects(rng, long_durations):
-    """Кастомные эффекты для potion_contents.custom_effects — НЕ стандартные
-    зелья, а случайные КОМБИНАЦИИ (1-3 эффекта с amplifier/duration).
-    long_durations=True — зелья (пьются: 120-1800 тиков), False — стрелы
-    (попадание: короче, как в ванили tipped-стрелы ~1/8 длительности)."""
+    """Генерирует эффекты для potion_contents.custom_effects.
+    Длительность эффектов задаётся в тиках (20 тиков = 1 сек).
+    long_durations=True - банки (базовая: 2400-9600 тиков = 2-8 мин).
+    long_durations=False - стрелы (базовая: 2400-9600 тиков, с учётом того что
+    Minecraft Arrow.class при попадании масштабирует длительность на 0.125f (в 8
+    раз меньше), на цели эффект держится 15-60 секунд). Редкий дроп (~7%): супер
+    высокий уровень (до X) или супер высокая длительность."""
     k = _weighted(rng, [(1, 45), (2, 35), (3, 20)])
-    return [
-        {"id": "minecraft:" + rng.choice(MOB_EFFECTS),
-         "amplifier": rng.randint(0, 3),
-         "duration": (rng.randint(120, 1800) if long_durations
-                      else int(_decaying_int(rng, 240, 0.5) + 20))}
-        for _ in range(k)]
+    effects = []
+    for eid in rng.sample(MOB_EFFECTS, k):
+        is_god_roll = rng.random() < 0.07
+        if long_durations:
+            if is_god_roll:
+                amp = rng.randint(3, 8) if rng.random() < 0.6 else rng.randint(1, 3)
+                dur = rng.randint(18000, 72000) if rng.random() < 0.6 else rng.randint(4800, 14400)
+            else:
+                amp = rng.randint(0, 2)
+                dur = rng.randint(2400, 9600)
+        else:
+            if is_god_roll:
+                amp = rng.randint(3, 9) if rng.random() < 0.6 else rng.randint(1, 3)
+                dur = rng.randint(16000, 48000) if rng.random() < 0.6 else rng.randint(4800, 12000)
+            else:
+                amp = rng.randint(0, 2)
+                dur = rng.randint(2400, 9600)
+        effects.append({"id": "minecraft:" + eid, "amplifier": amp, "duration": dur})
+    return effects
 
 
 def _potion_contents(rng, long_durations=True):
     """Компонент potion_contents «с характером»: стандартное зелье +
     кастомные комбинации эффектов (amplifier до 3) + иногда свой цвет.
-    (имена полей — PotionContents.CODEC: potion, custom_color,
+    (имена полей - PotionContents.CODEC: potion, custom_color,
     custom_effects; сверено серверной пробой)."""
     pc = {"potion": "minecraft:" + rng.choice(POTIONS_IDS)}
     if rng.random() < 0.55:
@@ -2690,14 +2825,14 @@ def _potion_contents(rng, long_durations=True):
 
 def _true_name(rng, item):
     """«Истинное имя» для item_name (базовое имя без курсива):
-    custom_name перекрывает его в тултипе — «у предмета два имени»,
+    custom_name перекрывает его в тултипе - «у предмета два имени»,
     базовое остаётся под ним."""
     noun, gender = _base_noun(rng, item, _kind_of(item))
     return "%s %s" % (noun, rng.choice(_GENITIVE))
 
 
 def _fill_stack(rng, pool):
-    """Стек для тематической заливки container (все слоты — одна тема:
+    """Стек для тематической заливки container (все слоты - одна тема:
     «припасы», «дары земли», «коллекция пластинок»...).
     Стек-1 предметам count>1 нельзя (validateContainedItemSizes)."""
     item = rng.choice(pool)
@@ -2711,7 +2846,7 @@ def _fill_stack(rng, pool):
 
 def _stack(rng, lo=1, hi=3, comps=None):
     """Стек предметов (bundle_contents, charged_projectiles, container).
-    Стек-1 предметам count>1 нельзя — validateContainedItemSizes
+    Стек-1 предметам count>1 нельзя - validateContainedItemSizes
     («Item stack with count of N was larger than maximum: 1»)."""
     it = rng.choice(ALL_ITEMS)
     s = {"id": it, "count": 1 if it in _STACK1 else rng.randint(lo, hi)}
@@ -2721,10 +2856,10 @@ def _stack(rng, lo=1, hi=3, comps=None):
 
 
 def _book_pages(rng, n, component_form):
-    """Страницы книг: Filterable — {raw, filtered?}.
-    component_form=False → raw строка (writable_book),
-    True → raw text-component (written_book). filtered — того же типа.
-    Каждая страница — 1-2 предложения русского флейвора (дневник/записки);
+    """Страницы книг: Filterable - {raw, filtered?}.
+    component_form=False -> raw строка (writable_book),
+    True -> raw text-component (written_book). filtered - того же типа.
+    Каждая страница - 1-2 предложения русского флейвора (дневник/записки);
     в text-компонентах 26.2 разрешены text/color/italic/bold."""
     pages = []
     for _ in range(n):
@@ -2764,16 +2899,16 @@ _PROFILE_NAMES = ["Notch", "jeb_", "Dinnerbone", "Grumm"]
 
 # ---------------------------------------------------------------------------
 # Варианты сущностей 26.2 для спавн-яйц/вёдер/картин. Значения:
-#   * файловые реестры jar (data/minecraft/<registry>/*.json) — id С
+#   * файловые реестры jar (data/minecraft/<registry>/*.json) - id С
 #     namespace ("minecraft:temperate", "minecraft:jellie");
-#   * enum-кодеки (Axolotl$Variant.CODEC и т.п., подтверждено байткодом) —
+#   * enum-кодеки (Axolotl$Variant.CODEC и т.п., подтверждено байткодом) -
 #     plain lowercase БЕЗ namespace ("lucy", "evil", "red_blue").
 # Сериализованные id самих компонентов («путевые»: chicken/variant,
 # salmon/size, painting/variant, cat/sound_variant...) доказаны байткодом
 # регистрации DataComponents (static init, // String константы).
 # ---------------------------------------------------------------------------
 
-# климатические варианты (chicken/cow/pig/frog_variant — реестры из jar)
+# климатические варианты (chicken/cow/pig/frog_variant - реестры из jar)
 _CLIMATE_VARIANTS = ["minecraft:temperate", "minecraft:warm",
                      "minecraft:cold"]
 WOLF_VARIANTS = ["minecraft:ashen", "minecraft:black", "minecraft:chestnut",
@@ -2787,7 +2922,7 @@ CAT_VARIANTS = ["minecraft:all_black", "minecraft:black",
 VILLAGER_VARIANTS = ["minecraft:desert", "minecraft:jungle",
                      "minecraft:plains", "minecraft:savanna",
                      "minecraft:snow", "minecraft:swamp", "minecraft:taiga"]
-# реестр painting_variant jar (51 картины) — значение компонента
+# реестр painting_variant jar (51 картины) - значение компонента
 # painting/variant = id оттуда
 PAINTING_VARIANTS = [
     "minecraft:alban", "minecraft:aztec", "minecraft:aztec2",
@@ -2838,7 +2973,7 @@ def _climate_variant(rng):
     return rng.choice(_CLIMATE_VARIANTS)
 
 
-# спавн-яйца: список (компонент, генератор) — на яйцо берётся 1..все
+# спавн-яйца: список (компонент, генератор) - на яйцо берётся 1..все
 _SPAWN_EGG_VARIANTS = {
     "minecraft:cat_spawn_egg": [
         ("minecraft:cat/collar", _variant_gen(DYE_COLORS)),
@@ -2896,13 +3031,13 @@ _SPAWN_EGG_VARIANTS = {
 # ---------------------------------------------------------------------------
 # Осмысленные кастомные предметы (жалобы: имена, РАСКРЫВАЮЩИЕ параметры,
 # и «глубокий» NBT мобов у спавн-яиц). Приёмы зеркалят соседние
-# серверно-проверенные генераторы: имена по фактическому содержимому —
-# как gen_enchantments._effect_name («Громовое Пробитие» — по
-# projectile_piercing), полный NBT моба — как gen_structures._rand_mob_nbt
+# серверно-проверенные генераторы: имена по фактическому содержимому -
+# как gen_enchantments._effect_name («Громовое Пробитие» - по
+# projectile_piercing), полный NBT моба - как gen_structures._rand_mob_nbt
 # ---------------------------------------------------------------------------
 
 # зелья -> слово в РОДИТЕЛЬНОМ падеже: «Настой Огнестойкости»
-# (id — реестр Potions 26.2; вода/мутная/густая/неловкая — тоже со
+# (id - реестр Potions 26.2; вода/мутная/густая/неловкая - тоже со
 # словом: имя-раскрытие должно покрывать ~100% зелий)
 _POTION_RU = {
     "water": "Живой Воды", "mundane": "Осадка", "thick": "Густоты",
@@ -2943,6 +3078,14 @@ _ATTR_RU = {
     "minecraft:sneaking_speed": ("Скрытности", 4),
     "minecraft:oxygen_bonus": ("Жабр", 4),
     "minecraft:step_height": ("Широкого Шага", 3),
+    "minecraft:scale": ("Величия", 5),
+    "minecraft:gravity": ("Гравитации", 5),
+    "minecraft:luck": ("Удачи", 5),
+    "minecraft:bounciness": ("Прыгучести", 5),
+    "minecraft:movement_efficiency": ("Проворства", 5),
+    "minecraft:water_movement_efficiency": ("Пловца", 5),
+    "minecraft:sweeping_damage_ratio": ("Вихря", 5),
+    "minecraft:burning_time": ("Времени Горения", 4),
 }
 
 # зачарования -> слово в родительном: «Клинок Остроты»
@@ -2998,7 +3141,7 @@ _EFF_RU = {
 }
 
 # прилагательные в РОДИТЕЛЬНОМ падеже для имён спавн-яиц
-# («Яйцо Древнего Скелета» — м/ср, «Яйцо Древней Ведьмы» — ж)
+# («Яйцо Древнего Скелета» - м/ср, «Яйцо Древней Ведьмы» - ж)
 _GEN_ADJ = [
     ("Древнего", "Древней"), ("Забытого", "Забытой"),
     ("Проклятого", "Проклятой"), ("Мёртвого", "Мёртвой"),
@@ -3048,10 +3191,10 @@ _GEN_ADJ = [
 _PROFILE_RU = {"Notch": "Нотча", "jeb_": "Джеба",
                "Dinnerbone": "Диннерборна", "Grumm": "Грумма"}
 
-# мобы спавн-яиц/вёдер: (именительный, родительный, род) — род None =
+# мобы спавн-яиц/вёдер: (именительный, родительный, род) - род None =
 # фраза, прилагательное уже внутри («Древний Страж»); род (м/ж/ср)
 # согласует прилагательные имени моба (механизм _inflect_adj из
-# gen_enchantments — здесь через готовые формы _ADJ/_GEN_ADJ)
+# gen_enchantments - здесь через готовые формы _ADJ/_GEN_ADJ)
 _MOB_RU = {
     "allay": ("Эллей", "Эллея", "м"),
     "armadillo": ("Броненосец", "Броненосца", "м"),
@@ -3145,22 +3288,23 @@ _MOB_RU = {
                           "Зомбированного Пиглина", None),
 }
 
-# атрибуты NBT мобов ({id, base} — формат AttributeInstance$Packed, тот
+# атрибуты NBT мобов ({id, base} - формат AttributeInstance$Packed, тот
 # же набор и диапазоны, что в gen_structures.ATTRIBUTE_RANGES; чужие
 # мобу атрибуты при загрузке молча пропускаются)
 _MOB_ATTRS = {
-    "minecraft:max_health": (10.0, 100.0),
-    "minecraft:attack_damage": (1.0, 20.0),
-    "minecraft:movement_speed": (0.1, 0.6),
-    "minecraft:follow_range": (16.0, 80.0),
-    "minecraft:armor": (0.0, 15.0),
-    "minecraft:armor_toughness": (0.0, 10.0),
-    "minecraft:attack_speed": (0.5, 4.0),
-    "minecraft:knockback_resistance": (0.0, 1.0),
-    "minecraft:max_absorption": (0.0, 20.0),
-    "minecraft:scale": (0.5, 2.0),
-    "minecraft:jump_strength": (0.3, 1.5),
-    "minecraft:safe_fall_distance": (3.0, 15.0),
+    "minecraft:max_health": (10.0, 60.0),
+    "minecraft:attack_damage": (1.0, 12.0),
+    "minecraft:movement_speed": (0.15, 0.35),
+    "minecraft:follow_range": (16.0, 48.0),
+    "minecraft:armor": (0.0, 10.0),
+    "minecraft:armor_toughness": (0.0, 5.0),
+    "minecraft:attack_speed": (0.5, 2.0),
+    "minecraft:knockback_resistance": (0.0, 0.5),
+    "minecraft:max_absorption": (0.0, 10.0),
+    "minecraft:scale": (0.7, 1.5),
+    "minecraft:jump_strength": (0.3, 0.7),
+    "minecraft:safe_fall_distance": (3.0, 10.0),
+    "minecraft:gravity": (0.04, 0.12),
 }
 
 # мобы с ванильной таблицей entities/<моб> (fallback DeathLootTable,
@@ -3179,7 +3323,7 @@ villager vindicator wandering_trader warden witch wither_skeleton
 wolf zoglin zombie zombie_horse zombie_nautilus zombie_villager
 zombified_piglin""".split())
 
-# мобы для block_entity_data-спавнера (все — враждебные, с яйцами и
+# мобы для block_entity_data-спавнера (все - враждебные, с яйцами и
 # таблицами entities/<моб>; формат сверен с ванильными .nbt-шаблонами)
 _SPAWNER_MOBS = ["zombie", "skeleton", "husk", "stray", "bogged",
                  "spider", "cave_spider", "creeper", "silverfish",
@@ -3189,7 +3333,7 @@ _SPAWNER_MOBS = ["zombie", "skeleton", "husk", "stray", "bogged",
 
 # блочные контейнеры, поддерживающие NBT-тег LootTable
 # (RandomizableContainer: сундуки/бочки/шалкеры/диспенсеры/воронки/
-# кувшины; печи и варочные стойки — НЕТ, вагонетки — не блоки)
+# кувшины; печи и варочные стойки - НЕТ, вагонетки - не блоки)
 _LOOT_BED = frozenset(
     ["minecraft:chest", "minecraft:trapped_chest", "minecraft:barrel",
      "minecraft:dispenser", "minecraft:dropper", "minecraft:hopper",
@@ -3197,7 +3341,7 @@ _LOOT_BED = frozenset(
     ["minecraft:%s_shulker_box" % c for c in DYE_COLORS])
 
 # ванильные chest-таблицы для LootTable в block_entity_data (только
-# chests/* — открытие сундука не даёт fishing-контекст)
+# chests/* - открытие сундука не даёт fishing-контекст)
 _VANILLA_CHEST_TABLES = [v for v in VANILLA_TABLES
                          if v.startswith("minecraft:chests/")]
 
@@ -3206,7 +3350,7 @@ def _mob_title(rng, mob):
     """Русское имя моба для CustomName NBT: «Древний Скелет»,
     «Ведьма Мёртвой Звезды». Возвращает текстовый компонент."""
     entry = _MOB_RU.get(mob)
-    if entry is None:  # неизвестный моб — собственное имя слогами
+    if entry is None:  # неизвестный моб - собственное имя слогами
         return {"text": _proper_name(rng),
                 "color": rng.choice(_NAME_COLORS), "italic": False}
     nom, _gen, g = entry
@@ -3231,11 +3375,11 @@ _SLOT_PART = {"head": "helmet", "chest": "chestplate",
 
 def _nbt_stack(rng, cls, slot=None):
     """ItemStack для equipment моба в NBT: {id, count, components}
-    (формат EntityEquipment.CODEC; зачарования — тематические по типу
+    (формат EntityEquipment.CODEC; зачарования - тематические по типу
     предмета, как в gen_structures._rand_item_stack, но имена русские).
-    Броня подбирается ПОД запрошенный слот (шлем — в head, сапоги — в
+    Броня подбирается ПОД запрошенный слот (шлем - в head, сапоги - в
     feet, как в ванильных equipment-таблицах); в слоты рук броня не
-    попадает. Атрибут-модификаторы здесь не генерируются — ванильные
+    попадает. Атрибут-модификаторы здесь не генерируются - ванильные
     базовые характеристики предмета действуют как есть."""
     if cls == "armor":
         part = _SLOT_PART.get(slot)
@@ -3243,7 +3387,7 @@ def _nbt_stack(rng, cls, slot=None):
                 else ARMOR)
     elif cls == "weapon":
         pool = SWORDS + SPEARS + AXES + MACES + TRIDENTS + BOWS + CROSSBOWS
-    else:  # «любой» — слот руки: броню в руку не берём
+    else:  # «любой» - слот руки: броню в руку не берём
         pool = (SWORDS + SPEARS + AXES + MACES
                 + ["minecraft:shield", "minecraft:totem_of_undying"])
     item = rng.choice(pool)
@@ -3252,12 +3396,12 @@ def _nbt_stack(rng, cls, slot=None):
     emap = _enchantments_map(rng, item)
     if emap and rng.random() < 0.7:
         comps["minecraft:enchantments"] = emap
-        # кастомные зачарования — с lore-подсказкой «Имя — описание»
+        # кастомные зачарования - с lore-подсказкой «Имя - описание»
         # (дропнув с моба, предмет расскажет, что умеет)
         hints = _ench_hint_lines(rng, comps, [])
         if hints:
             comps["minecraft:lore"] = hints
-    # имя — только снаряжению с компонентами (есть что раскрывать)
+    # имя - только снаряжению с компонентами (есть что раскрывать)
     if comps and rng.random() < 0.3:
         comps["minecraft:custom_name"] = _reveal_name(rng, item, comps, [])
     if rng.random() < 0.2:
@@ -3269,11 +3413,11 @@ def _nbt_stack(rng, cls, slot=None):
 
 def _mob_nbt(rng, mob, table_ids):
     """Полный NBT «особого» моба для entity_data спавн-яйца и SpawnData
-    спавнера — зеркало gen_structures._rand_mob_nbt (кастомное имя с
+    спавнера - зеркало gen_structures._rand_mob_nbt (кастомное имя с
     цветом, атрибуты, снаряжение с зачарованиями, эффекты,
     DeathLootTable на НАШИ таблицы, Glowing/PersistenceRequired/...).
-    NoAI и Invulnerable НЕ ставятся НИКОГДА — моб должен жить и быть
-    убиваемым. Булевы значения пишутся как JSON true/false — в NBT это
+    NoAI и Invulnerable НЕ ставятся НИКОГДА - моб должен жить и быть
+    убиваемым. Булевы значения пишутся как JSON true/false - в NBT это
     байты (как HasNectar у пчёл в bees-компоненте, серверная проба
     26.2)."""
     nbt = {"id": "minecraft:" + mob}
@@ -3281,7 +3425,7 @@ def _mob_nbt(rng, mob, table_ids):
         nbt["CustomName"] = _mob_title(rng, mob)
         if rng.random() < 0.7:
             nbt["CustomNameVisible"] = True
-    # атрибуты (AttributeInstance$Packed; base — float с десятичной
+    # атрибуты (AttributeInstance$Packed; base - float с десятичной
     # точкой, JSON-дубль читается float-полем кодека)
     attrs = []
     max_health = None
@@ -3297,7 +3441,7 @@ def _mob_nbt(rng, mob, table_ids):
     nbt["attributes"] = attrs
     if max_health is not None:
         nbt["Health"] = max_health  # не выше max_health (движок клампит)
-    # снаряжение (EquipmentTable.CODEC: map слот -> ItemStack); броня —
+    # снаряжение (EquipmentTable.CODEC: map слот -> ItemStack); броня -
     # строго по слоту (см. _nbt_stack)
     equip = {}
     if rng.random() < 0.55:
@@ -3326,7 +3470,7 @@ def _mob_nbt(rng, mob, table_ids):
         nbt["DeathLootTable"] = rng.choice(table_ids)
     elif mob in _MOB_LOOT_TABLES:
         nbt["DeathLootTable"] = "minecraft:entities/" + mob
-    # флаги (каждый — со своим шансом, как у структурных боссов);
+    # флаги (каждый - со своим шансом, как у структурных боссов);
     # NoAI/Invulnerable запрещены: моб должен жить и быть убиваемым
     if rng.random() < 0.6:
         nbt["PersistenceRequired"] = True
@@ -3343,11 +3487,53 @@ def _mob_nbt(rng, mob, table_ids):
     return nbt
 
 
+def _is_material(item):
+    """Возвращает True, если предмет является обычным материалом/ресурсом/блоком
+    без активных боевых, защитных или интерактивных способностей."""
+    kind = _kind_of(item)
+    if kind in _MELEE_KINDS or kind in _TOOL_KINDS or kind in _ARMOR_KINDS:
+        return False
+    if kind in ("bow", "crossbow", "trident", "fishing_rod", "shield", "elytra"):
+        return False
+    if kind in ("book", "potion"):
+        return False
+    if item in FOOD or item in RAW_FOOD or item in BAD_FOOD:
+        return False
+    if item in POTIONS or item in ("minecraft:tipped_arrow", "minecraft:ominous_bottle",
+                                  "minecraft:suspicious_stew"):
+        return False
+    if item in ENCH_BOOKS or item in ("minecraft:written_book", "minecraft:writable_book"):
+        return False
+    if item in ("minecraft:bundle",) or item.endswith("_bundle"):
+        return False
+    if item in CONTAINER_ITEMS or item == "minecraft:spawner":
+        return False
+    if item in MUSIC_DISCS or item in ("minecraft:goat_horn", "minecraft:compass",
+                                      "minecraft:recovery_compass", "minecraft:filled_map",
+                                      "minecraft:clock", "minecraft:spyglass"):
+        return False
+    if item in ("minecraft:painting", "minecraft:firework_rocket",
+                "minecraft:firework_star") or item in ODDITIES or item.endswith("_head") or item.endswith("_skull"):
+        return False
+    if item in ("minecraft:beehive", "minecraft:bee_nest"):
+        return False
+    if item.endswith("_spawn_egg") or item.endswith("_banner"):
+        return False
+    if item in FISH_BUCKETS or item in ("minecraft:axolotl_bucket", "minecraft:salmon_bucket",
+                                      "minecraft:tropical_fish_bucket", "minecraft:sulfur_cube_bucket"):
+        return False
+    if item in BLOCK_STATE_PROPS or item == "minecraft:note_block" or item == "minecraft:decorated_pot":
+        return False
+    if item in HORSE_ARMORS or item == "minecraft:wolf_armor":
+        return False
+    return True
+
+
 def _nested_stack(rng):
     """Стек предметов ВНУТРИ компонента (container/bundle_contents/
     charged_projectiles): осмысленный класс предмета + мини-компоненты
     (зачарованная кирка, именное зелье с potion_contents...) +
-    «ГЛУБОКАЯ» вложенность — компоненты внутри компонентов: фейерверк
+    «ГЛУБОКАЯ» вложенность - компоненты внутри компонентов: фейерверк
     со взрывами, книга со страницами, рог с инструментом, пластинка с
     песней, арбалет с заряженными зельевыми стрелами.
     Стек-1 предметам count>1 нельзя (validateContainedItemSizes)."""
@@ -3362,6 +3548,21 @@ def _nested_stack(rng):
     item = rng.choice(pool)
     hi = {"resource": 12, "food": 6, "junk": 8, "valuable": 3}.get(cls, 1)
     s = {"id": item, "count": 1 if item in _STACK1 else rng.randint(1, hi)}
+    if _is_material(item):
+        if rng.random() < 0.06:
+            nprefix = "nested_%d" % rng.randint(0, 10 ** 6)
+            ncomp = {
+                "minecraft:attribute_modifiers": _attribute_modifiers(
+                    rng, item, nprefix, None, strong=True),
+                "minecraft:rarity": rng.choice(["rare", "epic"]),
+                "minecraft:enchantment_glint_override": True,
+            }
+            ncomp["minecraft:custom_name"] = _reveal_name(rng, item, ncomp, [])
+            clines = _component_lore(rng, item, ncomp, [])
+            if clines:
+                ncomp["minecraft:lore"] = clines
+            s["components"] = ncomp
+        return s
     ncomp = {}
     if cls == "gear" and rng.random() < 0.5:
         emap = _enchantments_map(rng, item)
@@ -3375,7 +3576,7 @@ def _nested_stack(rng):
         ncomp["minecraft:potion_contents"] = _potion_contents(
             rng, long_durations=item in POTIONS)
     if rng.random() < 0.45:
-        # глубокая вложенность: предмет «живёт» даже внутри контейнера —
+        # глубокая вложенность: предмет «живёт» даже внутри контейнера -
         # в т.ч. ПОВЕРХ зачарований (арбалет с зачарованиями И зарядом)
         if item == "minecraft:firework_rocket":
             ncomp["minecraft:fireworks"] = {
@@ -3413,7 +3614,7 @@ def _nested_stack(rng):
             ncomp["minecraft:charged_projectiles"] = [ps]
         elif item in CONTAINER_ITEMS and rng.random() < 0.35:
             # матрёшка: контейнер внутри контейнера (1-2 слота, без
-            # дальнейшей рекурсии — наполнение простыми стеками)
+            # дальнейшей рекурсии - наполнение простыми стеками)
             tpool = rng.choice([RESOURCES, FOOD, VALUABLES, JUNK])
             max_slot = rng.choice([5, 9])
             slots = rng.sample(range(max_slot),
@@ -3421,14 +3622,14 @@ def _nested_stack(rng):
             ncomp["minecraft:container"] = [
                 {"slot": sl, "item": _fill_stack(rng, tpool)}
                 for sl in slots]
-    # имя — только предмету с компонентами (есть что раскрывать)
+    # имя - только предмету с компонентами (есть что раскрывать)
     if ncomp and rng.random() < 0.12:
         ncomp["minecraft:custom_name"] = _reveal_name(rng, item, ncomp, [])
     if rng.random() < 0.08:
         ncomp["minecraft:rarity"] = _rarity(rng)
     # «только визуал» невозможен и в глубине: вложенный предмет с одной
     # косметикой получает работающую фичу (пассивное зачарование /
-    # функциональный компонент), а кастомные зачарования — lore-подсказку
+    # функциональный компонент), а кастомные зачарования - lore-подсказку
     _fix_visual_only(rng, item, ncomp, [],
                      "nested_%d" % rng.randint(0, 10 ** 6), None)
     hints = _ench_hint_lines(rng, ncomp, [])
@@ -3442,7 +3643,7 @@ def _nested_stack(rng):
 
 
 # спец-базовые существительные имён (item -> (слово, род));
-# спавн-яйца/пластинки/мешки/шалкеры/знамёна/вёдра — по членству,
+# спавн-яйца/пластинки/мешки/шалкеры/знамёна/вёдра - по членству,
 # см. _base_noun
 _ITEM_BASES = {
     "minecraft:arrow": ("Стрела", "ж"),
@@ -3488,8 +3689,8 @@ _ITEM_BASES = {
 
 
 def _base_noun(rng, item, kind):
-    """Базовое существительное имени: спец-предметы — своё слово
-    (Стрела/Яйцо/Мешок/...), прочее — по kind (_KIND_NOUNS)."""
+    """Базовое существительное имени: спец-предметы - своё слово
+    (Стрела/Яйцо/Мешок/...), прочее - по kind (_KIND_NOUNS)."""
     if item.endswith("_spawn_egg"):
         return ("Яйцо", "ср")
     if item in MUSIC_DISCS:
@@ -3531,11 +3732,11 @@ def _reveal_name(rng, item, comps, funcs):
     -> «Настой Огнестойкости», attribute_modifiers на attack_damage
     -> «Клинок Ярости», спавн-яйцо с кастомным мобом -> «Яйцо Древнего
     Скелета». Прилагательные согласованы с родом базового слова
-    (_ADJ-кортежи + _GENDER_IDX — механизм _inflect_adj).
+    (_ADJ-кортежи + _GENDER_IDX - механизм _inflect_adj).
 
     ПОКРЫТИЕ ~100%: слово-источник есть у КАЖДОГО кастомного компонента
     (жалоба: «названия должны как-то раскрывать качества, а не быть
-    полностью рандомными»); фолбэк rand_name — только когда «говорящих»
+    полностью рандомными»); фолбэк rand_name - только когда «говорящих»
     компонентов нет совсем. Базовые ванильные модификаторы (id *_base*)
     НЕ считаются: они есть у любого меча, «Клинок Ярости» должен
     означать собственный бонус. trim в именах не упоминается
@@ -3553,7 +3754,7 @@ def _reveal_name(rng, item, comps, funcs):
             seen.add(word)
             seeds.append((prio, word))
 
-    # спавн-яйцо: моб в родительном («Яйцо Скелета»); с entity_data —
+    # спавн-яйцо: моб в родительном («Яйцо Скелета»); с entity_data -
     # «особый» моб, приоритет выше
     egg_mob = None
     if item.endswith("_spawn_egg"):
@@ -3603,7 +3804,7 @@ def _reveal_name(rng, item, comps, funcs):
                     and item not in BAD_FOOD:
                 add(6, "Ужина")  # съедобный не-еда предмет
     # атрибут-модификаторы: самый «зрелищный» СОБСТВЕННЫЙ атрибут
-    # (ванильные базовые модификаторы — id вида *_baseN — пропускаем:
+    # (ванильные базовые модификаторы - id вида *_baseN - пропускаем:
     # они есть у любого предмета этого типа, «не урезать, а дополнить»
     # не значит «хвастаться заводской прошивкой»)
     best = None
@@ -3622,7 +3823,7 @@ def _reveal_name(rng, item, comps, funcs):
             for eid in emap:
                 add(6, _ENCH_RU.get(eid.split(":")[-1]))
                 break
-    # одиночные компоненты — свои слова
+    # одиночные компоненты - свои слова
     if "minecraft:unbreakable" in comps:
         add(5, "Вечности")
     if "minecraft:death_protection" in comps:
@@ -3712,7 +3913,7 @@ def _reveal_name(rng, item, comps, funcs):
     if comps.get("minecraft:sulfur_cube_content"):
         add(4, "Серы")
     # варианты сущностей на вёдрах/яйцах (path-id: axolotl/variant,
-    # tropical_fish/pattern, cat/sound_variant...) — «чужая кровь»
+    # tropical_fish/pattern, cat/sound_variant...) - «чужая кровь»
     for ck in comps:
         if "/" in ck and ck != "minecraft:painting/variant":
             add(5, "Чужой Крови")
@@ -3745,8 +3946,8 @@ def _reveal_name(rng, item, comps, funcs):
         add(4, "Отзвука")
     if "minecraft:equippable" in comps and kind == "generic":
         add(5, "Наряда")  # «дикая» надеваемая диковина
-    # суффиксы — то, что «у предмета ЕСТЬ», а не «чем он является»:
-    # «Улей с Пчёлами», «Карта с Метками» (trim НЕ упоминаем — орнамент
+    # суффиксы - то, что «у предмета ЕСТЬ», а не «чем он является»:
+    # «Улей с Пчёлами», «Карта с Метками» (trim НЕ упоминаем - орнамент
     # виден в тултипе и так, жалоба «не надо подсказки»)
     suffixes = []
     if comps.get("minecraft:bees"):
@@ -3789,9 +3990,9 @@ def _reveal_name(rng, item, comps, funcs):
             title = "%s %s %s" % (noun, lead, rng.choice(_GENITIVE))
         else:
             title = "%s %s %s" % (adj, noun, lead)
-    if len(title) > 38:  # от длиннот — компактная форма
+    if len(title) > 38:  # от длиннот - компактная форма
         title = "%s %s" % (noun, lead)
-    # суффикс приклеиваем ПОСЛЕ укорачивания — он короткий и информативный
+    # суффикс приклеиваем ПОСЛЕ укорачивания - он короткий и информативный
     if suffixes:
         sfx = suffixes[0] if len(suffixes) == 1 else rng.choice(suffixes)
         if len(title) + len(sfx) + 1 <= 46:
@@ -3805,7 +4006,7 @@ def _reveal_name(rng, item, comps, funcs):
     return comp
 
 
-# эффекты -> имя в ИМЕНИТЕЛЬНОМ падеже — для lore-строк
+# эффекты -> имя в ИМЕНИТЕЛЬНОМ падеже - для lore-строк
 # («внутри дремлет огнестойкость»; реестр mob_effect 26.2)
 _EFF_NOM = {
     "absorption": "поглощение", "bad_omen": "дурное знамение",
@@ -3843,12 +4044,12 @@ def _fmt_num(v):
 def _component_lore(rng, item, comps, funcs):
     """Lore-строки ИЗ ФАКТИЧЕСКОГО содержимого предмета (жалоба:
     «lore должен как-то раскрывать качества, а не быть полностью
-    рандомным"): зелья — «внутри дремлет огнестойкость», атрибуты —
+    рандомным"): зелья - «внутри дремлет огнестойкость», атрибуты -
     «тяжесть даёт +2 брони», чары, еда, планер «планирует, как семя
-    клёна», инструмент, пчёлы, книги... Возвращает 0-3 строки; 0 —
+    клёна», инструмент, пчёлы, книги... Возвращает 0-3 строки; 0 -
     раскрыть нечего, lore не ставится ВООБЩЕ (случайный флейвор
     добавляет только вызывающий блок, и редко). Базовые ванильные
-    модификаторы (id *_base*) пропускаются — они и так видны в тултипе;
+    модификаторы (id *_base*) пропускаются - они и так видны в тултипе;
     trim не описываем (жалоба: «trim и так видно»)."""
     cand = []
     # зелье (функция set_potion или компонент potion_contents);
@@ -3900,18 +4101,20 @@ def _component_lore(rng, item, comps, funcs):
         if not wr:
             continue
         shown += 1
+        amt = mod.get("amount", 0)
+        sign = "" if amt < 0 else "+"
         if mod.get("operation") == "add_value":
-            cand.append("Тяжесть даёт +%s %s."
-                        % (_fmt_num(mod.get("amount", 0)),
+            cand.append("Тяжесть даёт %s%s %s."
+                        % (sign, _fmt_num(amt),
                            wr[0].lower()))
-        else:  # умножающие операции — процентами (родительный падеж:
-        # «даёт +25% яркости» — как и с аддитивными величинами)
-            cand.append("Тяжесть даёт +%d%% %s."
-                        % (int(round(mod.get("amount", 0) * 100)),
+        else:  # умножающие операции - процентами (родительный падеж:
+        # «даёт +25% яркости» - как и с аддитивными величинами)
+            cand.append("Тяжесть даёт %s%d%% %s."
+                        % (sign, int(round(abs(amt) * 100)) * (-1 if amt < 0 else 1),
                            wr[0].lower()))
     # чары: ванильные НЕ описываем (жалоба юзера: «игроки их знают»);
     # кастомные зачарования измерения получают СВОИ строки-подсказки
-    # «Имя — описание действия» (см. _ench_hint_lines — вызывается из
+    # «Имя - описание действия» (см. _ench_hint_lines - вызывается из
     # _item_components ПОСЛЕ этого блока, и в _nested_stack)
     # еда и превращения
     food = comps.get("minecraft:food")
@@ -4010,16 +4213,16 @@ def _component_lore(rng, item, comps, funcs):
             for s in rng.sample(cand, k)]
 
 
-# «мобильная» экипировка: попоны/наутилусовые брони/упряжи/волчья броня —
+# «мобильная» экипировка: попоны/наутилусовые брони/упряжи/волчья броня -
 # надеваются на животных, а не на игрока; «дикий» equippable на них
-# не ставим (как и на оружие/инструменты — копьё обуть нельзя)
+# не ставим (как и на оружие/инструменты - копьё обуть нельзя)
 _MOB_GEAR_ITEMS = frozenset(
     HORSE_ARMORS + [i for i in ALL_ITEMS if i.endswith("_harness")]
     + ["minecraft:wolf_armor"])
 
 # ---------------------------------------------------------------------------
 # USE_REMAINDER: пул остатков после еды (все id существуют в реестре
-# 26.2 и стакаются — но мы всегда выдаём count 1)
+# 26.2 и стакаются - но мы всегда выдаём count 1)
 # ---------------------------------------------------------------------------
 _REMAINDER_POOL = [
     "minecraft:bone", "minecraft:paper", "minecraft:candle",
@@ -4043,7 +4246,7 @@ _REMAINDER_NOUNS = {
     "minecraft:gold_nugget": "Самородочек",
 }
 
-# «...от чего» — родительный падеж трапезы (согласование не нужно)
+# «...от чего» - родительный падеж трапезы (согласование не нужно)
 _REMAINDER_FROM = [
     "от похлёбки", "от ужина", "от обеда", "от трапезы",
     "от пиршества", "от перекуса", "от варева", "от стряпни",
@@ -4058,7 +4261,7 @@ _REMAINDER_LORE = [
 ]
 
 # «косметические» компоненты: меняют только вид/звук/скрытые данные,
-# НЕ игру — предмет, у которого кроме них ничего нет, «только с
+# НЕ игру - предмет, у которого кроме них ничего нет, «только с
 # визуалом» (жалоба юзера: rarity + item_name = обычный предмет) и
 # получает РАБОЧУЮ фичу через _fix_visual_only
 _COSMETIC_KEYS = frozenset([
@@ -4081,15 +4284,15 @@ _COSMETIC_KEYS = frozenset([
 
 def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
     """ФИКС «предмет только с визуалом» (жалоба юзера: предмет с rarity
-    и item_name — по факту обычный). Если после генерации компонентов у
+    и item_name - по факту обычный). Если после генерации компонентов у
     предмета не осталось ФУНКЦИОНАЛЬНЫХ особенностей (только косметика
     из _COSMETIC_KEYS и нет функций лута), добавить работающую фичу:
-      1) приоритет — ПАССИВНОЕ зачарование измерения (attributes/tick/
-         location_changed/damage_immunity/prevent_* — действуют при
+      1) приоритет - ПАССИВНОЕ зачарование измерения (attributes/tick/
+         location_changed/damage_immunity/prevent_* - действуют при
          ношении/удержании; через существующий механизм кастомных
-         зачарований — карта minecraft:enchantments, как в
+         зачарований - карта minecraft:enchantments, как в
          _enchantments_map);
-      2) фолбэк — функциональный компонент: potion_contents (зельям),
+      2) фолбэк - функциональный компонент: potion_contents (зельям),
          glider (элитрам/нагрудным диковинам), consumable с эффектами
          (еде), attribute_modifiers с базовыми значениями (остальным).
     Возвращает True, если предмет был «только визуалом» и получил фичу."""
@@ -4097,16 +4300,18 @@ def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
         return False
     if any(k not in _COSMETIC_KEYS for k in comps):
         return False
+    if _is_material(item):
+        return False
     kind = _kind_of(item)
-    # ТОЛЬКО совместимые с предметом (предмет ∈ supported_items —
+    # ТОЛЬКО совместимые с предметом (предмет ? supported_items -
     # «спасение» не должно приклеивать зачарование брони к мечу);
-    # книги — носитель, им можно любое
+    # книги - носитель, им можно любое
     pool = [e for e in CUSTOM_ENCHS
             if _ENCH_INFO.get(e, {}).get("passive")
             and _custom_ench_ok(e, item)]
     if pool:
         # предпочитаем зачарования, которые можно носить/держать (слоты
-        # any либо «родной» слот предмета); неизвестные слоты — любое
+        # any либо «родной» слот предмета); неизвестные слоты - любое
         native = _KIND_SLOTS.get(kind)
         best = [e for e in pool
                 if not _ENCH_INFO[e].get("slots")
@@ -4114,7 +4319,7 @@ def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
                 or (native and native in _ENCH_INFO[e]["slots"])]
         eid = rng.choice(best or pool)
         # книги хранят зачарования в stored_enchantments (сет компонент
-        # enchanted_book), остальным — прямая карта enchantments
+        # enchanted_book), остальным - прямая карта enchantments
         if item in ENCH_BOOKS:
             comps["minecraft:stored_enchantments"] = {eid: _decaying_int(rng, 3)}
         else:
@@ -4146,9 +4351,9 @@ def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
 
 def _ench_hint_lines(rng, comps, funcs):
     """Lore-подсказки КАСТОМНЫХ зачарований измерения: по строке
-    «Имя зачарования — описание действия» на каждое (обычно одно).
-    Ванильные зачарования не описываем — игроки их знают. Источник имён
-    и описаний — _ENCH_INFO (set_ench_summaries + автопоиск по
+    «Имя зачарования - описание действия» на каждое (обычно одно).
+    Ванильные зачарования не описываем - игроки их знают. Источник имён
+    и описаний - _ENCH_INFO (set_ench_summaries + автопоиск по
     gen_enchantments.LAST_ENCHANTMENTS)."""
     ids = []
     for ekey in ("minecraft:enchantments", "minecraft:stored_enchantments"):
@@ -4165,7 +4370,7 @@ def _ench_hint_lines(rng, comps, funcs):
     for e in ids[:2]:
         nm = _ENCH_INFO[e].get("name") or e
         desc = _ENCH_INFO[e].get("desc") or ""
-        txt = "%s — %s" % (nm, desc) if desc else str(nm)
+        txt = "%s - %s" % (nm, desc) if desc else str(nm)
         out.append({"text": txt, "color": rng.choice(_LORE_COLORS),
                     "italic": True})
     return out
@@ -4178,39 +4383,60 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
 
     Все форматы сверены с jar 26.2 (javap + серверные пробы loot spawn):
     plоские массивы lore/attribute_modifiers/banner_patterns/pot_decorations,
-    условия kinetic_weapon — одиночные объекты, swing_animation без
-    namespace, lock — «голый» ItemPredicate, horse/variant — plain enum
-    (без «minecraft:»), компоненты сущностей — path-id (cat/collar и т.п.).
+    условия kinetic_weapon - одиночные объекты, swing_animation без
+    namespace, lock - «голый» ItemPredicate, horse/variant - plain enum
+    (без «minecraft:»), компоненты сущностей - path-id (cat/collar и т.п.).
     Шансы убывающие: «сильные» компоненты (death_protection, glider,
     container_loot...) выпадают редко.
 
-    Имя (custom_name) ставится В КОНЦЕ, по фактическому содержимому —
+    Имя (custom_name) ставится В КОНЦЕ, по фактическому содержимому -
     и ТОЛЬКО предмету, которому есть что раскрывать (компоненты,
     спавн-яйцо или функция set_potion/set_enchantments/set_instrument;
     чистому ванильному предмету полностью рандомное имя не нужно):
     имя РАСКРЫВАЕТ кастомные параметры (_reveal_name, как _effect_name
-    у зачарований), lore — ИЗ компонентов (_component_lore), а
-    item_name — только предмету с другими кастомными компонентами
-    (предмет, у которого меняется лишь имя, — чистый ванильный, его
+    у зачарований), lore - ИЗ компонентов (_component_lore), а
+    item_name - только предмету с другими кастомными компонентами
+    (предмет, у которого меняется лишь имя, - чистый ванильный, его
     не трогаем)."""
     comps = {}
     funcs = []
+    if _is_material(item):
+        if rng.random() < 0.06:
+            comps["minecraft:attribute_modifiers"] = _attribute_modifiers(
+                rng, item, tag_prefix, None, strong=True)
+            comps["minecraft:rarity"] = rng.choice(["rare", "epic"])
+            comps["minecraft:enchantment_glint_override"] = True
+            comps["minecraft:custom_name"] = _reveal_name(rng, item, comps, funcs)
+            clines = _component_lore(rng, item, comps, funcs)
+            if clines:
+                if rng.random() < 0.40:
+                    clines.append({"text": rng.choice(_LORE_LINES),
+                                   "color": rng.choice(["gray", "dark_gray", "blue", "dark_aqua"]),
+                                   "italic": True})
+                comps["minecraft:lore"] = clines
+            return comps, funcs
+        else:
+            return {}, []
     kind = _kind_of(item)
     gear = kind in _MELEE_KINDS or kind in _TOOL_KINDS or \
         kind in _ARMOR_KINDS or kind == "shield" or \
         kind in ("bow", "crossbow", "trident", "fishing_rod")
     foodish = item in FOOD or item in RAW_FOOD or item in BAD_FOOD
-    # «дикий» equippable: ЛЮБУЮ диковину можно сделать надеваемой —
+    # «дикий» equippable: ЛЮБУЮ диковину можно сделать надеваемой -
     # тогда же её атрибут-модификаторы получают СООТВЕТСТВУЮЩИЙ слот
     # (компонент работает, а не висит мёртвым грузом). ТОЛЬКО для
     # «рукастых» диковин (kind=generic, не damageable, не моб-экипировка):
     # оружие/инструменты обуть нельзя (жалоба: «копьё которое даёт бонусы
-    # когда обуто — копьё нельзя обуть!»); на груди — изредка и планер
+    # когда обуто - копьё нельзя обуть!»); на груди - изредка и планер
     # (glider работает только в chest-слоте)
-    equip_slot = None
-    if (kind == "generic" and item not in _DAMAGEABLE
-            and item not in _MOB_GEAR_ITEMS and rng.random() < 0.015):
-        equip_slot = rng.choice(["head", "chest", "legs", "feet"])
+    aslot = _armor_slot_for_item(item, kind)
+    equip_slot = aslot
+    if (not aslot and kind == "generic" and item not in _DAMAGEABLE
+            and item not in _MOB_GEAR_ITEMS and not _is_material(item) and rng.random() < 0.015):
+        if item.endswith("_skull") or item.endswith("_head") or item == "minecraft:carved_pumpkin":
+            equip_slot = "head"
+        else:
+            equip_slot = rng.choice(["head", "chest", "legs", "feet"])
         comps["minecraft:equippable"] = _equippable(rng, equip_slot)
         if equip_slot == "chest" and rng.random() < 0.25:
             comps["minecraft:glider"] = {}
@@ -4229,8 +4455,8 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         emap = _enchantments_map(rng, item)
         if emap:
             comps["minecraft:stored_enchantments"] = emap
-    # атрибут-модификаторы (тематические пулы/слоты — см.
-    # _attribute_modifiers; equip_slot — слот «дикого» equippable)
+    # атрибут-модификаторы (тематические пулы/слоты - см.
+    # _attribute_modifiers; equip_slot - слот «дикого» equippable)
     gearish = kind in _KIND_SLOTS and kind != "book"
     attr_p = {"weapons": 0.5, "treasure": 0.30, "mixed": 0.35}.get(char, 0.10)
     if (gearish or equip_slot) and rng.random() < attr_p:
@@ -4241,25 +4467,14 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:enchantment_glint_override"] = rng.random() < 0.85
     if rng.random() < 0.25:
         comps["minecraft:rarity"] = _rarity(rng)
-    if rng.random() < 0.12:
-        comps["minecraft:custom_data"] = {"lore": rng.choice(_LORE_LINES)}
+# custom_data removed as per specification
     # tooltip_display/tooltip_style НЕ генерируются: прятать компоненты
-    # и рисовать рамки — запутывает игроков (жалоба; самотест грепает
+    # и рисовать рамки - запутывает игроков (жалоба; самотест грепает
     # сгенерированный JSON на эти ключи)
-    if rng.random() < 0.06:  # данные ресурс-паков
-        comps["minecraft:custom_model_data"] = {
-            "floats": [round(rng.uniform(0.0, 9.9), 2)
-                       for _ in range(rng.randint(1, 3))],
-            "flags": [rng.random() < 0.5
-                      for _ in range(rng.randint(1, 3))],
-            "strings": [rng.choice(["a", "tier", "variant"])
-                        for _ in range(rng.randint(1, 2))],
-            "colors": [int(_hex_color(rng)[1:], 16)
-                       for _ in range(rng.randint(1, 2))]}
     if rng.random() < 0.06:  # группа перезарядки
         comps["minecraft:use_cooldown"] = {
             "seconds": round(rng.uniform(1.0, 30.0), 1),
-            # БЕЗ namespace-префикса: cooldown_group — произвольный
+            # БЕЗ namespace-префикса: cooldown_group - произвольный
             # идентификатор, ns:id-вид притягивает ложные срабатывания
             # проверки битых ссылок датапака
             "cooldown_group": tag_prefix}
@@ -4267,12 +4482,12 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:use_effects"] = {
             "can_sprint": rng.random() < 0.5,
             "interact_vibrations": rng.random() < 0.5,
-            "speed_multiplier": round(rng.uniform(0.2, 1.0), 2)}  # ≤ 1.0!
+            "speed_multiplier": round(rng.uniform(0.2, 1.0), 2)}  # <= 1.0!
     # ---------------- боевое снаряжение ----------------------------------
     if gearish and rng.random() < 0.10:
         base = rng.choice([80, 120, 250, 600, 1500])
         comps["minecraft:max_damage"] = int(base * rng.uniform(0.5, 2.0))
-    # unbreakable — только предметам С прочностью (на не-damageable он
+    # unbreakable - только предметам С прочностью (на не-damageable он
     # мёртвый: ломаться нечему)
     if (item in _DAMAGEABLE or "minecraft:max_damage" in comps) \
             and rng.random() < 0.10:
@@ -4287,17 +4502,17 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:repairable"] = {
             "items": rng.choice(REPAIR_VARIANTS)}
     if gear and rng.random() < 0.06:
-        # звук поломки предмета (Holder<SoundEvent> — id звука)
+        # звук поломки предмета (Holder<SoundEvent> - id звука)
         comps["minecraft:break_sound"] = rng.choice(
             ["minecraft:entity.item.break", "minecraft:item.shield.break",
              "minecraft:block.bell.use",
              "minecraft:entity.zombie.break_wooden_door"])
-    # размер стека — только «приятный бонус»: стакаться БОЛЬШЕ ванили
+    # размер стека - только «приятный бонус»: стакаться БОЛЬШЕ ванили
     # (65-99), и только недamageable предметам, у которых уже есть >=2
     # других кастомных компонента (в одиночку он бессмыслен). Значения
     # ниже 64 (наказание) и компонент stackable не генерируем ВООБЩЕ
     # НИКОГДА; damageable + max_stack_size>1 валидатор 26.2 отвергает
-    # целиком — см. _DAMAGEABLE
+    # целиком - см. _DAMAGEABLE
     if (item not in _DAMAGEABLE
             and "minecraft:max_damage" not in comps
             and len(comps) >= 2 and rng.random() < 0.05):
@@ -4313,7 +4528,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:attack_range"] = {
             "min_reach": mn,
             "max_reach": round(mn + rng.uniform(0.5, 2.5), 2),
-            # hitbox_margin — ТОЛЬКО в [0.0; 1.0] (проверено сервером)
+            # hitbox_margin - ТОЛЬКО в [0.0; 1.0] (проверено сервером)
             "hitbox_margin": round(rng.uniform(0.0, 1.0), 2),
             "mob_factor": round(rng.uniform(0.5, 2.0), 2),
             "min_creative_reach": round(mn + 0.5, 2),
@@ -4334,13 +4549,13 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
             "hit_sound": rng.choice(SOUNDS)}
     # ---------------- броня / щит / элитры -------------------------------
     # НАСТОЯЩЕЙ броне equippable НЕ генерируем: ванильный компонент уже
-    # на предмете, и заменить его можно только испортив — случайный
+    # на предмете, и заменить его можно только испортив - случайный
     # asset_id ломал бы текстуру, allowed_entities запрещал бы ношение
     # (жалобы юзера). Кастомизируем только «дикие» диковины выше.
     # волчья броня: надевается на ВОЛКА (слот body; asset_id minecraft:wolf
-    # — ВАНИЛЬНО-ВЕРНОЕ значение для wolf_armor из Items.class 26.2,
+    # - ВАНИЛЬНО-ВЕРНОЕ значение для wolf_armor из Items.class 26.2,
     # НЕ рандом: без него игра искала бы несуществующий ассет wolf_armor;
-    # equip_on_interact — использование по волку, как в ванили)
+    # equip_on_interact - использование по волку, как в ванили)
     if item == "minecraft:wolf_armor" and rng.random() < 0.45:
         e = _equippable(rng, "body")
         e["asset_id"] = "minecraft:wolf"
@@ -4381,17 +4596,19 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
             "nutrition": rng.randint(1, 8),
             "saturation": round(rng.uniform(0.1, 1.2), 2),
             "can_always_eat": rng.random() < 0.4}
-    # consumable чаще ПАРОЙ к food (съел — получил эффекты; имя это
-    # раскрывает: «Похлёбка Яда»); на не-еду — редкий курьёз «Ужина»
-    cons_p = 0.50 if (foodish and "minecraft:food" in comps) else \
-        (0.35 if foodish else 0.02)
-    if rng.random() < cons_p:
+        # В Minecraft 26.2 / 1.21.2+ еда ОБЯЗАНА иметь consumable, иначе
+        # предмет не съедобен и food не функционирует
+        c = _consumable(rng)
+        c["animation"] = rng.choice(["eat", "drink"])
+        c["sound"] = rng.choice(["minecraft:entity.generic.eat", "minecraft:entity.generic.drink"] + SOUNDS)
+        comps["minecraft:consumable"] = c
+    elif rng.random() < (0.35 if foodish else 0.02):
         comps["minecraft:consumable"] = _consumable(rng)
     # use_remainder: съедобный предмет (vanilla-еда ИЛИ компонент food/
-    # consumable) с шансом 40-60% оставляет после себя предмет —
+    # consumable) с шансом 40-60% оставляет после себя предмет -
     # варианты: базовая посуда (миска у супов, бутылка у мёда), любой
-    # остаток из пула (кость, бумага, свеча, уголёк...) или — с шансом
-    # 35% — КАСТОМНЫЙ именной остаток («Косточка от похлёбки», изредка
+    # остаток из пула (кость, бумага, свеча, уголёк...) или - с шансом
+    # 35% - КАСТОМНЫЙ именной остаток («Косточка от похлёбки», изредка
     # с lore). count ВСЕГДА 1: стек-1 предметам больше нельзя
     # (validateContainedItemSizes), а именной остаток в стае безымянных
     # копий смотрелся бы ошибкой
@@ -4406,7 +4623,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                                    rng.choice(_REMAINDER_FROM)),
                 "color": rng.choice(_NAME_COLORS),
                 "italic": False}}
-            if rng.random() < 0.4:  # иногда — со своей lore-строчкой
+            if rng.random() < 0.4:  # иногда - со своей lore-строчкой
                 rcomps["minecraft:lore"] = [
                     {"text": rng.choice(_REMAINDER_LORE),
                      "color": rng.choice(_LORE_COLORS),
@@ -4425,7 +4642,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                 "id": rng.choice(_REMAINDER_POOL), "count": 1}
     # зелья: функцией set_potion (ванильный формат) ИЛИ компонентом
     # potion_contents с кастомными КОМБИНАЦИЯМИ эффектов (amplifier/
-    # duration) и своим цветом — не только стандартные зелья
+    # duration) и своим цветом - не только стандартные зелья
     if item in POTIONS:
         if rng.random() < 0.45:
             funcs.append({"function": "minecraft:set_potion",
@@ -4438,7 +4655,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
     if item == "minecraft:tipped_arrow":
         # potion_contents: potion + кастомные комбинации эффектов + свой
         # цвет (имена полей доказаны байткодом PotionContents.CODEC:
-        # "potion", "custom_color", "custom_effects"; длительности —
+        # "potion", "custom_color", "custom_effects"; длительности -
         # стрельиные, короткие)
         comps["minecraft:potion_contents"] = _potion_contents(
             rng, long_durations=False)
@@ -4446,9 +4663,9 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:ominous_bottle_amplifier"] = rng.randint(0, 4)
     if item == "minecraft:suspicious_stew" and rng.random() < 0.8:
         comps["minecraft:suspicious_stew_effects"] = [
-            {"id": "minecraft:" + rng.choice(MOB_EFFECTS),
+            {"id": "minecraft:" + eid,
              "duration": rng.randint(40, 400)}
-            for _ in range(rng.randint(1, 2))]
+            for eid in rng.sample(MOB_EFFECTS, rng.randint(1, 2))]
     # ---------------- стрелы / фейерверки / арбалет ----------------------
     if item == "minecraft:arrow" and rng.random() < 0.30:
         comps["minecraft:intangible_projectile"] = {}
@@ -4460,10 +4677,10 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
     if item == "minecraft:firework_star" and rng.random() < 0.70:
         comps["minecraft:firework_explosion"] = _firework_explosion(rng)
     if kind == "crossbow" and rng.random() < 0.40:
-        # заряженный арбалет — ГЛУБОКАЯ вложенность: зельевые стрелы
+        # заряженный арбалет - ГЛУБОКАЯ вложенность: зельевые стрелы
         # (potion_contents с кастомными эффектами прямо в заряде)
         # и фейерверки С НАСТОЯЩИМИ взрывами внутри (без fireworks-компонента
-        # ракета в арбалете — холостая)
+        # ракета в арбалете - холостая)
         projectiles = []
         for _ in range(rng.randint(1, 2)):
             proj = rng.choice(["minecraft:arrow", "minecraft:arrow",
@@ -4478,7 +4695,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                     inner["minecraft:potion_contents"] = _potion_contents(
                         rng, long_durations=False)
                 # зачарованных стрел больше нет: стрелы не входят НИ В
-                # ОДИН тег enchantable/* (jar 26.2) — чары на них
+                # ОДИН тег enchantable/* (jar 26.2) - чары на них
                 # несовместимы по определению (жалоба о совместимости)
             elif proj == "minecraft:firework_rocket":
                 inner["minecraft:fireworks"] = {
@@ -4509,9 +4726,9 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:block_entity_data"] = sp
     if item in CONTAINER_ITEMS:
         r = rng.random()
-        if r < 0.36:  # наполненные слоты (вложенные предметы — с компонентами)
+        if r < 0.36:  # наполненные слоты (вложенные предметы - с компонентами)
             if rng.random() < 0.35:
-                # ТЕМАТИЧЕСКАЯ заливка: все слоты одной темы — «припасы»,
+                # ТЕМАТИЧЕСКАЯ заливка: все слоты одной темы - «припасы»,
                 # «дары земли», «коллекция пластинок», «арсенал стрел»...
                 tpool = _weighted(rng, [
                     (RESOURCES, 14), (FOOD, 12), (VALUABLES, 8),
@@ -4539,11 +4756,11 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                 "seed": rng.randint(1, 2 ** 31 - 1)}
         elif r < 0.62 and item in _LOOT_BED:
             # сундук, который при УСТАНОВКЕ раздаёт лут (LootTable в
-            # block_entity_data — RandomizableContainer). id в
-            # block_entity_data — это BLOCK ENTITY TYPE, а НЕ блок/предмет
+            # block_entity_data - RandomizableContainer). id в
+            # block_entity_data - это BLOCK ENTITY TYPE, а НЕ блок/предмет
             # (реестр BlockEntityTypeIds 26.2: chest/trapped_chest/
-            # shulker_box(один на все цвета)/barrel/…; медным сундукам
-            # отдельного BE-типа НЕТ — они обычный chest; поймано на
+            # shulker_box(один на все цвета)/barrel/...; медным сундукам
+            # отдельного BE-типа НЕТ - они обычный chest; поймано на
             # реальном сервере: «Unknown ... minecraft:copper_chest»)
             _BE_TYPE = {"minecraft:chest": "minecraft:chest",
                         "minecraft:trapped_chest": "minecraft:trapped_chest",
@@ -4552,7 +4769,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                         "minecraft:dropper": "minecraft:dropper",
                         "minecraft:hopper": "minecraft:hopper",
                         "minecraft:decorated_pot": "minecraft:decorated_pot"}
-            be_id = _BE_TYPE.get(item, "minecraft:chest")  # медные → chest
+            be_id = _BE_TYPE.get(item, "minecraft:chest")  # медные -> chest
             if item.endswith("_shulker_box"):
                 be_id = "minecraft:shulker_box"  # один BE-тип на все цвета
             lt = (rng.choice(table_ids) if table_ids and rng.random() < 0.5
@@ -4594,7 +4811,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                     "rotation": round(rng.uniform(0.0, 360.0), 1)}
                 for i in range(rng.randint(1, 3))}
     if item in MUSIC_DISCS and rng.random() < 0.30:
-        # пластинка «не своей» песни — просто строка id
+        # пластинка «не своей» песни - просто строка id
         comps["minecraft:jukebox_playable"] = \
             "minecraft:" + rng.choice(JUKEBOX_SONGS)
     # ---------------- предметы-сущности (path-id компоненты) -------------
@@ -4602,8 +4819,8 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:profile"] = {"name": rng.choice(_PROFILE_NAMES)}
     if item in ("minecraft:beehive", "minecraft:bee_nest") \
             and rng.random() < 0.50:
-        # пчёлы с настоящим NBT: нектар, изредка имя («Улей с Пчёлами» —
-        # имя носителя) и злость (Anger — тики гнева, как у ванильных пчёл)
+        # пчёлы с настоящим NBT: нектар, изредка имя («Улей с Пчёлами» -
+        # имя носителя) и злость (Anger - тики гнева, как у ванильных пчёл)
         bees = []
         for _ in range(rng.randint(1, 3)):
             ed = {"id": "minecraft:bee",
@@ -4646,7 +4863,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                        "pos": [rng.randint(-1000, 1000),
                                rng.randint(-60, 200),
                                rng.randint(-1000, 1000)]}}
-    # рыбные вёдра: bucket_entity_data {entity: {id}} — ведро своего моба,
+    # рыбные вёдра: bucket_entity_data {entity: {id}} - ведро своего моба,
     # иногда ИМЕННОГО (CustomName переносится при выпуске)
     if item in FISH_BUCKETS and rng.random() < 0.50:
         ent = {"id": FISH_BUCKETS[item]}
@@ -4673,17 +4890,17 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         pairs = _SPAWN_EGG_VARIANTS[item]
         for ckey, gen in rng.sample(pairs, rng.randint(1, len(pairs))):
             comps[ckey] = gen(rng)
-    # спавн-яйцо с ОСОБЫМ мобом — entity_data с полным NBT (зеркало
+    # спавн-яйцо с ОСОБЫМ мобом - entity_data с полным NBT (зеркало
     # gen_structures._rand_mob_nbt): кастомное имя с цветом, снаряжение
     # с зачарованиями, атрибуты, эффекты, DeathLootTable на НАШИ
-    # таблицы, Glowing/... — имя предмета это раскрывает
+    # таблицы, Glowing/... - имя предмета это раскрывает
     # («Яйцо Древнего Скелета»)
     if item.endswith("_spawn_egg") and rng.random() < 0.30:
         mob = item[len("minecraft:"):-len("_spawn_egg")]
         comps["minecraft:entity_data"] = _mob_nbt(rng, mob, table_ids)
     if item == "minecraft:goat_horn":
         # инструмент рога: ФУНКЦИЕЙ set_instrument (тег опций, ванильный
-        # формат) ИЛИ КОМПОНЕНТОМ instrument (конкретный id — имя-раскрытие
+        # формат) ИЛИ КОМПОНЕНТОМ instrument (конкретный id - имя-раскрытие
         # «Рог Тоски» знает, что внутри)
         r = rng.random()
         if r < 0.45:
@@ -4695,17 +4912,17 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         elif r < 0.85:
             comps["minecraft:instrument"] = \
                 "minecraft:" + rng.choice(INSTRUMENTS)
-    # ---------------- имя — В КОНЦЕ, по факту содержимого ---------------
-    # item_name — «истинное имя» (базовое, без курсива): custom_name
-    # перекрывает его — «у предмета два имени». Только при других
-    # компонентах (инвариант «только имя» — чистая косметика
+    # ---------------- имя - В КОНЦЕ, по факту содержимого ---------------
+    # item_name - «истинное имя» (базовое, без курсива): custom_name
+    # перекрывает его - «у предмета два имени». Только при других
+    # компонентах (инвариант «только имя» - чистая косметика
     # не считается)
     if comps and rng.random() < 0.06:
         comps["minecraft:item_name"] = {"text": _true_name(rng, item),
                                         "italic": False}
-    # custom_name — РАСКРЫВАЮЩИЙ: строится из реальных компонентов;
+    # custom_name - РАСКРЫВАЮЩИЙ: строится из реальных компонентов;
     # «сильные» компоненты сами просят имя даже в дешёвых таблицах
-    # (trim сюда НЕ входит: орнамент виден в тултипе и так — жалобa
+    # (trim сюда НЕ входит: орнамент виден в тултипе и так - жалобa
     # «trim и так видно, не надо подсказки»)
     strong = ("minecraft:entity_data" in comps
               or "minecraft:attribute_modifiers" in comps
@@ -4723,7 +4940,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
     # имя ставим ТОЛЬКО предмету, которому ЕСТЬ что раскрывать: непустые
     # компоненты, спавн-яйцо (моб читается из самого предмета) или
     # зелье/чара/рог функцией (set_potion/set_enchantments/
-    # set_instrument). Иначе предмет — чистый ванильный, и полностью
+    # set_instrument). Иначе предмет - чистый ванильный, и полностью
     # рандомное имя ему не нужно (жалоба: «имена должны раскрывать
     # качества, а не быть полностью рандомными»)
     can_reveal = bool(comps) or item.endswith("_spawn_egg") or any(
@@ -4732,13 +4949,13 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
             "minecraft:set_instrument") for f in funcs)
     if can_reveal and (want_name or (strong and rng.random() < name_bonus)):
         comps["minecraft:custom_name"] = _reveal_name(rng, item, comps, funcs)
-        # lore — ИЗ ФАКТИЧЕСКОГО содержимого предмета (зелья — эффект,
-        # атрибуты — «тяжесть даёт +X к защите», чары, еда, планер
+        # lore - ИЗ ФАКТИЧЕСКОГО содержимого предмета (зелья - эффект,
+        # атрибуты - «тяжесть даёт +X к защите», чары, еда, планер
         # «планирует, как семя клёна», инструмент...): 1-3 строки +
         # редкая флейвор-строка; полностью рандомного лора больше нет
         clines = _component_lore(rng, item, comps, funcs)
         if clines and rng.random() < 0.65:
-            if rng.random() < 0.22:  # редкая флейвор-строка — как приправа
+            if rng.random() < 0.22:  # редкая флейвор-строка - как приправа
                 clines.append({"text": rng.choice(_LORE_LINES),
                                "color": rng.choice(
                                    ["gray", "dark_gray", "blue",
@@ -4746,18 +4963,22 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                                "italic": True})
             comps["minecraft:lore"] = clines
     # ФИКС «предмет только с визуалом»: если функциональных особенностей
-    # не осталось (только косметика) — добавить работающую фичу:
+    # не осталось (только косметика) - добавить работающую фичу:
     # приоритетно ПАССИВНОЕ зачарование измерения (действует при
-    # ношении/удержании), фолбэк — функциональный компонент
+    # ношении/удержании), фолбэк - функциональный компонент
     _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot)
-    # lore-подсказки КАСТОМНЫХ зачарований измерения: «Имя зачарования —
-    # описание действия» (ванильные не описываем — игроки их знают).
-    # Добавляется ПОСЛЕ фикса — подсказка покрывает и «спасённый» предмет
+    # lore-подсказки КАСТОМНЫХ зачарований измерения: «Имя зачарования -
+    # описание действия» (ванильные не описываем - игроки их знают).
+    # Добавляется ПОСЛЕ фикса - подсказка покрывает и «спасённый» предмет
     hints = _ench_hint_lines(rng, comps, funcs)
     if hints:
         lore = list(comps.get("minecraft:lore") or [])
         lore.extend(hints)
         comps["minecraft:lore"] = lore
+    if "minecraft:food" in comps and "minecraft:consumable" not in comps:
+        c = _consumable(rng)
+        c["animation"] = rng.choice(["eat", "drink"])
+        comps["minecraft:consumable"] = c
     return comps, funcs
 
 
@@ -4771,7 +4992,7 @@ _CHARS = [
 ]
 
 # самотест: структура пулов/роллов по тирам таблиц (mob/chest/treasure/
-# None) — заполняется в _LootGen.table, на вывод НЕ влияет
+# None) - заполняется в _LootGen.table, на вывод НЕ влияет
 _TIER_STATS = {}
 
 _TABLE_TYPES = [
@@ -4782,11 +5003,11 @@ _TABLE_TYPES = [
 ]
 
 # Контексты лут-таблиц (LootContextParamSets, 26.2, сверено байткодом
-# javap: lambda$static$9 = entity и т.д.): биты потребностей —
+# javap: lambda$static$9 = entity и т.д.): биты потребностей -
 # killed_by_player нужен LAST_DAMAGE_PLAYER (только entity),
-# apply_bonus/table_bonus/match_tool — TOOL (fishing/archaeology/vault),
-# entity_properties(this) — THIS_ENTITY и ORIGIN,
-# random_chance_with_enchanted_bonus / enchanted_count_increase —
+# apply_bonus/table_bonus/match_tool - TOOL (fishing/archaeology/vault),
+# entity_properties(this) - THIS_ENTITY и ORIGIN,
+# random_chance_with_enchanted_bonus / enchanted_count_increase -
 # ATTACKING_ENTITY (опциональный параметр ТОЛЬКО entity-контекста:
 # ванильные entities/blaze.json и entities/drowned.json так и делают).
 # Вложенные таблицы (loot_table-записи) валидируются в контексте
@@ -4809,14 +5030,14 @@ _ATK_TYPES = ("minecraft:entity",)   # только entity даёт ATTACKING_EN
 _THIS_TYPES = ("minecraft:entity", "minecraft:fishing", "minecraft:equipment",
                "minecraft:vault", "minecraft:chest", "minecraft:gift",
                "minecraft:archaeology")
-_CTX_FULL = 15 | _NEED_ATK  # LDP|TOOL|THIS|ORIGIN|ATK — «неограниченный»
+_CTX_FULL = 15 | _NEED_ATK  # LDP|TOOL|THIS|ORIGIN|ATK - «неограниченный»
 
 
 def _vanilla_mask(vid):
-    """Маска потребностей контекста ванильной таблицы (её тип — из jar 26.2:
-    chests/* → chest, gameplay/fishing* → fishing, piglin_bartering → barter,
-    подарки → gift). Вложенная таблица валидируется в контексте РОДИТЕЛЯ,
-    поэтому ссылка безопасна только если маска ⊆ эффективному контексту."""
+    """Маска потребностей контекста ванильной таблицы (её тип - из jar 26.2:
+    chests/* -> chest, gameplay/fishing* -> fishing, piglin_bartering -> barter,
+    подарки -> gift). Вложенная таблица валидируется в контексте РОДИТЕЛЯ,
+    поэтому ссылка безопасна только если маска ? эффективному контексту."""
     if vid.startswith("minecraft:gameplay/fishing"):
         return _NEED_TOOL | _NEED_THIS | _NEED_ORIGIN
     if vid == "minecraft:gameplay/piglin_bartering":
@@ -4828,13 +5049,13 @@ def _vanilla_mask(vid):
             "minecraft:gameplay/hero_of_the_village/farmer_gift",
             "minecraft:gameplay/hero_of_the_village/librarian_gift"):
         return _NEED_THIS | _NEED_ORIGIN
-    return _CTX_FULL  # неизвестная таблица — считаем самой требовательной
+    return _CTX_FULL  # неизвестная таблица - считаем самой требовательной
 
 _NON_STACKABLE = set(ARMOR + WEAPONS + TOOLS + POTIONS + ENCH_BOOKS +
                      SHIELDS + ELYTRA + MISC)
 
 # Страховка от фантомов: тематические списки захардкожены и могут отстать
-# от реестра (пример: голого minecraft:harness в 26.2 НЕТ — только цветные
+# от реестра (пример: голого minecraft:harness в 26.2 НЕТ - только цветные
 # *_harness; real-server: «Unknown registry key in minecraft:item» ломает
 # таблицу целиком). Прогоняем их через проверенный _ALL_ITEM_NAMES.
 _KNOWN_ITEMS = frozenset("minecraft:" + n for n in _ALL_ITEM_NAMES
@@ -4855,7 +5076,7 @@ for _lname in ("WEAPONS", "ARMOR", "TOOLS", "BOWS", "CROSSBOWS",
 # ---------------------------------------------------------------------------
 # ТЕМАТИЧЕСКИЕ ПУЛЫ (жалоба: «генератор скудный»): каждая таблица
 # сэмплирует 2-4 ТЕМЫ с разными весами, каждый пул целиком одной
-# темы — наборы записей согласованы по смыслу. Темы опираются на те
+# темы - наборы записей согласованы по смыслу. Темы опираются на те
 # же курируемые списки предметов (страховка от фантомов выше).
 # ---------------------------------------------------------------------------
 
@@ -4928,7 +5149,7 @@ _THEME_MIX = {
 
 def _themes_for(rng, char):
     """2-4 темы таблицы, каждая со своим весом (жалоба «генератор
-    скудный»: пул выбирает тему по весу — таблица получается
+    скудный»: пул выбирает тему по весу - таблица получается
     многогранной, но согласованной)."""
     dist = _THEME_MIX.get(char, _THEME_MIX["mixed"])
     k = rng.randint(2, min(4, len(dist)))
@@ -4953,8 +5174,8 @@ _MOB_HEAVY_COMPS = frozenset([
 
 # приоритет сохранения функциональных компонентов моб-дропа при
 # обрезке до двух: зачарования (на них ссылаются lore-подсказки),
-# зелья, экипировка (без неё armor-слоты attribute_modifiers — мёртвые),
-# планер, еда...; attribute_modifiers — последний
+# зелья, экипировка (без неё armor-слоты attribute_modifiers - мёртвые),
+# планер, еда...; attribute_modifiers - последний
 _LIGHT_PRIORITY = (
     "minecraft:enchantments", "minecraft:stored_enchantments",
     "minecraft:potion_contents", "minecraft:equippable",
@@ -4974,11 +5195,11 @@ _LIGHT_PRIORITY = (
 def _lighten_components(comps):
     """Компоненты моб-дропа (жалоба: «игра ВИСНЕТ после убийства моба»):
     без тяжёлых контейнеров/NBT-мобов/зарядов и не более ДВУХ
-    функциональных компонентов на предмет (косметика/имя/lore —
-    «идентичность», не в счёт; зачарования приоритетны — на них
-    ссылаются lore-подсказки). Приоритет обрезки — _LIGHT_PRIORITY
+    функциональных компонентов на предмет (косметика/имя/lore -
+    «идентичность», не в счёт; зачарования приоритетны - на них
+    ссылаются lore-подсказки). Приоритет обрезки - _LIGHT_PRIORITY
     (детерминированный): attribute_modifiers без equippable не
-    остаётся (armor-слоты стали бы мёртвыми — инвариант слотов)."""
+    остаётся (armor-слоты стали бы мёртвыми - инвариант слотов)."""
     out = {k: v for k, v in comps.items() if k not in _MOB_HEAVY_COMPS}
     identity = ("minecraft:custom_name", "minecraft:item_name",
                 "minecraft:lore")
@@ -5003,14 +5224,14 @@ class _LootGen(object):
         self.ids = ids  # все id по порядку создания (для ссылок «вперёд»)
         self.ttype = None  # тип строящейся таблицы (контекст лут-условий)
         # ПЛАН вложенных loot_table-ссылок (жалоба: лаги/пустоты от
-        # передоза): ≤ CAP_NESTED_PER_TABLE ссылок на таблицу, глубина
-        # РОВНО 1 (цель сама ссылок не имеет), только «вперёд» —
+        # передоза): <= CAP_NESTED_PER_TABLE ссылок на таблицу, глубина
+        # РОВНО 1 (цель сама ссылок не имеет), только «вперёд» -
         # рекурсия физически невозможна, а цепочки не глубже 1 уровня
         self.nested_plan = {}
         _targeted = set()
         for i in range(len(ids)):
             if i in _targeted:
-                continue  # цель не ссылается сама (глубина ≤ 1)
+                continue  # цель не ссылается сама (глубина <= 1)
             if rng.random() < 0.30:
                 forward = list(range(i + 1, len(ids)))
                 if not forward:
@@ -5067,13 +5288,13 @@ class _LootGen(object):
 
     def _item_entry(self, char, theme=None, light=False):
         """Запись-предмет (с функциями/компонентами).
-        theme — тематический пул предметов (тема пула таблицы);
-        light — «лёгкий» моб-дроп: ≤2 функциональных компонентов,
+        theme - тематический пул предметов (тема пула таблицы);
+        light - «лёгкий» моб-дроп: <=2 функциональных компонентов,
         без контейнеров/NBT-мобов, скромные стопки (жалоба: «игра
         ВИСНЕТ после убийства моба»)."""
         rng = self.rng
-        # «дикий тир» в духе BLOCK_TIERS: курируемые пулы — основной вес,
-        # полный каталог (1523 предмета реестра 26.2) — редкий шанс ~5%;
+        # «дикий тир» в духе BLOCK_TIERS: курируемые пулы - основной вес,
+        # полный каталог (1523 предмета реестра 26.2) - редкий шанс ~5%;
         # технические предметы (командные блоки, air...) отфильтрованы
         if rng.random() < 0.05:
             item = rng.choice(ALL_ITEMS)
@@ -5101,7 +5322,7 @@ class _LootGen(object):
             comps = _lighten_components(comps)
             # лёгкая чистка не должна оставлять «только визуал» (все
             # функциональные компоненты могли быть тяжёлыми): прогоняем
-            # фикс ещё раз ПОСЛЕ облегчения — внутри сам проверяет критерий
+            # фикс ещё раз ПОСЛЕ облегчения - внутри сам проверяет критерий
             # (косметика без функций) и добавляет работающую фичу
             _fix_visual_only(rng, item, comps, cfuncs, tag_prefix, None)
             hints = _ench_hint_lines(rng, comps, cfuncs)
@@ -5113,9 +5334,9 @@ class _LootGen(object):
             funcs.append({"function": "minecraft:set_components",
                           "components": comps})
         funcs.extend(cfuncs)
-        # количество: стекающимся предметам — set_count с РАЗНЫМИ кривыми
+        # количество: стекающимся предметам - set_count с РАЗНЫМИ кривыми
         # (uniform/binomial/константа), поверх изредка limit_count
-        # (ванильный приём грибных блоков); мобам — скромные стопки
+        # (ванильный приём грибных блоков); мобам - скромные стопки
         stackable = item not in _NON_STACKABLE and item not in _STACK1
         if stackable and rng.random() < (0.30 if light else 0.55):
             hi = {"valuable": 5, "resource": 12, "junk": 24}.get(pclass, 8)
@@ -5144,7 +5365,7 @@ class _LootGen(object):
                         "extra": rng.randint(2, 5)}
                 funcs.append(f)
         # «добычливость» с Добычей (Looting): enchanted_count_increase
-        # читает ATTACKING_ENTITY — параметр ТОЛЬКО entity-контекста
+        # читает ATTACKING_ENTITY - параметр ТОЛЬКО entity-контекста
         # (как ванильные entities/blaze.json; чистка _strip_cond снимает
         # функцию, если таблица с дроном моба вкладывается в слабый контекст)
         if (self.ttype == "minecraft:entity" and stackable
@@ -5163,15 +5384,15 @@ class _LootGen(object):
                                      "min": round(rng.uniform(0.05, 0.6), 2),
                                      "max": round(rng.uniform(0.6, 1.0), 2)}})
         # случайные зачарования поверх (как в ванильных сундуках);
-        # КАСТОМНЫЕ — только совместимые с предметом (supported_items;
-        # enchant_randomly без опций валиден сам — движок фильтрует)
+        # КАСТОМНЫЕ - только совместимые с предметом (supported_items;
+        # enchant_randomly без опций валиден сам - движок фильтрует)
         if gear and rng.random() < 0.15:
             copts = [e for e in CUSTOM_ENCHS if _custom_ench_ok(e, item)]
             if rng.random() < 0.5:
                 f = {"function": "minecraft:enchant_with_levels",
                      "levels": float(rng.randint(5, 39))}
                 if copts and rng.random() < 0.4:
-                    # только наши зачарования измерения — уровни разыграет
+                    # только наши зачарования измерения - уровни разыграет
                     # движок (валах: в #on_random_loot попадут лишь совместимые)
                     f["options"] = list(copts)
                 elif rng.random() < 0.7:
@@ -5185,7 +5406,7 @@ class _LootGen(object):
                     f["options"] = "#minecraft:on_random_loot"
             funcs.append(f)
         # похлёбка: эффекты ФУНКЦИЕЙ set_stew_effect (ванильный формат
-        # археологии; «type» — id эффекта, duration — провайдер), если
+        # археологии; «type» - id эффекта, duration - провайдер), если
         # компонент suspicious_stew_effects не назначил свои
         if (item == "minecraft:suspicious_stew"
                 and "minecraft:suspicious_stew_effects" not in comps
@@ -5199,7 +5420,7 @@ class _LootGen(object):
                                    "max": float(rng.randint(9, 18))}}
                               for _ in range(rng.randint(2, 4))]})
         # сырое мясо иногда «зажарено» (условие как у зомби-дропа).
-        # entity_properties(this) требует THIS_ENTITY+ORIGIN — только типы
+        # entity_properties(this) требует THIS_ENTITY+ORIGIN - только типы
         # из _THIS_TYPES; в остальных контекстах оставляем чистый шанс
         if item in RAW_FOOD and rng.random() < 0.25:
             terms = [{"condition": "minecraft:random_chance",
@@ -5218,10 +5439,10 @@ class _LootGen(object):
         return entry
 
     def _nested_entry(self, idx):
-        """Запись-ссылка на вложенную таблицу — из ЗАРАНЕЕ ПОСТРОЕННОГО
-        плана (только «вперёд», глубина ≤ 1, ≤ CAP_NESTED_PER_TABLE на
+        """Запись-ссылка на вложенную таблицу - из ЗАРАНЕЕ ПОСТРОЕННОГО
+        плана (только «вперёд», глубина <= 1, <= CAP_NESTED_PER_TABLE на
         таблицу) или ванильная, совместимая с контекстом текущей таблицы
-        (маска её типа ⊆ нашей) — иначе сервер WARN'ит при валидации."""
+        (маска её типа ? нашей) - иначе сервер WARN'ит при валидации."""
         rng = self.rng
         targets = [self.ids[t] for t in self.nested_plan.get(idx, ())
                    if t > idx]
@@ -5238,7 +5459,7 @@ class _LootGen(object):
     @staticmethod
     def _solid_entry(e):
         """Безусловная не-empty запись: item/tag/group без conditions
-        (alternatives — если последний ребёнок безусловен: он всегда
+        (alternatives - если последний ребёнок безусловен: он всегда
         достижим). Именно такая запись гарантирует непустой пул."""
         if not isinstance(e, dict) or e.get("type") == "minecraft:empty":
             return False
@@ -5254,9 +5475,9 @@ class _LootGen(object):
     def _entry(self, idx, char, theme, no_empty=False, no_struct=False,
                no_nested=False):
         """Запись пула: item / вложенная таблица (по плану) / empty /
-        tag / group|alternatives. no_empty — гарантийный пул без
-        пустых записей; no_struct — моб-таблица без group/alternatives
-        и вложенных таблиц (лёгкий дроп, ≤ предела предметов с убийства).
+        tag / group|alternatives. no_empty - гарантийный пул без
+        пустых записей; no_struct - моб-таблица без group/alternatives
+        и вложенных таблиц (лёгкий дроп, <= предела предметов с убийства).
         НЕДОСТИЖИМЫХ записей не генерируем В ПРИНЦИПЕ: не-последний
         ребёнок alternatives ВСЕГДА с условием."""
         rng = self.rng
@@ -5278,7 +5499,7 @@ class _LootGen(object):
             self._refs_left -= 1
             return self._nested_entry(idx)
         if kind == "empty":
-            # маленький вес: пустая запись — «разрядка», а не правило
+            # маленький вес: пустая запись - «разрядка», а не правило
             return {"type": "minecraft:empty", "weight": rng.randint(1, 4)}
         if kind == "tag":
             return {"type": "minecraft:tag",
@@ -5291,9 +5512,9 @@ class _LootGen(object):
             "minecraft:alternatives"
         if etype == "minecraft:alternatives":
             # AlternativesEntry.validate: все дети, кроме последнего,
-            # ОБЯЗАНЫ иметь conditions — иначе WARN «Unreachable entry!»
+            # ОБЯЗАНЫ иметь conditions - иначе WARN «Unreachable entry!»
             # (первый безусловный ребёнок перехватывает выбор навсегда).
-            # Условия — с РАЗНЫМИ шансами (богаче вариативность),
+            # Условия - с РАЗНЫМИ шансами (богаче вариативность),
             # последнему ребёнку условия НЕ ставим НИКОГДА
             for ch in children[:-1]:
                 conds = []
@@ -5309,7 +5530,7 @@ class _LootGen(object):
 
     def _cf_cond(self):
         """Контекстно-свободное условие (random_chance и связки
-        any_of/all_of/inverted) — валидно в ЛЮБОМ LootContextParamSet,
+        any_of/all_of/inverted) - валидно в ЛЮБОМ LootContextParamSet,
         в отличие от killed_by_player (нужен LAST_DAMAGE_PLAYER, только
         entity), table_bonus (TOOL) и random_chance_with_enchanted_bonus
         (ATTACKING_ENTITY, только entity)."""
@@ -5340,10 +5561,10 @@ class _LootGen(object):
              "chance": round(rng.uniform(0.05, 0.6), 3)}]}
 
     def _table_bonus_cond(self):
-        """table_bonus — шанс по уровню зачарования ИНСТРУМЕНТА
+        """table_bonus - шанс по уровню зачарования ИНСТРУМЕНТА
         (удочка на рыбалке, фортуна в vault/археологии); длины списка
         шансов = max_level+1. Вызывать только для типов с TOOL
-        (fishing/archaeology/vault) — чистка _strip_cond снимает
+        (fishing/archaeology/vault) - чистка _strip_cond снимает
         несовместимое при вложенности."""
         rng = self.rng
         ench = ("minecraft:luck_of_the_sea"
@@ -5357,13 +5578,13 @@ class _LootGen(object):
     # ---------- пулы и таблица ----------
 
     def _pool(self, idx, char, tier, themes, guarantee=False):
-        """Пул таблицы. guarantee — «гарантийный» первый пул: rolls ≥ 1,
-        БЕЗ условий пула, БЕЗ empty-записей, первая запись — безусловный
+        """Пул таблицы. guarantee - «гарантийный» первый пул: rolls >= 1,
+        БЕЗ условий пула, БЕЗ empty-записей, первая запись - безусловный
         предмет (инвариант «пустых контейнеров не бывает»; plain item
         не вылетает и из контекстной чистки _strip_table)."""
         rng = self.rng
         pool = {"rolls": _rolls(rng, tier)}
-        # bonus_rolls — редкий «бонусный» ролл сверх основного: ≤ капа,
+        # bonus_rolls - редкий «бонусный» ролл сверх основного: <= капа,
         # не в гарантийном пуле и не у мобов (жалоба на передоз роллов)
         if not guarantee and tier != "mob" and rng.random() < 0.12:
             pool["bonus_rolls"] = float(rng.randint(1, int(CAP_MAX_BONUS)))
@@ -5378,7 +5599,7 @@ class _LootGen(object):
             n = _weighted(rng, [(2, 10), (3, 20), (4, 22), (5, 18),
                                 (6, 12), (7, 8), (8, 6)])
             entries = [self._entry(idx, char, theme) for _ in range(n)]
-        # страховка: ≥1 безусловная не-empty запись в КАЖДОМ пуле
+        # страховка: >=1 безусловная не-empty запись в КАЖДОМ пуле
         if not any(self._solid_entry(e) for e in entries):
             entries.append(self._item_entry(char, theme))
         pool["entries"] = entries
@@ -5394,18 +5615,18 @@ class _LootGen(object):
         return pool
 
     def _mob_pool(self, rare=False):
-        """Пул моб-таблицы: обычный дроп (все записи — предметы,
-        лёгкие: ≤2 компонентов, без контейнеров/NBT-мобов) или редкая
-        награда за killed_by_player (шанс растёт с Добычей — как у
+        """Пул моб-таблицы: обычный дроп (все записи - предметы,
+        лёгкие: <=2 компонентов, без контейнеров/NBT-мобов) или редкая
+        награда за killed_by_player (шанс растёт с Добычей - как у
         ванильных drowned). rolls ВСЕГДА 1-2, никаких вложенных таблиц
-        и group/alternatives — суммарно ≤ ~6 предметов с убийства."""
+        и group/alternatives - суммарно <= ~6 предметов с убийства."""
         rng = self.rng
         pool = {"rolls": _rolls(rng, "mob")}
         if rare:
             conds = [{"condition": "minecraft:killed_by_player"}]
             if rng.random() < 0.5:
                 # шанс растёт с Добычей (Looting): ATTACKING_ENTITY есть
-                # только в entity-контексте — как entities/drowned.json
+                # только в entity-контексте - как entities/drowned.json
                 conds.append({
                     "condition": "minecraft:random_chance_with_enchanted_bonus",
                     "enchantment": "minecraft:looting",
@@ -5431,7 +5652,7 @@ class _LootGen(object):
         return pool
 
     def table(self, idx):
-        """Одна таблица. idx — порядковый номер (для ссылок «вперёд»)."""
+        """Одна таблица. idx - порядковый номер (для ссылок «вперёд»)."""
         rng = self.rng
         ttype = _weighted(rng, _TABLE_TYPES)
         self.ttype = ttype
@@ -5451,15 +5672,15 @@ class _LootGen(object):
             char = "mob"
         else:
             char = _weighted(rng, _CHARS)
-        # темы таблицы: 2-4 с разными весами (мобам не нужны — их пулы
+        # темы таблицы: 2-4 с разными весами (мобам не нужны - их пулы
         # курируются отдельно: мусор/еда + редкая награда)
         themes = [] if ttype == "minecraft:entity" else _themes_for(rng, char)
         table = {"type": ttype}
-        # тир богатства (жёсткие капы, см. _pool_count/_rolls): entity —
+        # тир богатства (жёсткие капы, см. _pool_count/_rolls): entity -
         # mob (1-2 пула, rolls 1-2, без вложенных таблиц, лёгкие
-        # предметы); «сокровищный» тир — только у chest-типа с характером
+        # предметы); «сокровищный» тир - только у chest-типа с характером
         # treasure (бартер/подарки/рыбалка не раздуваются); char=="mob"
-        # у chest-таблиц остаётся сундуком — сундук есть сундук
+        # у chest-таблиц остаётся сундуком - сундук есть сундук
         tier = "mob" if ttype == "minecraft:entity" else (
             "treasure" if (char == "treasure"
                            and ttype == "minecraft:chest") else (
@@ -5469,15 +5690,15 @@ class _LootGen(object):
         self._refs_left = 0 if ttype == "minecraft:entity" else \
             len(self.nested_plan.get(idx, ()))
         if ttype == "minecraft:entity":
-            # дроп моба: 1-2 пула, иногда второй — редкая награда
-            # (суммарно ≤ 2 пулов: ≤ 4 роллов, ~≤ 6 предметов)
+            # дроп моба: 1-2 пула, иногда второй - редкая награда
+            # (суммарно <= 2 пулов: <= 4 роллов, ~<= 6 предметов)
             pools = [self._mob_pool() for _ in range(rng.randint(1, 2))]
             if len(pools) < 2 and rng.random() < 0.4:
                 pools.append(self._mob_pool(rare=True))
         elif ttype == "minecraft:archaeology":
             # археология: черепки + редкие находки (как в ванили);
-            # первый пул — гарантийный (безусловные предметы, rolls ≥ 1);
-            # 2-3 пула — в общих капах тира None
+            # первый пул - гарантийный (безусловные предметы, rolls >= 1);
+            # 2-3 пула - в общих капах тира None
             pools = []
             for _ in range(rng.randint(2, 3)):
                 entries = []
@@ -5494,11 +5715,11 @@ class _LootGen(object):
             pools = [self._pool(idx, char, tier, themes, guarantee=(i == 0))
                      for i in range(n)]
         # страховка глобального капа пулов (структурно недостижимо,
-        # но кап есть кап — самотест проверяет на каждой таблице)
+        # но кап есть кап - самотест проверяет на каждой таблице)
         if len(pools) > CAP_MAX_POOLS:
             pools = pools[:CAP_MAX_POOLS]
         table["pools"] = pools
-        # статистика по тирам — только для самотеста
+        # статистика по тирам - только для самотеста
         st = _TIER_STATS.setdefault(tier,
                                      {"tables": 0, "pools": [], "rolls": []})
         st["tables"] += 1
@@ -5519,10 +5740,10 @@ class _LootGen(object):
 def rand_loot(rng, ns, name, count=None):
     """Случайные лут-таблицы измерения.
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace;
-    name   — имя измерения (id таблиц: <ns>:<name>_lootN);
-    count  — сколько таблиц (None → 1-2, «разумный минимум»).
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace;
+    name   - имя измерения (id таблиц: <ns>:<name>_lootN);
+    count  - сколько таблиц (None -> 1-2, «разумный минимум»).
 
     Возвращает {"loot_tables": {"<ns>:<name>_lootN": <json>, ...}}.
     Формат каждого JSON сверен с ванильными таблицами jar 26.2."""
@@ -5553,7 +5774,7 @@ def rand_loot(rng, ns, name, count=None):
 # ---------------------------------------------------------------------------
 
 def _strip_cond(cond, avail):
-    """Условие после чистки; None — выбросить целиком."""
+    """Условие после чистки; None - выбросить целиком."""
     if not isinstance(cond, dict):
         return cond
     t = cond.get("condition")
@@ -5594,7 +5815,7 @@ def _strip_ctx_list(lst, avail):
 
 
 def _strip_entries(entries, avail):
-    """Чистка записей под эффективный контекст; None — все записи вылетели."""
+    """Чистка записей под эффективный контекст; None - все записи вылетели."""
     out = []
     for e in entries:
         if not isinstance(e, dict):
@@ -5643,7 +5864,7 @@ def _strip_entries(entries, avail):
                 del e["children"]
             else:
                 e["children"] = kept
-        # группа/альтернативы без детей — невалидны
+        # группа/альтернативы без детей - невалидны
         if (e.get("type") in ("minecraft:group", "minecraft:alternatives")
                 and not e.get("children")):
             continue
@@ -5662,7 +5883,7 @@ def _strip_table(table, avail):
                 pool["conditions"] = kept
         ents = _strip_entries(pool.get("entries", []), avail)
         if ents is None:
-            continue  # пул опустел — выкидываем целиком
+            continue  # пул опустел - выкидываем целиком
         pool["entries"] = ents
         pools.append(pool)
     table["pools"] = pools
@@ -5672,7 +5893,7 @@ def _strip_table(table, avail):
 # loot_table): открытие сундука и смерть моба имеют свой набор
 # LootContextParamSet, НЕзависящий от того, в какой таблице лежит предмет
 _CHEST_OPEN_CTX = _NEED_THIS | _NEED_ORIGIN        # как minecraft:chest
-# смерть моба: entity-контекст (+ ATTACKING_ENTITY — убивший игрок/моб)
+# смерть моба: entity-контекст (+ ATTACKING_ENTITY - убивший игрок/моб)
 _ENTITY_DEATH_CTX = (_NEED_LDP | _NEED_THIS | _NEED_ORIGIN | _NEED_ATK)
 
 
@@ -5682,7 +5903,7 @@ def _external_ctx(tables, ids):
     в block_entity_data (chest-контекст при открытии поставленного
     блока) и DeathLootTable в NBT мобов entity_data/SpawnData
     (entity-контекст при смерти). Этим ссылкам всё равно, в какой таблице
-    они лежат, — а _nested_refs их не видит."""
+    они лежат, - а _nested_refs их не видит."""
     idset = set(ids)
     bound = {}
 
@@ -5724,7 +5945,7 @@ def _nested_refs(node, acc):
 
 def _fix_nesting_contexts(tables, ids):
     idset = set(ids)
-    # стартовые границы — от «вНЕшних» ссылок из КОМПОНЕНТОВ предметов
+    # стартовые границы - от «вНЕшних» ссылок из КОМПОНЕНТОВ предметов
     # (см. _external_ctx); дальше наслаиваются вложенные loot_table-записи
     bound = _external_ctx(tables, ids)
     for tid in ids:
@@ -5741,11 +5962,11 @@ def _fix_nesting_contexts(tables, ids):
 
 # ---------------------------------------------------------------------------
 # САМОПРОВЕРКА И CLI (на диск ничего не пишет):
-#   python -X utf8 gen_loot.py [N]          — самотест на N таблиц (умолч. 100)
-#   python -X utf8 gen_loot.py 500          — самотест на 500 таблиц
-#   python -X utf8 gen_loot.py --check      — батарея инвариантов на пачке сидов
+#   python -X utf8 gen_loot.py [N]          - самотест на N таблиц (умолч. 100)
+#   python -X utf8 gen_loot.py 500          - самотест на 500 таблиц
+#   python -X utf8 gen_loot.py --check      - батарея инвариантов на пачке сидов
 #   python -X utf8 gen_loot.py --print --seed 777 [N]
-#                                            — напечатать JSON таблиц сида 777
+#                                            - напечатать JSON таблиц сида 777
 #   (флаги можно совмещать: --print --seed 3 N=12 и т.п.)
 # ---------------------------------------------------------------------------
 
@@ -5753,11 +5974,11 @@ import random as _random
 
 
 def _setup_custom_enchs(seed=777):
-    """Кастомные зачарования измерения — как их подмешивает
+    """Кастомные зачарования измерения - как их подмешивает
     generate_dimension: генерируются ДО лута (rand_enchantments
     запоминает их в LAST_ENCHANTMENTS), id передаются
     set_custom_enchants, а сведения (имя/описание/пассивность/
-    supported_items) rand_loot находит сам — автопоиском по
+    supported_items) rand_loot находит сам - автопоиском по
     LAST_ENCHANTMENTS. Возвращает (ids, passive_ids, результат)."""
     global ENCH_SUMMARIES
     import gen_enchantments as _ge
@@ -5773,8 +5994,8 @@ def _setup_custom_enchs(seed=777):
 # ---- симуляция лута (проверка «пустых контейнеров не бывает») -------------
 
 def _sim_cond(c, rng):
-    """Условие в симуляции: контекстные — по номиналу (killed_by_player
-    считаем истинным: игрока убил игрок; entity_properties — 50/50)."""
+    """Условие в симуляции: контекстные - по номиналу (killed_by_player
+    считаем истинным: игрока убил игрок; entity_properties - 50/50)."""
     if not isinstance(c, dict):
         return True
     t = c.get("condition")
@@ -5819,7 +6040,7 @@ def _sim_entry(e, rng):
 
 
 def _simulate(table, rng):
-    """Сколько предметов выдаёт таблица при одном «открытии» — честная
+    """Сколько предметов выдаёт таблица при одном «открытии» - честная
     к rolls/bonus_rolls/условиям/весам/пустым записям симуляция."""
     items = 0
     for pool in table.get("pools", []):
@@ -5874,8 +6095,8 @@ def _run_selftest(n_tables, seed, verbose=True):
     viol = []
 
     # =====================================================================
-    # КАПЫ (жалоба: «слишком много rolls — контейнеры ПУСТЫЕ от
-    # передозировки, игра ВИСНЕТ после убийства моба») — на КАЖДОЙ таблице
+    # КАПЫ (жалоба: «слишком много rolls - контейнеры ПУСТЫЕ от
+    # передозировки, игра ВИСНЕТ после убийства моба») - на КАЖДОЙ таблице
     # =====================================================================
     cap_pools_max = 0
     cap_rolls_max = 0.0
@@ -5902,7 +6123,7 @@ def _run_selftest(n_tables, seed, verbose=True):
                     viol.append("кап bonus_rolls: %s -> %r" % (tid, br))
                 bonus_seen += 1
 
-    # ---- вложенные loot_table-записи: ≤ CAP_NESTED_PER_TABLE, глубина 1 --
+    # ---- вложенные loot_table-записи: <= CAP_NESTED_PER_TABLE, глубина 1 --
     ref_targets = set()
     ref_total = 0
     for tid, t in tabs.items():
@@ -5917,7 +6138,7 @@ def _run_selftest(n_tables, seed, verbose=True):
             viol.append("кап вложенных таблиц: %s -> %d (> %d)"
                         % (tid, n_ref, CAP_NESTED_PER_TABLE))
     for tgt in ref_targets:
-        # цель не должна ссылаться на НАШИ таблицы (глубина ≤ 1)
+        # цель не должна ссылаться на НАШИ таблицы (глубина <= 1)
         refs = []
         _nested_refs(tabs[tgt], refs)
         deep = [r for r in refs if r in tabs]
@@ -5965,7 +6186,7 @@ def _run_selftest(n_tables, seed, verbose=True):
                         viol.append("mob: тяжёлый компонент %s: %s"
                                     % (heavy[0], tid))
                     # функциональные = не идентичность и не косметика
-                    # (rarity/custom_data — копеечные, не считаем)
+                    # (rarity/custom_data - копеечные, не считаем)
                     nfun = len([k for k in cs if k not in (
                         "minecraft:custom_name", "minecraft:item_name",
                         "minecraft:lore") and k not in _COSMETIC_KEYS])
@@ -5997,7 +6218,7 @@ def _run_selftest(n_tables, seed, verbose=True):
         if not ok:
             viol.append("нет гарантийного пула (риск пустого контейнера): %s"
                         % tid)
-        for _ in range(8):  # 8 «открытий» на таблицу — все обязаны дать ≥1
+        for _ in range(8):  # 8 «открытий» на таблицу - все обязаны дать >=1
             if _simulate(t, sim_rng) < 1:
                 sim_fail += 1
                 viol.append("симуляция: таблица выдала 0 предметов: %s" % tid)
@@ -6034,9 +6255,9 @@ def _run_selftest(n_tables, seed, verbose=True):
                  _fmt_num(CAP_MAX_ROLLS), _fmt_num(cap_rolls_min), bonus_seen,
                  _fmt_num(CAP_MAX_BONUS)))
         print("вложенных loot_table-записей: %d (макс %d на таблицу), "
-              "таблиц-целей: %d (глубина ≤ 1)"
+              "таблиц-целей: %d (глубина <= 1)"
               % (ref_total, CAP_NESTED_PER_TABLE, len(ref_targets)))
-        print("mob-таблиц: %d, предметов с убийства ≤ %d (кап %d)"
+        print("mob-таблиц: %d, предметов с убийства <= %d (кап %d)"
               % (mob_tables, mob_max_items, CAP_MAX_ITEMS_MOB))
     # ---- структура пулов/роллов ПО ТИРАМ таблиц ---------------------------
     _tier_snap = {k: {"tables": v["tables"], "pools": list(v["pools"]),
@@ -6091,7 +6312,7 @@ def _run_selftest(n_tables, seed, verbose=True):
               "разных компонентов внутри: %d"
               % (nested_total, nested_deep, len(nested_keys)))
     # осмысленность: предметов, у которых компоненты исчерпываются
-    # одним именем, быть НЕ ДОЛЖНО — это чистый ванильный предмет,
+    # одним именем, быть НЕ ДОЛЖНО - это чистый ванильный предмет,
     # а не кастомный (item_name ставится только при других компонентах)
     only_look = 0
     examples = []
@@ -6168,11 +6389,11 @@ def _run_selftest(n_tables, seed, verbose=True):
         return needs
 
     # запрет удалённых из генерации ключей (grep по сгенерированному
-    # JSON): can_place_on / can_break (разрешения adventure-режима —
+    # JSON): can_place_on / can_break (разрешения adventure-режима -
     # бесполезны), item_model (только путает), NoAI / Invulnerable
-    # (мобы должны жить и быть убиваемыми) — их не должно быть НИГДЕ;
+    # (мобы должны жить и быть убиваемыми) - их не должно быть НИГДЕ;
     # tooltip_display / tooltip_style / hide_tooltip / hidden_components
-    # — прятанье тултипов запутывает игроков (жалоба)
+    # - прятанье тултипов запутывает игроков (жалоба)
     for tid in tabs:
         blob = _json.dumps(tabs[tid], ensure_ascii=False)
         for bad in ("minecraft:can_place_on", "minecraft:can_break",
@@ -6223,8 +6444,8 @@ def _run_selftest(n_tables, seed, verbose=True):
         _check_stacks(t, tid)
 
     # ---- тиры пулов/роллов (жёсткие границы генерации) -------------------
-    # «проверка состоялась» — только на достаточно большой выборке
-    # (при 6 таблицах моба может просто не быть — это не инвариант)
+    # «проверка состоялась» - только на достаточно большой выборке
+    # (при 6 таблицах моба может просто не быть - это не инвариант)
     _TIER_BOUNDS = {"mob": ((1, 2), (1.0, 2.0)),
                     "chest": ((3, 6), (1.0, 6.0)),
                     "treasure": ((4, 8), (2.0, 6.0)),
@@ -6246,7 +6467,7 @@ def _run_selftest(n_tables, seed, verbose=True):
 
     # ---- СОВМЕСТИМОСТЬ ЗАЧАРОВАНИЙ (жалоба: «не надо мечу давать защиту») -
     # каждая пара (предмет, зачарование) проверяется по точным
-    # supported_items из jar 26.2: ванильные — ENCHANTS, кастомные —
+    # supported_items из jar 26.2: ванильные - ENCHANTS, кастомные -
     # кэш _ENCH_INFO (теги разрешены картой ENCH_TAG_ITEMS)
     _ench_stat = {"items": 0, "hints": 0, "rescued": 0, "examples": [],
                   "pairs": 0, "custom_pairs": 0, "compat_viol": 0}
@@ -6275,15 +6496,15 @@ def _run_selftest(n_tables, seed, verbose=True):
     def _has_hint(lore, eid):
         nm = _ENCH_INFO.get(eid, {}).get("name") or eid
         return any(isinstance(l, dict)
-                   and str(l.get("text", "")).startswith(nm + " —")
+                   and str(l.get("text", "")).startswith(nm + " -")
                    for l in (lore or []))
 
     def _check_ench_item(cs, fns, where, item):
-        """Все зачарования предмета: (а) совместимость — ванильные по
+        """Все зачарования предмета: (а) совместимость - ванильные по
         ENCHANTS (supported_items из jar), кастомные по _ENCH_INFO
-        (enchanted_book — исключение-носитель); (б) у КАЖДОГО кастомного
-        есть lore-строка «Имя — описание»; (в) options у функций
-        enchant_with_levels/enchant_randomly — только совместимые."""
+        (enchanted_book - исключение-носитель); (б) у КАЖДОГО кастомного
+        есть lore-строка «Имя - описание»; (в) options у функций
+        enchant_with_levels/enchant_randomly - только совместимые."""
         # (в) опции функций
         for f in fns:
             if not isinstance(f, dict):
@@ -6339,7 +6560,7 @@ def _run_selftest(n_tables, seed, verbose=True):
                     _ench_stat["pairs"] += 1
                     if str(e).startswith("minecraft:"):
                         if item in ENCH_BOOKS:
-                            continue  # книга-носитель — валидно
+                            continue  # книга-носитель - валидно
                         if not _ench_supports(e, item):
                             _ench_stat["compat_viol"] += 1
                             viol.append("несовместимое ванильное зачарование: "
@@ -6389,8 +6610,11 @@ def _run_selftest(n_tables, seed, verbose=True):
             if cs and set(cs) <= _COSMETIC_KEYS and not others:
                 _visual_only.append((tid, e.get("name")))
             _check_ench_item(cs, fns, tid, e.get("name"))
-            # use_remainder: только у съедобных, count всегда 1, id —
-            # из пула остатков/базовой посуды; именной — с custom_name
+            if "minecraft:food" in cs and "minecraft:consumable" not in cs:
+                viol.append("item with food but missing consumable: %s -> %s"
+                            % (tid, e.get("name")))
+            # use_remainder: только у съедобных, count всегда 1, id -
+            # из пула остатков/базовой посуды; именной - с custom_name
             nm_it = e.get("name") or ""
             if (nm_it in FOOD or nm_it in RAW_FOOD or nm_it in BAD_FOOD
                     or "minecraft:food" in cs
@@ -6418,8 +6642,8 @@ def _run_selftest(n_tables, seed, verbose=True):
                                   (rc.get("minecraft:lore") or [])]))
 
     # вложенные стеки (container/bundle/charged_projectiles/оборудование
-    # мобов в NBT): косметика-без-функций быть не должна, зачарования —
-    # совместимые и с подсказками; use_remainder-остатки — не предметы
+    # мобов в NBT): косметика-без-функций быть не должна, зачарования -
+    # совместимые и с подсказками; use_remainder-остатки - не предметы
     # для проверки «только визуал» (трофей после еды имеет право быть
     # просто вещью)
     def _walk_stacks(node, pkey, where):
@@ -6430,6 +6654,9 @@ def _run_selftest(n_tables, seed, verbose=True):
                 if cc and set(cc) <= _COSMETIC_KEYS:
                     _visual_only.append((where, node["id"]))
                 _check_ench_item(cc, [], where, node["id"])
+                if "minecraft:food" in cc and "minecraft:consumable" not in cc:
+                    viol.append("nested stack with food but missing consumable: %s -> %s"
+                                % (where, node.get("id")))
             for k, v in node.items():
                 _walk_stacks(v, k, where)
         elif isinstance(node, list):
@@ -6506,7 +6733,7 @@ def _run_selftest(n_tables, seed, verbose=True):
         item = item or "?"
         am = cc.get("minecraft:attribute_modifiers")
         if isinstance(am, list) and am:
-            # (1) базовые модификаторы — ПРЕФИКС списка
+            # (1) базовые модификаторы - ПРЕФИКС списка
             base = _BASE_ATTRS.get(item) or []
             bslot = _base_attr_slot(item)
             for i, (at, amt) in enumerate(base):
@@ -6529,9 +6756,9 @@ def _run_selftest(n_tables, seed, verbose=True):
                     continue
                 if not (eqs == s or van == s or
                         (s == "armor" and (eqs in ("head", "chest", "legs",
-                                                   "feet")
+                                                   "feet", "body")
                                            or van in ("head", "chest",
-                                                      "legs", "feet")))):
+                                                      "legs", "feet", "body")))):
                     viol.append("слот атрибута: %s -> %s %s"
                                 % (where, item, s))
         # (7) max_stack_size: 65..99, не damageable, >=2 других компонента
@@ -6546,8 +6773,8 @@ def _run_selftest(n_tables, seed, verbose=True):
                     and others >= 2):
                 viol.append("max_stack_size: %s -> %s %r"
                             % (where, item, mss))
-        # (3/6) equippable: asset_id — только ванильный волчьи;
-        # camera_overlay — нигде; компонент stackable — никогда
+        # (3/6) equippable: asset_id - только ванильный волчьи;
+        # camera_overlay - нигде; компонент stackable - никогда
         eq = cc.get("minecraft:equippable")
         if isinstance(eq, dict) and "asset_id" in eq:
             if item != "minecraft:wolf_armor" \
@@ -6583,7 +6810,7 @@ def _run_selftest(n_tables, seed, verbose=True):
     def _check_node(node, item, where):
         """Обход ВСЕГО JSON с отслеживанием текущего предмета: записи
         (type=item, name), вложенные стеки ({id, count}), NBT мобов
-        (equipment) — компоненты проверяются и в set_components-функциях
+        (equipment) - компоненты проверяются и в set_components-функциях
         записей, и в components стеков."""
         if isinstance(node, dict):
             if node.get("type") == "minecraft:item" \
@@ -6671,9 +6898,9 @@ def _run_selftest(n_tables, seed, verbose=True):
             for v in viol[:10]:
                 print("  " + v)
         else:
-            print("OK: капы (пулы ≤ %d, rolls ≤ %s, bonus_rolls ≤ %s, "
-                  "вложенные таблицы ≤ %d и глубина ≤ 1, mob: 1-2 пула / "
-                  "rolls 1-2 / ≤ %d предметов / лёгкие компоненты), "
+            print("OK: капы (пулы <= %d, rolls <= %s, bonus_rolls <= %s, "
+                  "вложенные таблицы <= %d и глубина <= 1, mob: 1-2 пула / "
+                  "rolls 1-2 / <= %d предметов / лёгкие компоненты), "
                   "пустых контейнеров нет (гарантийный пул + симуляция), "
                   "зачарования только на совместимых предметах, "
                   "контексты таблиц чисты, alternatives без недостижимых "
@@ -6767,7 +6994,7 @@ if __name__ == "__main__":
         if _bad:
             print("--check: ПРОВАЛ (%d прогонов с ошибками)" % _bad)
             raise SystemExit(1)
-        print("--check: OK — %d сидов × 80 таблиц + 500 таблиц, все "
+        print("--check: OK - %d сидов x 80 таблиц + 500 таблиц, все "
               "инварианты зелёные (капы, пустые контейнеры, совместимость "
               "зачарований, контексты, вложенные стеки, тиры, "
               "имена/lore/остатки)" % len(_seeds))
@@ -6778,4 +7005,3 @@ if __name__ == "__main__":
     _viol, _tabs = _run_selftest(_n, _seed, verbose=True)
     if _viol:
         raise SystemExit(1)
-

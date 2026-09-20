@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_trial_spawners.py — генератор случайных конфигов trial_spawner
+gen_trial_spawners.py - генератор случайных конфигов trial_spawner
 (Minecraft 26.2, pack_format 107). Синтаксис сверен с ванильным jar 26.2
 (minecraft-26.2-client.jar): всеми 28 JSON из data/minecraft/trial_spawner/
 (trial_chamber/*/normal|ominous.json, DataVersion 4903) и байткодом классов
 кодеков (javap Java 25):
 
-  TrialSpawnerConfig.DIRECT_CODEC — RecordCodecBuilder из 9 полей, ВСЕ
+  TrialSpawnerConfig.DIRECT_CODEC - RecordCodecBuilder из 9 полей, ВСЕ
   optionalFieldOf (дефолты из TrialSpawnerConfig$Builder):
     spawn_range:                        Codec.intRange(1, 128),         def 4
     total_mobs:                         floatRange(0, MAX),             def 6.0
@@ -21,49 +21,49 @@ gen_trial_spawners.py — генератор случайных конфигов
         (bайткод Builder: BuiltInLootTables.SPAWNER_TRIAL_CHAMBER_*)
     items_to_drop_when_ominous: LootTable.KEY_CODEC,                   def
         spawners/trial_chamber/items_to_drop_when_ominous
-  Реестр: Registries.TRIAL_SPAWNER_CONFIG — простой реестр датапака, файлы
+  Реестр: Registries.TRIAL_SPAWNER_CONFIG - простой реестр датапака, файлы
   data/<ns>/trial_spawner/<имя>.json (БЕЗ префикса worldgen/), как в jar.
 
-  SpawnData.CODEC — 3 поля (байткод SpawnData.class):
-    entity:            CompoundTag.CODEC, fieldOf — СЫРОЙ NBT-компаунд!
+  SpawnData.CODEC - 3 поля (байткод SpawnData.class):
+    entity:            CompoundTag.CODEC, fieldOf - СЫРОЙ NBT-компаунд!
                        Значит полное NBT моба валидно: id + IsBaby/Size
                        (ванильные конфиги) + CustomName/attributes/Health/
                        equipment{<слот>:ItemStack}/drop_chances/
-                       DeathLootTable/PersistenceRequired/... — те же теги,
+                       DeathLootTable/PersistenceRequired/... - те же теги,
                        что и у мобов в .nbt-шаблонах (Entity.load), БЕЗ
                        NoAI/Invulnerable (мобы живут своей жизнью и уязвимы).
-    custom_spawn_rules: optionalFieldOf — CustomSpawnRules.CODEC:
+    custom_spawn_rules: optionalFieldOf - CustomSpawnRules.CODEC:
                        block_light_limit / sky_light_limit, оба
                        InclusiveRange.INT (JSON {"min_inclusive":
                        <0..15>, "max_inclusive": <0..15>}).
-    equipment:         optionalFieldOf — EquipmentTable.CODEC: {loot_table
+    equipment:         optionalFieldOf - EquipmentTable.CODEC: {loot_table
                        (обяз.), slot_drop_chances (опц. float либо map
-                       слот->float)} — НЕ экипировка моба, а ССЫЛКА на
+                       слот->float)} - НЕ экипировка моба, а ССЫЛКА на
                        лут-таблицу equipment/* (ванильные ominous-конфиги:
                        "minecraft:equipment/trial_chamber_melee").
   WeightedList в JSON: [{"data": <SpawnData>, "weight": <int>}, ...].
 
 Модуль импортируется главным скриптом (generate_dimension.py) и сам ничего
-не пишет на диск — только ВОЗВРАЩАЕТ данные:
+не пишет на диск - только ВОЗВРАЩАЕТ данные:
 
     rand_trial_spawners(rng, ns, name, loot_alloc=None, mob_pool=None,
                         count=None)
         -> {"trial_spawners": {id: json}, "loot_slots": <int>}
 
-    id вида "<ns>:<name>_tsN" (normal) и "<ns>:<name>_tsN_om" (ominous) —
+    id вида "<ns>:<name>_tsN" (normal) и "<ns>:<name>_tsN_om" (ominous) -
     файлы data/<ns>/trial_spawner/<name>_tsN.json / <name>_tsN_om.json.
     Пары согласованы: обычный конфиг и его «злая» версия (больше мобов,
-    быстрее спавн, equipment-таблицы). loot_alloc — общий на измерение
+    быстрее спавн, equipment-таблицы). loot_alloc - общий на измерение
     счётчик gen_structures.LootSlots: КАЖДАЯ ссылка на лут (DeathLootTable
     моба-«босса» из spawn_potentials, приз из loot_tables_to_eject,
     items_to_drop_when_ominous) занимает СВОЙ уникальный слот
-    "<ns>:<name>_lootN" — без повторов в рамках измерения; None → ванильные
-    таблицы. "loot_slots" — сколько слотов занял этот вызов. mob_pool —
+    "<ns>:<name>_lootN" - без повторов в рамках измерения; None -> ванильные
+    таблицы. "loot_slots" - сколько слотов занял этот вызов. mob_pool -
     список мобов (по умолчанию gen_structures.STRUCTURE_MOBS).
 
 Ключи для волтов (trial_key) ванильные спавнеры выбрасывают через
-loot_tables_to_eject (minecraft:spawners/trial_chamber/key —
-BuiltInLootTables, подтверждено байткодом) — поэтому в normal-конфигах
+loot_tables_to_eject (minecraft:spawners/trial_chamber/key -
+BuiltInLootTables, подтверждено байткодом) - поэтому в normal-конфигах
 эта таблица присутствует всегда: волт в паре со спавнером открываем.
 """
 
@@ -100,7 +100,7 @@ EQUIPMENT_TABLES = [
 def _heavy_count(rng, mean, big_min, big_max, big_p):
     """Тяжёлохвостое число (паттерн heavy_count из generate_dimension):
     почти всегда маленькое (экспоненциальное со средним ~mean, не выше
-    big_min-1), с шансом big_p — большой выброс, лог-равномерный
+    big_min-1), с шансом big_p - большой выброс, лог-равномерный
     в [big_min, big_max]. Скопировано, чтобы не тянуть цикл импорта."""
     n = 1 + int(rng.expovariate(1.0 / max(0.5, mean - 1)))
     if rng.random() < big_p:
@@ -111,11 +111,11 @@ def _heavy_count(rng, mean, big_min, big_max, big_p):
 
 
 def _mob_entity(rng, mob_pool, loot_alloc, boss_chance):
-    """NBT entity для spawn_potentials. С шансом boss_chance — полный NBT
+    """NBT entity для spawn_potentials. С шансом boss_chance - полный NBT
     «босса» из gen_structures._rand_mob_nbt (CustomName/attributes/
-    equipment/DeathLootTable — CompoundTag.CODEC в SpawnData принимает
-    сырой NBT, см. докстринг модуля); иначе — минимум: id (+ изредка
-    IsBaby/Size, как в ванильных конфигах). Никогда NoAI/Invulnerable —
+    equipment/DeathLootTable - CompoundTag.CODEC в SpawnData принимает
+    сырой NBT, см. докстринг модуля); иначе - минимум: id (+ изредка
+    IsBaby/Size, как в ванильных конфигах). Никогда NoAI/Invulnerable -
     мобы живут своей жизнью и уязвимы."""
     if rng.random() < boss_chance:
         return _rand_mob_nbt(rng, loot_alloc)
@@ -131,7 +131,7 @@ def _mob_entity(rng, mob_pool, loot_alloc, boss_chance):
 
 def _rand_spawn_potentials(rng, mob_pool, loot_alloc, boss_chance,
                            equip_chance):
-    """spawn_potentials: 1-3 взвешенных SpawnData. equip_chance — шанс
+    """spawn_potentials: 1-3 взвешенных SpawnData. equip_chance - шанс
     equipment-таблицы (SpawnData.equipment, только поле loot_table +
     slot_drop_chances float, как в ванильных ominous-конфигах)."""
     potentials = []
@@ -159,9 +159,9 @@ def _rand_spawn_potentials(rng, mob_pool, loot_alloc, boss_chance,
 
 def _rand_loot_tables_to_eject(rng, loot_alloc, ominous):
     """loot_tables_to_eject: что спавнер выбрасывает при «победе».
-    ВСЕГДА включаем ванильную таблицу ключей — из неё выпадают trial_key,
+    ВСЕГДА включаем ванильную таблицу ключей - из неё выпадают trial_key,
     которыми открываются волты (иначе пары спавнер+волт из gen_structures
-    неиграбельны); остальное — призы (каждый СВОЙ уникальный слот) /
+    неиграбельны); остальное - призы (каждый СВОЙ уникальный слот) /
     consumables."""
     out = []
     if ominous:
@@ -180,8 +180,8 @@ def _rand_loot_tables_to_eject(rng, loot_alloc, ominous):
 
 
 def _rand_ts_config(rng, mob_pool, loot_alloc, base=None):
-    """Один конфиг trial_spawner. base — «обычная» версия, от которой
-    делается злая (поля сильнее); None — генерировать с нуля.
+    """Один конфиг trial_spawner. base - «обычная» версия, от которой
+    делается злая (поля сильнее); None - генерировать с нуля.
 
     ПЛОТНОСТЬ СПАВНА СОЗНАТЕЛЬНО СКРОМНАЯ (жёсткие лимиты, чтобы измерение
     не заполнялось мобами, как у ванильных trial chambers): normal
@@ -206,7 +206,7 @@ def _rand_ts_config(rng, mob_pool, loot_alloc, base=None):
         "total_mobs": total,
         "total_mobs_added_per_player": round(rng.uniform(0.5, 1.0), 2),
         "ticks_between_spawn": ticks,
-        # боссы с полным NBT чаще в ominous; equipment-таблицы — тоже
+        # боссы с полным NBT чаще в ominous; equipment-таблицы - тоже
         "spawn_potentials": _rand_spawn_potentials(
             rng, mob_pool, loot_alloc,
             boss_chance=0.45 if ominous else 0.2,
@@ -229,16 +229,16 @@ def rand_trial_spawners(rng, ns, name, loot_alloc=None, mob_pool=None,
                         count=None):
     """Случайные ПАРЫ конфигов trial_spawner (normal + ominous).
 
-    Возвращает {"trial_spawners": {id: json}, "loot_slots": <int>} —
+    Возвращает {"trial_spawners": {id: json}, "loot_slots": <int>} -
     файлы писать в data/<ns>/trial_spawner/<имя из id>.json (реестр БЕЗ
     worldgen/). id: "<ns>:<name>_tsN" (normal) и "<ns>:<name>_tsN_om"
-    (ominous) — gen_structures различает пару по суффиксу "_om".
+    (ominous) - gen_structures различает пару по суффиксу "_om".
 
-    loot_alloc — общий на измерение счётчик gen_structures.LootSlots:
-    каждая ссылка на лут занимает СВОЙ уникальный слот (None → только
-    ванильные таблицы); mob_pool — список мобов (по умолчанию
-    gen_structures.STRUCTURE_MOBS); count — сколько ПАР (по умолчанию
-    тяжёлый хвост: в среднем ~3, выбросы до ~20). "loot_slots" — сколько
+    loot_alloc - общий на измерение счётчик gen_structures.LootSlots:
+    каждая ссылка на лут занимает СВОЙ уникальный слот (None -> только
+    ванильные таблицы); mob_pool - список мобов (по умолчанию
+    gen_structures.STRUCTURE_MOBS); count - сколько ПАР (по умолчанию
+    тяжёлый хвост: в среднем ~3, выбросы до ~20). "loot_slots" - сколько
     слотов лута занял этот вызов."""
     mob_pool = list(mob_pool) if mob_pool else STRUCTURE_MOBS
     _slots0 = loot_alloc.count if loot_alloc is not None else 0
@@ -258,7 +258,7 @@ def rand_trial_spawners(rng, ns, name, loot_alloc=None, mob_pool=None,
 def pair_config_ids(ids):
     """Разбить плоский список id конфигов на пары (normal, ominous) по
     суффиксу "_om" (для gen_structures: блоку нужны оба). Конфиг без
-    пары используется как свой own ominous (валидно — это просто id)."""
+    пары используется как свой own ominous (валидно - это просто id)."""
     ids = [i for i in (ids or []) if i]
     normals = [i for i in ids if not i.endswith("_om")]
     return [(i, (i + "_om" if i + "_om" in ids else i)) for i in normals]
@@ -322,7 +322,7 @@ def _self_test(seeds=20):
                 assert any(e["data"] == VANILLA_SPAWNER_KEY
                            for e in eject), cid
         # УНИКАЛЬНОСТЬ: каждая ссылка на наш лут (DeathLootTable босса,
-        # приз из eject, items_to_drop_when_ominous) — свой слот, без
+        # приз из eject, items_to_drop_when_ominous) - свой слот, без
         # повторов во всём измерении
         refs = []
         for cfg in cfgs.values():

@@ -1,70 +1,120 @@
 #!/usr/bin/env python3
-"""Scan datapack JSONs for invalid NumberProviders (26.2 rules)."""
-import json, sys, os
+"""Read-only JSON range audit, not a replacement for the Minecraft codecs.
+
+FloatProvider uniform uses min_inclusive < max_exclusive; IntProvider and
+loot NumberProvider bounds are inclusive and may coincide. Dynamic providers
+and mixed relative height anchors cannot be ordered without runtime context.
+The walk always visits children, including children of recognized providers.
+"""
+import argparse
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).parent / "data"
 
-def num(v):
-    if isinstance(v, dict):
-        if "type" in v and ("min" in v or "value" in v or "min_inclusive" in v):
-            return None
-        if v.get("type") in ("minecraft:constant",):
-            return v.get("value")
-        return None
-    return v if isinstance(v, (int, float)) else None
 
-def check_prov(p, path, errs):
+def num(value):
+    """Resolve only literal numbers and explicit constant providers (not bool)."""
+    if isinstance(value, dict):
+        if value.get("type") in ("constant", "minecraft:constant"):
+            return num(value.get("value"))
+        return None
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def _ordered(p, lower, upper, path, errs, strict=False, label="range"):
+    mn, mx = num(p.get(lower)), num(p.get(upper))
+    if mn is not None and mx is not None and (mx < mn or (strict and mx == mn)):
+        comparison = "min>=max" if strict else "min>max"
+        errs.append(f"{path}: {label} {comparison} {mn}..{mx}")
+
+
+def check_prov(p, path, errs, float_only=False):
     if not isinstance(p, dict):
         return
     t = p.get("type", "")
-    if t == "minecraft:uniform":
-        # float: min_inclusive / max_exclusive (or min/max); int: min_inclusive / max_inclusive
-        mn = p.get("min_inclusive", p.get("min"))
-        mx = p.get("max_exclusive", p.get("max_inclusive", p.get("max")))
-        if mn is not None and mx is not None and isinstance(mn, (int, float)) and isinstance(mx, (int, float)):
-            if mx <= mn:
-                errs.append(f"{path}: uniform min>=max {mn}..{mx}")
-    elif t == "minecraft:trapezoid":
-        mn = p.get("min"); mx = p.get("max"); pl = p.get("plateau", 0)
-        if None not in (mn, mx, pl) and pl > (mx - mn):
-            errs.append(f"{path}: trapezoid plateau {pl} > span {mx-mn} [{mn},{mx}]")
-    elif t == "minecraft:clamped":
-        mn = p.get("min"); mx = p.get("max")
-        if mn is not None and mx is not None and mx < mn:
-            errs.append(f"{path}: clamped min>max")
-    elif t == "minecraft:clamped_normal":
-        mn = p.get("min"); mx = p.get("max")
-        if mn is not None and mx is not None and mx < mn:
-            errs.append(f"{path}: clamped_normal min>max")
+    t = t.removeprefix("minecraft:") if isinstance(t, str) else ""
+    # Legacy wrapped IntProvider payloads also occur in older packs. This
+    # checks their numeric ordering, not whether that encoding is current.
+    bounds = p
+    value = p.get("value")
+    if isinstance(value, dict) and "type" not in value and not any(
+            key in p for key in ("min", "max", "min_inclusive")):
+        bounds = value
+    if t == "uniform":
+        if "max_exclusive" in bounds:
+            _ordered(bounds, "min_inclusive", "max_exclusive", path, errs,
+                     strict=True, label="float uniform")
+        elif not float_only:
+            if "max_inclusive" in bounds:
+                _ordered(bounds, "min_inclusive", "max_inclusive", path, errs,
+                         label="inclusive uniform")
+            else:
+                _ordered(bounds, "min", "max", path, errs,
+                         label="loot uniform")
+    elif t in ("biased_to_bottom", "very_biased_to_bottom", "clamped",
+               "clamped_normal", "trapezoid"):
+        if not float_only:
+            _ordered(bounds, "min_inclusive", "max_inclusive", path, errs,
+                     label=t)
+        # min/max is used by FloatProviders, trapezoid IntProviders, and
+        # level-based clamped values. Ordering is shared; equality is legal.
+        _ordered(bounds, "min", "max", path, errs, label=t)
+        if t == "trapezoid":
+            mn, mx, plateau = (num(bounds.get("min")), num(bounds.get("max")),
+                               num(bounds.get("plateau", 0)))
+            if None not in (mn, mx, plateau) and mn <= mx and plateau > mx - mn:
+                errs.append(f"{path}: trapezoid plateau {plateau} > span {mx-mn}")
+    elif t == "surface_relative_threshold_filter":
+        _ordered(bounds, "min_inclusive", "max_inclusive", path, errs,
+                 label="surface threshold")
+    # Plain predicate ranges are inclusive too: do not flag equality or
+    # rewrite numbers into conditions. One-sided thresholds are valid.
+    if not float_only and p and set(p) <= {"min", "max"}:
+        _ordered(p, "min", "max", path, errs, label="inclusive bounds")
+    _ordered(p, "min_threshold", "max_threshold", path, errs,
+             label="threshold")
 
-def walk(o, path, errs):
+
+def walk(o, path, errs, float_only=False):
     if isinstance(o, dict):
-        if "type" in o and o["type"] in (
-            "minecraft:uniform", "minecraft:trapezoid", "minecraft:clamped",
-            "minecraft:clamped_normal", "minecraft:biased_to_bottom",
-            "minecraft:very_biased_to_bottom", "minecraft:constant",
-        ) and any(k in o for k in ("min", "max", "min_inclusive", "max_exclusive", "max_inclusive", "plateau", "value")):
-            check_prov(o, path, errs)
-        else:
-            for k, v in o.items():
-                walk(v, f"{path}.{k}", errs)
+        check_prov(o, path, errs, float_only=float_only)
+        for k, v in o.items():
+            walk(v, f"{path}.{k}", errs, float_only=float_only)
     elif isinstance(o, list):
         for i, v in enumerate(o):
-            walk(v, f"{path}[{i}]", errs)
+            walk(v, f"{path}[{i}]", errs, float_only=float_only)
 
-errs = []
-files = 0
-for f in ROOT.rglob("*.json"):
-    try:
-        data = json.loads(f.read_text(encoding="utf-8"))
-    except Exception as e:
-        errs.append(f"{f}: JSON PARSE ERROR: {e}")
-        continue
-    files += 1
-    walk(data, str(f.relative_to(ROOT.parent.parent)), errs)
 
-print(f"scanned {files} files")
-for e in errs:
-    print("ERROR:", e)
-print(f"total errors: {len(errs)}")
+def scan(root=ROOT, float_only=False):
+    """Return (successfully parsed file count, errors); never write files."""
+    root = Path(root)
+    errs = []
+    files = 0
+    for f in sorted(root.rglob("*.json")):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            errs.append(f"{f}: JSON PARSE ERROR: {exc}")
+            continue
+        files += 1
+        walk(data, str(f.relative_to(root)), errs, float_only=float_only)
+    return files, errs
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("root", nargs="?", type=Path, default=ROOT,
+                        help="JSON tree to audit (default: adjacent data directory)")
+    args = parser.parse_args(argv)
+    files, errs = scan(args.root)
+    print(f"scanned {files} files")
+    for err in errs:
+        print("ERROR:", err)
+    print(f"total errors: {len(errs)}")
+    # Preserve the historical reporting CLI's successful exit status.
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

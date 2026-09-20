@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Миграция названий зачарований: переписывает description.text в существующих
 data/<ns>/enchantment/*.json по РЕАЛЬНЫМ эффектам (логика gen_enchantments
-26.2+). Меняет ТОЛЬКО текст названия — цвет, эффекты, id, эксклюзив-сеты,
+26.2+). Меняет ТОЛЬКО текст названия - цвет, эффекты, id, эксклюзив-сеты,
 mcfunction-связи и лут не трогаются.
 
 Запуск:  python migrate_ench_names.py [--dry]
@@ -44,7 +44,7 @@ def main():
                 if cand and cand not in used:
                     nm = cand
                     break
-                # коллизия/пусто — усложняем шаблон
+                # коллизия/пусто - усложняем шаблон
                 seeds = ge._name_seeds(effects, rng)
                 if seeds:
                     lead = seeds[0][1]
@@ -60,7 +60,7 @@ def main():
                         nm = cand3
                         break
             if not nm:
-                nm = old  # совсем крайний случай — оставляем старое
+                nm = old  # совсем крайний случай - оставляем старое
             if nm != old:
                 changed += 1
             else:

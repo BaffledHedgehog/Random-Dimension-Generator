@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_time.py — генератор случайного ВРЕМЕНИ измерения для Minecraft 26.2.
+gen_time.py - генератор случайного ВРЕМЕНИ измерения для Minecraft 26.2.
 
 Реестры 26.2 (пути подтверждены ванильным jar-файлом 26.2):
-  * world_clock — data/<ns>/world_clock/<id>.json   (ванилла: overworld, the_end)
-  * timeline    — data/<ns>/timeline/<id>.json      (ванилла: day, moon, early_game,
+  * world_clock - data/<ns>/world_clock/<id>.json   (ванилла: overworld, the_end)
+  * timeline    - data/<ns>/timeline/<id>.json      (ванилла: day, moon, early_game,
                                                      villager_schedule)
-  * теги timeline — data/<ns>/tags/timeline/<tag>.json
+  * теги timeline - data/<ns>/tags/timeline/<tag>.json
                       (ванилла: in_overworld, in_nether, in_end, universal)
 
-Формат world_clock (26.2): запись-пустышка "{}". Класс WorldClock — record без
+Формат world_clock (26.2): запись-пустышка "{}". Класс WorldClock - record без
 полей (unit-codec), значение реестра несёт только ID: на него ссылаются
 timeline.clock и dimension_type.default_clock.
 
@@ -18,7 +18,7 @@ timeline.clock и dimension_type.default_clock.
 villager_schedule.json и Timeline.class):
   {
     "clock": "<id из world_clock>",        # ОБЯЗАТЕЛЬНО
-    "period_ticks": <int > 0>,             # нет поля — «одноразовая» шкала
+    "period_ticks": <int > 0>,             # нет поля - «одноразовая» шкала
                                             # (как ванильный early_game)
     "time_markers": {                      # именованные моменты времени
       "<id>": <int>,                       # либо просто тики,
@@ -32,20 +32,20 @@ villager_schedule.json и Timeline.class):
       }
     }
   }
-Ключи tracks — ID environment-атрибутов (реестр 26.2); используем только
+Ключи tracks - ID environment-атрибутов (реестр 26.2); используем только
 атрибуты, реально встречающиеся в ванильных timeline-файлах.
 
 Ограничения движка (Timeline.class / KeyframeTrack.class):
-  * period_ticks — строго положительный (POSITIVE_INT);
+  * period_ticks - строго положительный (POSITIVE_INT);
   * keyframes не пустые, отсортированы по ticks (нестрого); при периоде
     0 <= ticks <= period_ticks;
   * ticks маркеров: 0 <= ticks < period_ticks (NON_NEGATIVE_INT);
-  * ключи маркеров уникальны в рамках одного world_clock — все timeline'ы
+  * ключи маркеров уникальны в рамках одного world_clock - все timeline'ы
     измерения делят ОДИН world_clock, поэтому имена маркеров делаем
     уникальными (суффикс номера шкалы).
 
 Модуль НЕ пишет файлы: rand_time() и rand_infiniburn_tag() только возвращают
-dict'ы. Весь рандом — через переданный rng (random.Random).
+dict'ы. Весь рандом - через переданный rng (random.Random).
 """
 
 # ---------------------------------------------------------------------------
@@ -64,13 +64,13 @@ VILLAGER_ACTIVITIES = [
     "minecraft:rest", "minecraft:play",
 ]
 
-# Метки для собственных time_markers (ID маркеров — свой namespace)
+# Метки для собственных time_markers (ID маркеров - свой namespace)
 MARKER_LABELS = [
     "dawn", "morning", "noon", "afternoon", "dusk", "nightfall",
     "midnight", "eve",
 ]
 
-# Именованные ease из реестра EasingType (EasingType.class; дефолт — linear)
+# Именованные ease из реестра EasingType (EasingType.class; дефолт - linear)
 EASE_NAMES = [
     "constant",
     "in_sine", "out_sine", "in_out_sine",
@@ -86,20 +86,20 @@ EASE_NAMES = [
 ]
 
 # Спецификации треков: (ID атрибута, тип значения, допустимые модификаторы).
-# Модификаторы ТОЧНО по ванильным timeline-файлам 26.2 — они зависят от
+# Модификаторы ТОЧНО по ванильным timeline-файлам 26.2 - они зависят от
 # конкретного атрибута (напр. eyeblossom_open идёт БЕЗ модификатора, а
-# bees_stay_in_hive — с "or"; пустой список = поле не писать вовсе).
-# Цвета: sky_color/fog_color/sky_light_color — 6-значный hex "#rrggbb",
-# cloud_color — 8-значный ARGB "#rrggbbaa" (ванилла пишет и интами),
-# sunrise_sunset_color — 8-значный "#rrggbbaa".
+# bees_stay_in_hive - с "or"; пустой список = поле не писать вовсе).
+# Цвета: sky_color/fog_color/sky_light_color - 6-значный hex "#rrggbb",
+# cloud_color - 8-значный ARGB "#rrggbbaa" (ванилла пишет и интами),
+# sunrise_sunset_color - 8-значный "#rrggbbaa".
 TRACK_SPECS = [
     # цвета "#rrggbb" + multiply (day.json)
     ("minecraft:visual/sky_color", "rgb", ["multiply"]),
     ("minecraft:visual/fog_color", "rgb", ["multiply"]),
     ("minecraft:visual/sky_light_color", "rgb", ["multiply"]),
-    # cloud_color — ARGB-цвет "#rrggbbaa" + multiply (day.json, интами)
+    # cloud_color - ARGB-цвет "#rrggbbaa" + multiply (day.json, интами)
     ("minecraft:visual/cloud_color", "rgba", ["multiply"]),
-    # цвет рассвета/заката "#rrggbbaa" — БЕЗ модификатора (day.json)
+    # цвет рассвета/заката "#rrggbbaa" - БЕЗ модификатора (day.json)
     ("minecraft:visual/sunrise_sunset_color", "rgba", []),
     # дробные 0..1
     ("minecraft:visual/sky_light_factor", "factor", ["multiply"]),
@@ -108,16 +108,16 @@ TRACK_SPECS = [
     ("minecraft:gameplay/cat_waking_up_gift_chance", "chance", ["maximum"]),
     ("minecraft:gameplay/turtle_egg_hatch_chance", "chance", ["maximum"]),
     ("minecraft:gameplay/surface_slime_spawn_chance", "chance", ["maximum"]),
-    # углы светил в градусах — без модификатора, ease cubic_bezier (day.json)
+    # углы светил в градусах - без модификатора, ease cubic_bezier (day.json)
     ("minecraft:visual/sun_angle", "angle", []),
     ("minecraft:visual/moon_angle", "angle", []),
     ("minecraft:visual/star_angle", "angle", []),
-    # строковые перечисления — без modifier/ease (moon.json, villager_schedule)
+    # строковые перечисления - без modifier/ease (moon.json, villager_schedule)
     ("minecraft:visual/moon_phase", "moon_phase", []),
     ("minecraft:gameplay/villager_activity", "activity", []),
     ("minecraft:gameplay/baby_villager_activity", "activity", []),
-    # булевы флаги: у одних "or" (day.json), у patrol — "and" (early_game),
-    # у eyeblossom_open — БЕЗ модификатора (day.json)
+    # булевы флаги: у одних "or" (day.json), у patrol - "and" (early_game),
+    # у eyeblossom_open - БЕЗ модификатора (day.json)
     ("minecraft:gameplay/monsters_burn", "bool", ["or"]),
     ("minecraft:gameplay/bees_stay_in_hive", "bool", ["or"]),
     ("minecraft:gameplay/creaking_active", "bool", ["or"]),
@@ -126,8 +126,8 @@ TRACK_SPECS = [
     ("minecraft:audio/firefly_bush_sounds", "bool", ["or"]),
 ]
 
-# Допустимость ease по типам (сверено с ванилью: строки и углы — constant/
-# cubic_bezier; числовые — constant; цвета — без ease, кроме rare случаев)
+# Допустимость ease по типам (сверено с ванилью: строки и углы - constant/
+# cubic_bezier; числовые - constant; цвета - без ease, кроме rare случаев)
 _EASE_OK = {
     "rgb": False, "rgba": False, "factor": True, "chance": True,
     "star": True, "bool": False, "angle": True, "moon_phase": False,
@@ -166,12 +166,12 @@ def _rnd_f(rng, a, b, digits=3):
 
 
 def _rand_color24(rng):
-    """Цвет "#rrggbb" — как в ванильных timeline/day.json."""
+    """Цвет "#rrggbb" - как в ванильных timeline/day.json."""
     return "#%06x" % rng.getrandbits(24)
 
 
 def _rand_color32(rng):
-    """Цвет с альфой "#rrggbbaa" — как sunrise_sunset_color в day.json."""
+    """Цвет с альфой "#rrggbbaa" - как sunrise_sunset_color в day.json."""
     return "#%02x%06x" % (rng.randint(8, 200), rng.getrandbits(24))
 
 
@@ -200,9 +200,9 @@ def _rand_value(rng, kind):
 
 
 def _rand_keyframes(rng, kind, period):
-    """Кейфреймы дорожки. period=None — одноразовая шкала (без периода).
+    """Кейфреймы дорожки. period=None - одноразовая шкала (без периода).
     Возвращает НЕПУСТОЙ список, отсортированный по ticks (нестрого),
-    при периоде 0 <= ticks <= period — как требует KeyframeTrack."""
+    при периоде 0 <= ticks <= period - как требует KeyframeTrack."""
     if kind == "angle" and period:
         # полный оборот светила: значение ровно +360 за период (плавная
         # обёртка угла, по мотивам sun_angle из day.json)
@@ -216,7 +216,7 @@ def _rand_keyframes(rng, kind, period):
                            "value": _rnd_f(rng, 0.0, 720.0, 1)})
         return kfs
 
-    # диапазон тиков: у периодической шкалы — [0, period], у одноразовой —
+    # диапазон тиков: у периодической шкалы - [0, period], у одноразовой -
     # протяжённый «прогресс» до 200000 тиков (как early_game: 0..120000)
     span = period if period else rng.randint(1000, 200000)
 
@@ -233,7 +233,7 @@ def _rand_keyframes(rng, kind, period):
     kfs = [{"ticks": t, "value": _rand_value(rng, kind)} for t in ticks]
 
     if kind == "bool":
-        # флаг «включается/выключается» — чередуем значения
+        # флаг «включается/выключается» - чередуем значения
         v = rng.random() < 0.5
         for kf in kfs:
             kf["value"] = v
@@ -247,8 +247,8 @@ def _rand_keyframes(rng, kind, period):
 
 def _rand_track(rng, kind, period, mods):
     """Одна дорожка: keyframes (+ иногда ease и modifier).
-    mods — ТОЧНЫЙ список допустимых модификаторов атрибута (может быть
-    пустым — тогда поле не пишем вовсе, как eyeblossom_open в ванилле)."""
+    mods - ТОЧНЫЙ список допустимых модификаторов атрибута (может быть
+    пустым - тогда поле не пишем вовсе, как eyeblossom_open в ванилле)."""
     track = {"keyframes": _rand_keyframes(rng, kind, period)}
 
     r = rng.random()
@@ -264,7 +264,7 @@ def _rand_track(rng, kind, period, mods):
         track["ease"] = "constant"     # как turtle_egg_hatch_chance / moon.json
     elif _EASE_OK.get(kind) and r < 0.45:
         track["ease"] = rng.choice(EASE_NAMES)
-    # цвета, строки, bool — в ванилле без ease
+    # цвета, строки, bool - в ванилле без ease
 
     if mods and rng.random() < 0.9:
         track["modifier"] = rng.choice(mods)
@@ -272,7 +272,7 @@ def _rand_track(rng, kind, period, mods):
 
 
 def _solid_block_ids():
-    """ID блоков из SOLID_BLOCKS генератора измерений (ленивый импорт —
+    """ID блоков из SOLID_BLOCKS генератора измерений (ленивый импорт -
     избежать циклического импорта, т.к. generate_dimension импортирует нас)."""
     try:
         from generate_dimension import SOLID_BLOCKS
@@ -288,13 +288,13 @@ def _solid_block_ids():
 def rand_time(rng, ns, name):
     """Своё время измерения. Возвращает:
     {"world_clock": {id: json},           # 1 world_clock (пустышка "{}")
-     "timeline": {id: json},              # 1–3 timeline
+     "timeline": {id: json},              # 1-3 timeline
      "timeline_tags": {tag_name: json},   # 1 тег, values = ID этих timeline
      "tag_paths": {tag_name: "tags/timeline/xxx.json"},  # путь файла тега
                                                            # внутри data/<ns>/
      "file_paths": {"world_clock": "world_clock/",       # фактические папки
                     "timeline": "timeline/"}}             # записи, по jar 26.2
-    Все числовые поля случайны в разумных пределах; rng — random.Random."""
+    Все числовые поля случайны в разумных пределах; rng - random.Random."""
     clock_id = "%s:%s" % (ns, name)
 
     timelines = {}
@@ -303,12 +303,12 @@ def rand_time(rng, ns, name):
     for i in range(n_timelines):
         tl_id = clock_id if i == 0 else "%s:%s_tl%d" % (ns, name, i + 1)
 
-        # период: 85% — циклическая шкала, 15% — одноразовая (early_game)
+        # период: 85% - циклическая шкала, 15% - одноразовая (early_game)
         periodic = rng.random() < 0.85
         period = None
         if periodic:
             if rng.random() < 0.25:
-                # долгий «лунный» цикл — кратен суткам (ваниль: 192000)
+                # долгий «лунный» цикл - кратен суткам (ваниль: 192000)
                 period = 24000 * rng.randint(2, 8)
             else:
                 # обычная длина цикла, 600..96000 тиков
@@ -324,7 +324,7 @@ def rand_time(rng, ns, name):
                                          mods)
                         for tid, kind, mods in rng.sample(TRACK_SPECS, k)}
 
-        # маркеры времени — только у циклических шкал (early_game без них);
+        # маркеры времени - только у циклических шкал (early_game без них);
         # имена уникальны: суффикс номера шкалы (общий world_clock!)
         if periodic:
             labels = rng.sample(MARKER_LABELS,
@@ -348,7 +348,7 @@ def rand_time(rng, ns, name):
     tag_paths = {name: "tags/timeline/%s.json" % name}
 
     return {
-        "world_clock": {clock_id: {}},   # world_clock в 26.2 — всегда "{}"
+        "world_clock": {clock_id: {}},   # world_clock в 26.2 - всегда "{}"
         "timeline": timelines,
         "timeline_tags": timeline_tags,
         "tag_paths": tag_paths,
@@ -362,7 +362,7 @@ def rand_infiniburn_tag(rng, ns, name, count=None):
     """Свой тег infiniburn для dimension_type.infiniburn (#<ns>:<name>).
     Возвращает json {"values": [...]}.
 
-    count — сколько блоков в теге (по умолчанию 3-30 — старое поведение;
+    count - сколько блоков в теге (по умолчанию 3-30 - старое поведение;
     вызывается с числом из тяжело-хвостового распределения: почти всегда
     1-2, редкие выбросы до сотни)."""
     pool = list(dict.fromkeys(_solid_block_ids() + EXTRA_BURNABLE))

@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_item_modifiers.py — генератор случайных item_modifiers для Minecraft 26.2
-(data format 107; каталог data/<ns>/item_modifier/ — единственное число;
+gen_item_modifiers.py - генератор случайных item_modifiers для Minecraft 26.2
+(data format 107; каталог data/<ns>/item_modifier/ - единственное число;
 в имени файла ТОЛЬКО basename, id хранится в возвращаемом dict).
 
 ФОРМАТ КОРНЯ ФАЙЛА (сверено байткодом jar 26.2):
   LootDataType.MODIFIER = new LootDataType<>(Registries.ITEM_MODIFIER,
-      LootItemFunctions.ROOT_CODEC...) — root = ОДИН объект функции
+      LootItemFunctions.ROOT_CODEC...) - root = ОДИН объект функции
   {"function": "...", ...} ИЛИ ГОЛЫЙ МАССИВ функций [f, f, ...]
   (SequenceFunction.INLINE_CODEC через withAlternative; обёртки
-  {"functions": [...} на корне НЕТ — это поле типа minecraft:sequence).
+  {"functions": [...} на корне НЕТ - это поле типа minecraft:sequence).
   Как и predicates, модификаторы парсятся ЛЕНИВО: ошибки не видны при
-  старте сервера; тест — /item modify entity <цель> <слот> <ns>:<id>.
+  старте сервера; тест - /item modify entity <цель> <слот> <ns>:<id>.
 
   44 типа loot_function 26.2 (реестр LootItemFunctions.bootstrap,
   диспетчеризация по ключу "function"; НИЖЕ каждый помечен
   [bytecode] = поля сверены javap):
     set_count{count,add}[bytecode], set_item{item}[bytecode],
-    set_lore{lore,mode,entity}[bytecode — mode ОБЯЗАТЕЛЕН и ВЫПРЯМЛЕН:
+    set_lore{lore,mode,entity}[bytecode - mode ОБЯЗАТЕЛЕН и ВЫПРЯМЛЕН:
     ListOperation-СТРОКА «mode»: replace_all|replace_section|insert|
     append (+соседние int-поля offset/size), НЕ вложенный объект],
     enchant_randomly{options,only_compatible,
@@ -26,15 +26,15 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
     enchant_with_levels{levels,options,
     include_additional_cost_component}[bytecode],
     set_enchantments{enchantments,add}, set_damage{damage,add},
-    set_attributes{modifiers,replace} — записи {id, attribute, amount
-    (NumberProvider), operation, slot} — ключ «attribute», НЕ «type»
+    set_attributes{modifiers,replace} - записи {id, attribute, amount
+    (NumberProvider), operation, slot} - ключ «attribute», НЕ «type»
     (кодек функции отличается от кодека компонента!),
     furnace_smelt,
     enchanted_count_increase{count,enchantment,limit}[bytecode],
     apply_bonus{enchantment,formula,parameters}[bytecode],
     limit_count{limit}, set_potion{id}, set_stew_effect{effects}[bytecode],
     set_custom_data{tag}[bytecode], set_components{components},
-    copy_name{source}[bytecode — LootContextArg.ENTITY_OR_BLOCK:
+    copy_name{source}[bytecode - LootContextArg.ENTITY_OR_BLOCK:
     "this"|"attacker"|"direct_attacker"|"attacking_player"|
     "target_entity"|"block_entity"], copy_state{block,properties},
     copy_components{source,include,exclude}[bytecode],
@@ -42,21 +42,21 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
     set_contents{entries,component} (класс SetContainerContents)[bytecode],
     modify_contents{component,modifier} (класс
     ModifyContainerContents)[bytecode], filtered{item_filter,on_pass,
-    on_fail}[bytecode], reference{name}[bytecode — FunctionReference],
+    on_fail}[bytecode], reference{name}[bytecode - FunctionReference],
     sequence{functions}, set_banner_pattern{patterns,append}[bytecode],
     set_random_dyes{number_of_dyes}[bytecode],
     set_random_potion{options}, set_instrument{options}[bytecode],
-    set_fireworks{explosions,flight_duration}[bytecode — explosions =
+    set_fireworks{explosions,flight_duration}[bytecode - explosions =
     ListOperation$StandAlone {"values":[FireworkExplosion-компоненты
-    БЕЗ ключа «function»], "mode":...} — НЕ голый массив;
+    БЕЗ ключа «function»], "mode":...} - НЕ голый массив;
     flight_duration = int 0..255],
     set_firework_explosion{shape,colors,fade_colors,has_trail,has_twinkle},
     set_book_cover{title,author,generation}[bytecode],
-    set_written_book_pages{pages,mode}[bytecode — mode ОБЯЗАТЕЛЕН и
+    set_written_book_pages{pages,mode}[bytecode - mode ОБЯЗАТЕЛЕН и
     ВЫПРЯМЛЕН (ListOperation-строка)],
-    set_writable_book_pages{pages,mode}[bytecode — то же], toggle_tooltips
+    set_writable_book_pages{pages,mode}[bytecode - то же], toggle_tooltips
     {toggles} [bytecode], set_custom_model_data{colors,flags,floats,
-    strings}[bytecode — КАЖДОЕ поле = ListOperation$StandAlone
+    strings}[bytecode - КАЖДОЕ поле = ListOperation$StandAlone
     {"values":[...], "mode":...}, НЕ голый массив], set_ominous_bottle_amplifier{amplifier}[bytecode],
     exploration_map{destination,decoration,zoom,search_radius,
     skip_existing_chunks}[bytecode], fill_player_head{entity}[bytecode],
@@ -66,7 +66,7 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
 
   МОСТИК ПОДТВЕРЖДЁН: функция
       {"function": "minecraft:reference", "name": "<ns>:<id>"}
-  (FunctionReference.class — ResourceKey над Registries.ITEM_MODIFIER,
+  (FunctionReference.class - ResourceKey над Registries.ITEM_MODIFIER,
   поле "name") ссылается на другой модификатор. Модификаторы из
   лут-таблиц (поле "functions" записи) и /item modify видят ОДИН реестр.
 
@@ -77,7 +77,7 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
     {"formula":"minecraft:binomial_with_bonus_count",
      "parameters":{"extra":int,"probability":float}}.
 
-  Реестры-справочники (из data/ в jar 26.2): banner_pattern — base,
+  Реестры-справочники (из data/ в jar 26.2): banner_pattern - base,
   border, bricks, circle, creeper, cross, curly_border, diagonal_left,
   diagonal_right, diagonal_up_left, diagonal_up_right, flow, flower,
   globe, gradient, gradient_up, guster, half_horizontal,
@@ -86,13 +86,13 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
   square_bottom_right, square_top_left, square_top_right,
   straight_cross, stripe_* (bottom/center/downleft/downright/left/
   middle/right/top), triangle_bottom, triangle_top, triangles_bottom,
-  triangles_top; instrument — admire/call/dream/feel/ponder/seek/
-  sing/yearn_goat_horn; map_decoration (MapDecorationTypes) — player,
+  triangles_top; instrument - admire/call/dream/feel/ponder/seek/
+  sing/yearn_goat_horn; map_decoration (MapDecorationTypes) - player,
   frame, red_marker, blue_marker, target_x, target_point,
   player_off_map, player_off_limits, mansion, monument, banner_<16
   цветов>, red_x, village_desert/plains/savanna/snowy/taiga,
   jungle_temple, swamp_hut, trial_chambers; теги структур для
-  exploration_map.destination — on_treasure_maps,
+  exploration_map.destination - on_treasure_maps,
   on_woodland_explorer_maps, eye_of_ender_located, village,
   mineshaft, ocean_ruin, ruined_portal, shipwreck, on_*_maps...
 
@@ -107,10 +107,10 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
     rand_item_modifiers(rng, ns, name, count=None)
         -> {"item_modifiers": {id: json}}
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace ('rndim');
-    name   — имя измерения (id: <ns>:<name>_modN);
-    count  — сколько модификаторов создать (None → тяжёлый хвост:
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace ('rndim');
+    name   - имя измерения (id: <ns>:<name>_modN);
+    count  - сколько модификаторов создать (None -> тяжёлый хвост:
              в среднем ~2, выбросы до 15).
 
 Константы и помощники переиспользуются из gen_loot.py (серверно
@@ -118,7 +118,7 @@ gen_item_modifiers.py — генератор случайных item_modifiers �
 _num_provider, _weighted, _enchantments_map, _attribute_modifiers,
 rand_name, _hex_color, _firework_explosion, _book_pages,
 POTIONS_IDS, MOB_EFFECTS, VANILLA_TABLES, BLOCK_STATE_PROPS...
-Модуль НИЧЕГО не пишет на диск — возвращает dict.
+Модуль НИЧЕГО не пишет на диск - возвращает dict.
 """
 
 import math
@@ -196,14 +196,16 @@ def _frac_provider(rng, lo=0.0, hi=1.0):
     """NumberProvider долей (для set_damage)."""
     if rng.random() < 0.6:
         return round(rng.uniform(lo, hi), 3)
-    return {"type": "minecraft:uniform",
-            "min": round(rng.uniform(lo, hi), 3),
-            "max": round(rng.uniform(lo, hi), 3)}
+    # A quantity NumberProvider, not a continuous predicate or FloatProvider.
+    # Keep both draws (and valid equal endpoints), but never cross the bounds.
+    a, b = sorted((round(rng.uniform(lo, hi), 3),
+                   round(rng.uniform(lo, hi), 3)))
+    return {"type": "minecraft:uniform", "min": a, "max": b}
 
 
 def _maybe_conditions(rng, f):
     """Изредка вешаем на функцию БЕЗОПАСНОЕ условие (без параметров
-    контекста — /item modify строит COMMAND-контекст с ORIGIN и,
+    контекста - /item modify строит COMMAND-контекст с ORIGIN и,
     для entity-цели, THIS_ENTITY)."""
     if rng.random() < 0.07:
         c = {"condition": "minecraft:random_chance",
@@ -228,8 +230,8 @@ def _modifier_count(rng):
 
 def _list_op(rng, with_offset=False):
     """ListOperation 26.2, ВЫПРЯМЛЕННЫЙ в поля родителя (javap: кодек
-    входит в group БЕЗ fieldOf): «mode» — СТРОКА на верхнем уровне
-    (replace_all | replace_section | insert | append), «offset»/«size» —
+    входит в group БЕЗ fieldOf): «mode» - СТРОКА на верхнем уровне
+    (replace_all | replace_section | insert | append), «offset»/«size» -
     её соседи. НЕ вложенный объект!"""
     r = rng.random()
     if r < 0.55 or not with_offset:
@@ -275,7 +277,7 @@ def _f_set_lore(rng, item, env):
 
 def _f_set_enchantments(rng, item, env):
     emap = gl._enchantments_map(rng, item)
-    if not emap:  # предмет «не поддаётся» — принудительно дикая карта
+    if not emap:  # предмет «не поддаётся» - принудительно дикая карта
         emap = {"minecraft:" + rng.choice(list(gl.ENCHANTS)): 1}
     f = {"function": "minecraft:set_enchantments",
          "enchantments": {k: float(v) for k, v in emap.items()}}
@@ -328,7 +330,7 @@ def _f_apply_bonus(rng, item, env):
 
 
 def _f_set_attributes(rng, item, env):
-    # записи модификаторов: ключ «attribute» (НЕ «type» — это кодек
+    # записи модификаторов: ключ «attribute» (НЕ «type» - это кодек
     # set_attributes-ФУНКЦИИ, он отличается от кодека компонента!)
     mods = []
     for m in gl._attribute_modifiers(rng, item, env["tag_prefix"]):
@@ -476,7 +478,7 @@ def _f_limit_count(rng, item, env):
 
 def _f_reference(rng, item, env):
     if not env["prior"]:
-        # ссылаться не на что (первый модификатор) — fallback, чтобы
+        # ссылаться не на что (первый модификатор) - fallback, чтобы
         # НЕ создать ссылку на самого себя (бесконечная рекурсия)
         return _f_set_custom_data(rng, item, env)
     return {"function": "minecraft:reference",
@@ -518,8 +520,8 @@ def _f_set_instrument(rng, item, env):
 
 def _f_set_fireworks(rng, item, env):
     # explosions = ListOperation$StandAlone: {"values":[...], "mode":...}
-    # (javap) — НЕ голый массив! Элементы — FireworkExplosion-КОМПОНЕНТЫ
-    # (без ключа «function»); flight_duration — unsigned byte (int 0-255)
+    # (javap) - НЕ голый массив! Элементы - FireworkExplosion-КОМПОНЕНТЫ
+    # (без ключа «function»); flight_duration - unsigned byte (int 0-255)
     explosions = [{"shape": rng.choice(["small_ball", "large_ball",
                                         "star", "creeper", "burst"]),
                    "colors": [rng.randint(0, 0xFFFFFF)
@@ -578,9 +580,9 @@ def _f_toggle_tooltips(rng, item, env):
 
 
 def _f_set_custom_model_data(rng, item, env):
-    # floats/flags/strings/colors — КАЖДЫЙ = ListOperation$StandAlone
-    # {"values":[...], "mode":...} (javap) — НЕ голый массив;
-    # значения floats — NumberProvider (обычные числа тоже можно)
+    # floats/flags/strings/colors - КАЖДЫЙ = ListOperation$StandAlone
+    # {"values":[...], "mode":...} (javap) - НЕ голый массив;
+    # значения floats - NumberProvider (обычные числа тоже можно)
     f = {"function": "minecraft:set_custom_model_data"}
     if rng.random() < 0.6:
         op = _list_op(rng)
@@ -647,7 +649,7 @@ _ALL_BUILDERS = [
 
 
 # ---------------------------------------------------------------------------
-# «Персонажи»: тематические пулы (предметы × функции)
+# «Персонажи»: тематические пулы (предметы x функции)
 # ---------------------------------------------------------------------------
 
 _CHARACTERS = {
@@ -749,7 +751,7 @@ _CHARACTERS = {
          (_f_set_lore, 20), (_f_set_custom_data, 20)]),
 }
 
-# у проклинателя зачарования — только проклятия
+# у проклинателя зачарования - только проклятия
 _CURSE_ENCHANTS = ["vanishing_curse", "binding_curse"]
 
 
@@ -760,19 +762,19 @@ _CURSE_ENCHANTS = ["vanishing_curse", "binding_curse"]
 def rand_item_modifiers(rng, ns, name, count=None):
     """Случайные item_modifiers измерения («персонажи» с 1-6 функциями).
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace;
-    name   — имя измерения (id: <ns>:<name>_modN);
-    count  — сколько модификаторов создать (None → тяжёлый хвост,
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace;
+    name   - имя измерения (id: <ns>:<name>_modN);
+    count  - сколько модификаторов создать (None -> тяжёлый хвост,
              в среднем ~2, выбросы до 15).
 
     Возвращает {"item_modifiers": {"<ns>:<name>_modN": json, ...}},
-    где json — массив функций (корень item_modifier-файла 26.2).
+    где json - массив функций (корень item_modifier-файла 26.2).
     Модуль ничего не пишет на диск."""
     if count is None:
         count = _modifier_count(rng)
     out = {}
-    prior = []  # id уже созданных — для reference «назад»
+    prior = []  # id уже созданных - для reference «назад»
     chars = rng.sample(list(_CHARACTERS),
                        min(len(_CHARACTERS), max(count, 1)))
     for i in range(count):

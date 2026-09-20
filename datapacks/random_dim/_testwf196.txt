@@ -1,1 +1,0 @@
-probe invoke via write_file name attr

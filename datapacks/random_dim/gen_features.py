@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gen_features.py — генератор случайных декораций (configured_feature +
+gen_features.py - генератор случайных декораций (configured_feature +
 placed_feature) для Minecraft 26.2 (data format 107).
 
 Формат КАЖДОГО типа, ключа и поля сверен с ванильным jar 26.2
@@ -10,7 +10,7 @@ placed_feature) для Minecraft 26.2 (data format 107).
 
 Поддержанные configured-фичи (типы подтверждены jar + javap кодеков):
   minecraft:tree, minecraft:ore, minecraft:scattered_ore, minecraft:disk,
-  minecraft:lake, minecraft:simple_block (замена random_patch — его в 26.2
+  minecraft:lake, minecraft:simple_block (замена random_patch - его в 26.2
   больше НЕТ, патчи делаются simple_block + random_offset в placement),
   minecraft:spring_feature, minecraft:block_blob (лесные валуны),
   minecraft:block_column (кактусы/тростник), minecraft:block_pile (стога),
@@ -36,7 +36,7 @@ placed_feature) для Minecraft 26.2 (data format 107).
 Поддержанные placement-модификаторы (14 из 15 реестра 26.2):
   count, count_on_every_layer (только пещерному режиму cave=True: сам
   находит Y по слоям, после него НИ in_square, НИ heightmap, как в
-  ванили; на поверхности отключён — «фичи в воздухе»), rarity_filter,
+  ванили; на поверхности отключён - «фичи в воздухе»), rarity_filter,
   noise_threshold_count, noise_based_count, in_square,
   height_range (uniform/trapezoid + якоря
   absolute/above_bottom/below_top), heightmap (все 6 Heightmap.Types),
@@ -45,30 +45,30 @@ placed_feature) для Minecraft 26.2 (data format 107).
   random_offset. Поверхностной растительности count собирается по
   ванильным «рецептам естественной плотности»: count-провайдер с
   дисперсией / rarity / рощи rarity+count / noise_based_count /
-  noise_threshold_count — фиксированный count на чанк дал бы почти
+  noise_threshold_count - фиксированный count на чанк дал бы почти
   равномерную сетку «1 дерево/чанк».
-Исключение: fixed_placement — его позиции абсолютны и годятся только
+Исключение: fixed_placement - его позиции абсолютны и годятся только
 для разовых фич (end_platform), в пер-чанковой декорации биома он
 ломает генерацию (запись в далёкие чанки из каждого чанка).
 
 ИНВАРИАНТЫ РАЗМЕЩЕНИЯ «НЕ В ВОЗДУХЕ» (правка по жалобе юзера: «в
 каждом мире большинство деревьев/грибов/других фич просто висят в
-воздухе»; главный виновник — height_range с равномерным Y у наземных
+воздухе»; главный виновник - height_range с равномерным Y у наземных
 видов + count_on_every_layer без фильтра земли). Высота теперь СТРОГО
 по классу вида (_FeatureFactory._GROUND_KINDS / _WATER_KINDS):
   - «растущие с земли» (деревья/грибы/патчи/диски/озёра/столбы/
-    selector'ы...) — ТОЛЬКО heightmap поверхности (MOTION_BLOCKING /
+    selector'ы...) - ТОЛЬКО heightmap поверхности (MOTION_BLOCKING /
     MOTION_BLOCKING_NO_LEAVES / WORLD_SURFACE_WG) + ОБЯЗАТЕЛЬНЫЙ
     block_predicate_filter «твёрдый блок ПОД позицией» (minecraft:solid
     c offset [0,-1,0]); height_range им запрещён;
-  - подводные — heightmap дна OCEAN_FLOOR / OCEAN_FLOOR_WG;
+  - подводные - heightmap дна OCEAN_FLOOR / OCEAN_FLOOR_WG;
   - подземные (руда/жеода/monster_room/источники/натёки/sculk/...)
-    — height_range по долям высоты мира, как ванильные ore_*/geode;
-  - count_on_every_layer — только cave-режим, и то с фильтром
+    - height_range по долям высоты мира, как ванильные ore_*/geode;
+  - count_on_every_layer - только cave-режим, и то с фильтром
     «твёрдое снизу».
 Фильтр «твёрдое снизу» выбран вместо would_survive-логики: он
 проверяет САМ БЛОК под позицией, а не ванильную землю (саженцу нужны
-dirt-подобные блоки — в мирах из камня/кварца он убил бы фичи
+dirt-подобные блоки - в мирах из камня/кварца он убил бы фичи
 целиком); работает на ЛЮБОМ рельефе случайных измерений.
 
 Публичные функции:
@@ -77,54 +77,54 @@ dirt-подобные блоки — в мирах из камня/кварца 
                  no_gravity=False)
         -> (configured, placed, tags)
 
-    rng    — random.Random (весь рандом только через него);
-    ns     — namespace ('rndim');
-    name   — имя измерения или биома (префикс id);
-    min_y / max_y — границы мира по Y, max_y ВКЛЮЧИТЕЛЬНО (для якорей
+    rng    - random.Random (весь рандом только через него);
+    ns     - namespace ('rndim');
+    name   - имя измерения или биома (префикс id);
+    min_y / max_y - границы мира по Y, max_y ВКЛЮЧИТЕЛЬНО (для якорей
     height_range; эксклюзивный top мира = max_y + 1);
-    cave   — пещерный режим для ПОДЗЕМНЫХ биомов: только виды, не
+    cave   - пещерный режим для ПОДЗЕМНЫХ биомов: только виды, не
     требующие ни неба, ни поверхности (CAVE_FEATURE_KINDS), и placement
     без heightmap (он ставит фичу на верх мира, а не на пол пещеры;
     см. _cave_placement).
-    no_gravity — VOID-режим: из ВСЕХ пулов размещения исключаются сыпучие
+    no_gravity - VOID-режим: из ВСЕХ пулов размещения исключаются сыпучие
     блоки (generate_dimension.FALLING_BLOCK_IDS: песок/гравий/подозри-
     тельные + 16 бетонных порошков). Блок, поставленный генерацией над
-    пустотой, обращается в entity FALLING_BLOCK — весь мир «сыпется» в
+    пустотой, обращается в entity FALLING_BLOCK - весь мир «сыпется» в
     пустоту, сотни тысяч сущностей, игра виснет (жалоба юзера). В
-    open/cavern-мирах дно есть — сыпучие разрешены.
+    open/cavern-мирах дно есть - сыпучие разрешены.
 
-    Возвращает (configured, placed, tags): три dict {id: json}, где id —
+    Возвращает (configured, placed, tags): три dict {id: json}, где id -
     namespaced строки 'ns:...'. На каждый configured создаётся 1-2 placed,
-    каждый ссылается на свой configured полем "feature". tags — block-теги
-    («земля» измерения — цели руд/дисков/валунов).
+    каждый ссылается на свой configured полем "feature". tags - block-теги
+    («земля» измерения - цели руд/дисков/валунов).
 
     rand_ores(rng, ns, name, min_y, max_y, count=None, no_gravity=False)
         -> (configured, placed, tags, variants)
 
-    Рудная система измерения — отдельный проход поверх rand_features:
-    5-9 видов руд (было 3-7 — юзер просил «ещё немного больше»), у
+    Рудная система измерения - отдельный проход поверх rand_features:
+    5-9 видов руд (было 3-7 - юзер просил «ещё немного больше»), у
     каждого ЧЕТЫРЕ placed-варианта богатства
-    (×0.3/×1/×2.5/×5, id <name>_oreM_p1..p4) — биомы получают СВОИ
+    (x0.3/x1/x2.5/x5, id <name>_oreM_p1..p4) - биомы получают СВОИ
     варианты (в одном биоме руда богатая, в другом бедная; раздача в
-    generate_dimension.rand_biome). Высоты — относительные якоря
+    generate_dimension.rand_biome). Высоты - относительные якоря
     (above_bottom/below_top) по ДОЛЯМ высоты мира, смещённые вниз, в
-    рельеф. variants — {configured_id: {"poor"/"normal"/"rich"/
-    "motherlode": placed_id}}. no_gravity — void-режим (см. rand_features).
+    рельеф. variants - {configured_id: {"poor"/"normal"/"rich"/
+    "motherlode": placed_id}}. no_gravity - void-режим (см. rand_features).
 
     rand_stone_blobs(rng, ns, name, min_y, max_y, family, vein=None)
         -> (configured, placed, tags)
 
-    Блобы КАМЕННОГО СЕМЕЙСТВА — как ванильные андезит/диорит/гранит/
-    туф: ore-фичи с size 15-64 и count 1-6 на чанк, полоса высот — по
+    Блобы КАМЕННОГО СЕМЕЙСТВА - как ванильные андезит/диорит/гранит/
+    туф: ore-фичи с size 15-64 и count 1-6 на чанк, полоса высот - по
     ДОЛЯМ высоты мира (относительные якоря, как у руд). Тиры:
-    «частые» — крупнее и гуще (size 33-64, count 3-6), «обычные» —
-    size 20-48, count 2-4, «редкие» — size 15-33, count 1-2 +
-    rarity_filter 1/4-1/16. vein — опциональная «жила-стержень» одного
+    «частые» - крупнее и гуще (size 33-64, count 3-6), «обычные» -
+    size 20-48, count 2-4, «редкие» - size 15-33, count 1-2 +
+    rarity_filter 1/4-1/16. vein - опциональная «жила-стержень» одного
     редкого блока: вертикальные узкие блобы (size 2-6 + count 8-24).
-    configured id — <name>_stoneN, placed id — <name>_blobN. Блобы
-    кладём в ОБЩИЙ пул измерения (каждый биом — как ванильные
+    configured id - <name>_stoneN, placed id - <name>_blobN. Блобы
+    кладём в ОБЩИЙ пул измерения (каждый биом - как ванильные
     ore_granite/ore_andesite), НЕ в пер-биомные множители руд.
-    Семейство (и жилу) фильтрует от сыпучих вызывающий код — здесь
+    Семейство (и жилу) фильтрует от сыпучих вызывающий код - здесь
     они приходят уже чистыми.
 """
 
@@ -132,7 +132,7 @@ import re
 
 
 def _gd():
-    """Ленивый доступ к generate_dimension — циклический импорт безопасен
+    """Ленивый доступ к generate_dimension - циклический импорт безопасен
     в любом порядке (generate_dimension импортирует этот модуль первым)."""
     import generate_dimension
     return generate_dimension
@@ -161,7 +161,7 @@ def _feature_solids():
     """Блоки для ФИЧ (не террейна!): все solid + редкий динамит.
 
     Динамит исключён из SOLID_BLOCKS (default_block/surface rules), чтобы он
-    не покрывал целые чанки, но как блок фичи или «рудная жила» — редкий
+    не покрывал целые чанки, но как блок фичи или «рудная жила» - редкий
     сюрприз: 4 записи на ~3785 (вес ~0.1%, реже чем самый странный тир).
     """
     global _FEATURE_SOLIDS
@@ -174,7 +174,7 @@ _PALETTE = None
 
 
 def _palette():
-    """Безопасный пул БЕЗ block entity (generate_dimension.PALETTE_BLOCKS) —
+    """Безопасный пул БЕЗ block entity (generate_dimension.PALETTE_BLOCKS) -
     для фич МАССШТАБА РЕЛЬЕФА (fill_layer заливает ЦЕЛЫЙ Y-слой мира) и
     для тега «земли» измерения. Странность уже распределена весами тиров."""
     global _PALETTE
@@ -199,11 +199,11 @@ _SAFE_SOLIDS = None
 
 def _safe_solids():
     """Блоки для фич МАССОВОГО масштаба: как _feature_solids, но БЕЗ block
-    entity (деревья/диски/жеоды ставят сотни и тысячи блоков — ствол из
+    entity (деревья/диски/жеоды ставят сотни и тысячи блоков - ствол из
     copper_golem_statue даёт BE на каждой клетке + DUMMY-мусор над
-    потолком мира) и БЕЗ динамита (ствол из ТНТ — цепной взрыв от первой
+    потолком мира) и БЕЗ динамита (ствол из ТНТ - цепной взрыв от первой
     кирки). Странность сохранена: веса тиров 16/8/4/2/1 остаются, барьер
-    и свет (T4 без BE) — редкий сюрреализм. Руды/патчи/столбы/кучи —
+    и свет (T4 без BE) - редкий сюрреализм. Руды/патчи/столбы/кучи -
     маленькие, им _feature_solids() по-прежнему разрешён."""
     global _SAFE_SOLIDS
     if _SAFE_SOLIDS is None:
@@ -216,7 +216,7 @@ def _safe_solids():
 # Данные, существование которых подтверждено в ванильном jar 26.2
 # ---------------------------------------------------------------------------
 
-# (бревно, листья) — пары из ванильных tree-фич 26.2 (39 файлов просканировано)
+# (бревно, листья) - пары из ванильных tree-фич 26.2 (39 файлов просканировано)
 TREE_WOODS = [
     ("minecraft:oak_log", "minecraft:oak_leaves"),
     ("minecraft:spruce_log", "minecraft:spruce_leaves"),
@@ -232,7 +232,7 @@ TREE_WOODS = [
 # дополнительная листва из ванильной azalea_tree (weighted_state_provider)
 EXTRA_LEAVES = ["minecraft:azalea_leaves", "minecraft:flowering_azalea_leaves"]
 
-# блоки «под ствол» — из below_trunk_provider ванильных деревьев
+# блоки «под ствол» - из below_trunk_provider ванильных деревьев
 # (oak -> dirt, azalea_tree -> rooted_dirt)
 DIRT_BLOCKS = ["minecraft:dirt", "minecraft:coarse_dirt",
                "minecraft:rooted_dirt", "minecraft:mud"]
@@ -259,7 +259,7 @@ PLANT_BLOCKS = [
     "minecraft:tall_dry_grass", "minecraft:tall_grass", "minecraft:wildflowers",
 ]
 
-# рудные блоки — все state-блоки из 30 ванильных ore-фич 26.2
+# рудные блоки - все state-блоки из 30 ванильных ore-фич 26.2
 ORE_BLOCKS = [(b, None) for b in [
     "minecraft:ancient_debris", "minecraft:clay", "minecraft:coal_ore",
     "minecraft:copper_ore", "minecraft:deepslate_coal_ore",
@@ -274,7 +274,7 @@ ORE_BLOCKS = [(b, None) for b in [
     "minecraft:redstone_ore", "minecraft:soul_sand",
 ]]
 
-# теги рудных целей (predicate_type tag_match) — из ванильных ore-фич
+# теги рудных целей (predicate_type tag_match) - из ванильных ore-фич
 ORE_TARGET_TAGS = [
     "minecraft:stone_ore_replaceables",
     "minecraft:deepslate_ore_replaceables",
@@ -290,7 +290,7 @@ STONE_BLOCKS = [
     "minecraft:end_stone",
 ]
 
-# «земляные» блоки — цели disk'ов (matching_blocks), can_place_on и т.п.;
+# «земляные» блоки - цели disk'ов (matching_blocks), can_place_on и т.п.;
 # список собран из ванильных disk_sand/disk_grass/ice_patch
 GROUND_BLOCKS = [
     "minecraft:dirt", "minecraft:grass_block", "minecraft:podzol",
@@ -317,7 +317,7 @@ SPRING_BLOCKS = [
 ]
 
 # все 6 типов Heightmap.Types (codecs сериализуют любой; _WG-варианты
-# валидны только при генерации мира — как в ванильных placed-фичах)
+# валидны только при генерации мира - как в ванильных placed-фичах)
 HEIGHTMAPS = ["MOTION_BLOCKING", "MOTION_BLOCKING_NO_LEAVES", "OCEAN_FLOOR",
               "OCEAN_FLOOR_WG", "WORLD_SURFACE", "WORLD_SURFACE_WG"]
 
@@ -334,7 +334,7 @@ FUNGUS_BASES = ["minecraft:crimson_nylium", "minecraft:warped_nylium",
                 "minecraft:moss_block"]
 
 # multiface_growth: block ДОЛЖЕН быть MultifaceSpreadableBlock (иначе кодек
-# отклонит — «Growth block should be a multiface spreadeable block»)
+# отклонит - «Growth block should be a multiface spreadeable block»)
 MULTIFACE_BLOCKS = ["minecraft:glow_lichen", "minecraft:sculk_vein"]
 
 # льды для iceberg
@@ -362,11 +362,11 @@ FOSSIL_PARTS = ["spine_1", "spine_2", "spine_3", "spine_4",
 VANILLA_CFG_IDS = ["minecraft:grass", "minecraft:oak", "minecraft:birch",
                    "minecraft:pile_hay", "minecraft:bush", "minecraft:melon"]
 
-# виды фич и их веса: (kind, вес) — kind это суффикс id и ключ builder'а.
-# Обычные декорации — весомее; дикие/редкие (geode, monster_room, sequence,
-# fossil, sculk_patch) — реже. Руд ЗДЕСЬ больше нет: ими ведёт отдельная
+# виды фич и их веса: (kind, вес) - kind это суффикс id и ключ builder'а.
+# Обычные декорации - весомее; дикие/редкие (geode, monster_room, sequence,
+# fossil, sculk_patch) - реже. Руд ЗДЕСЬ больше нет: ими ведёт отдельная
 # система rand_ores (5-9 видов на измерение с вариантами богатства
-# ×0.3/×1/×2.5/×5 и высотами по долям высоты мира) — случайная примесь
+# x0.3/x1/x2.5/x5 и высотами по долям высоты мира) - случайная примесь
 # руд в общем пуле давала неуправляемое количество видов (аудит: медиана
 # 1 руда на измерение при разбросе 0-6) и высоты, не привязанные к рельефу.
 FEATURE_KINDS = [
@@ -427,7 +427,7 @@ FEATURE_KINDS = [
 #  - фичи, которые САМИ находят пол/потолок пещер, сканируя пространство
 #    вокруг позиции (multiface, sculk_patch, large_dripstone, speleothem,
 #    geode, monster_room, root_system, lake, spring...);
-#  - растительность и «напольные» декорации — им placement даёт
+#  - растительность и «напольные» декорации - им placement даёт
 #    count_on_every_layer (ванильный пещерный механизм, находит позиции
 #    на твёрдых блоках в воздушных слоях) или height_range с широкой
 #    полосой + фильтр «снизу твёрдое».
@@ -439,7 +439,7 @@ CAVE_FEATURE_KINDS = [
     ("speleothem", 1.4),         # одиночные натёки
     ("speleothem_cluster", 1.4), # гроздья натёков (dripstone_cluster)
     ("large_dripstone", 1.3),    # большие сталактиты/сталагмиты
-    ("sculk_patch", 0.9),        # пятна sculk (сильный визуал — реже)
+    ("sculk_patch", 0.9),        # пятна sculk (сильный визуал - реже)
     ("glowstone_blob", 1.0),     # пятна светокамня у потолка
     ("vines", 1.0),              # свисающие лозы (classic_vines_cave_feature)
     ("twisting_vines", 0.7),
@@ -452,7 +452,7 @@ CAVE_FEATURE_KINDS = [
     ("block_pile", 0.6),
     ("block_column", 0.6),
     ("block_blob", 0.7),         # валуны на пещерных полах
-    ("fallen_tree", 0.3),        # поваленный ствол — редкость в пещере
+    ("fallen_tree", 0.3),        # поваленный ствол - редкость в пещере
     ("replace_blobs", 0.8),      # пятна замены породы
     ("basalt_columns", 0.7),
     ("basalt_pillar", 0.7),
@@ -478,8 +478,8 @@ CAVE_FEATURE_KINDS = [
 
 # Варианты богатства руды: множитель на базовый count. Именно ОТДЕЛЬНЫЕ
 # placed-фичи (а не один count-провайдер) позволяют разным биомам
-# получать РАЗНЫЙ уровень богатства ОДНОЙ руды: биом A — бедную ×0.3,
-# биом B — материнскую жилу ×5 (раздача — rand_biome в
+# получать РАЗНЫЙ уровень богатства ОДНОЙ руды: биом A - бедную x0.3,
+# биом B - материнскую жилу x5 (раздача - rand_biome в
 # generate_dimension; id вариантов <name>_oreM_p1..p4 по порядку
 # множителей).
 ORE_MULTIPLIERS = [
@@ -502,11 +502,11 @@ class _FeatureFactory:
         self.max_y = max_y
         self.cave = cave       # пещерный режим (фичи подземных биомов)
         # VOID-режим (no_gravity): из ВСЕХ пулов размещения исключаются
-        # сыпучие блоки — падающий блок, поставленный генерацией над
+        # сыпучие блоки - падающий блок, поставленный генерацией над
         # пустотой, обращается в entity FALLING_BLOCK (весь мир
         # «сыпется», сотни тысяч сущностей, игра виснет; жалоба юзера).
         # Пулы предрассчитаны один раз в конструкторе; предикаты
-        # МАТЧИНГА (matching_blocks/block_match) сыпучие id сохраняют —
+        # МАТЧИНГА (matching_blocks/block_match) сыпучие id сохраняют -
         # совпадения просто не будет, размещения не происходит.
         self.no_gravity = no_gravity
         if no_gravity:
@@ -569,8 +569,8 @@ class _FeatureFactory:
         return self.rng.choice(self._feat_pool)
 
     def _safe_block(self):
-        """Блок для фич МАССОВОГО масштаба — без block entity и TNT
-        (в void-режиме пул уже без сыпучих — см. __init__)."""
+        """Блок для фич МАССОВОГО масштаба - без block entity и TNT
+        (в void-режиме пул уже без сыпучих - см. __init__)."""
         return self.rng.choice(self._safe_pool)
 
     def _provider(self, block=None):
@@ -579,7 +579,7 @@ class _FeatureFactory:
                 "state": block_state(block or self._block())}
 
     def _safe_provider(self, block=None):
-        """simple_state_provider блока БЕЗ block entity — для массовых фич."""
+        """simple_state_provider блока БЕЗ block entity - для массовых фич."""
         return {"type": "minecraft:simple_state_provider",
                 "state": block_state(block or self._safe_block())}
 
@@ -590,13 +590,13 @@ class _FeatureFactory:
             a, b = b, a
         if a == b:
             b = min(b + 8, self.max_y)
-            if a == b:  # совсем плоский мир — хотя бы разнесём на 1
+            if a == b:  # совсем плоский мир - хотя бы разнесём на 1
                 a = max(self.min_y, a - 1)
         return a, b
 
     def _int_provider(self, lo, hi):
         """Случайный IntProvider (uniform/biased_to_bottom/trapezoid/
-        weighted_list) — все четыре типа есть в ванильных фичах 26.2."""
+        weighted_list) - все четыре типа есть в ванильных фичах 26.2."""
         rng = self.rng
         r = rng.random()
         if r < 0.45:
@@ -608,7 +608,7 @@ class _FeatureFactory:
             return {"type": "minecraft:biased_to_bottom", "min_inclusive": a,
                     "max_inclusive": rng.randint(a, hi)}
         # ОГРАНИЧЕНИЕ trapezoid: plateau <= max-min (РАЗМАХ, не диапазон
-        # значений!) — иначе «Plateau can at most be the full span» и
+        # значений!) - иначе «Plateau can at most be the full span» и
         # падает загрузка ВСЕГО пака (поймано на реальном сервере)
         if r < 0.85 and hi - lo >= 2:
             return {"type": "minecraft:trapezoid", "min": lo, "max": hi,
@@ -617,7 +617,7 @@ class _FeatureFactory:
         dist = []
         for v in vals:
             # data может быть и ВЛОЖЕННЫМ провайдером (vanilla cave_vine:
-            # weighted_list поверх uniform) — усиливает дисперсию
+            # weighted_list поверх uniform) - усиливает дисперсию
             if rng.random() < 0.3:
                 b = rng.randint(v, hi)
                 dist.append({"data": {"type": "minecraft:uniform",
@@ -630,11 +630,11 @@ class _FeatureFactory:
 
     def _float_provider(self, a, b):
         """Случайный FloatProvider в [a, b]: uniform (max_exclusive!) или
-        clamped_normal — оба типа есть в ванильных фичах 26.2.
+        clamped_normal - оба типа есть в ванильных фичах 26.2.
         ВАЖНО: uniform/clamped_normal с min == max НЕПАРСЯТСЯ ("Max must
-        be larger than min") и роняют загрузку ВСЕГО пака — при вырождении
+        be larger than min") и роняют загрузку ВСЕГО пака - при вырождении
         диапазона (lo == b после округления rnd_f) отдаём голое число
-        (константа — валидный FloatProvider в JSON)."""
+        (константа - валидный FloatProvider в JSON)."""
         rng = self.rng
         lo = rnd_f(rng, a, b)
         hi = rnd_f(rng, lo, b)
@@ -652,7 +652,7 @@ class _FeatureFactory:
     def _placed_ref(self):
         """Inline placed_feature-ссылка: своя уже созданная configured-фича
         (селекторы ссылаются только «назад», поэтому циклов не бывает),
-        а если своих ещё нет — ванильная из jar."""
+        а если своих ещё нет - ванильная из jar."""
         if self.configured and self.rng.random() < 0.85:
             fid = self.rng.choice(sorted(self.configured))
         else:
@@ -662,11 +662,11 @@ class _FeatureFactory:
     def _height_provider(self):
         """HeightProvider для height_range: ПОЛОСА ПО ДОЛЯМ ВЫСОТЫ МИРА с
         относительными якорями above_bottom/below_top (масштабируется под
-        любую геометрию измерения; absolute — редко и тоже из _pair_y, в
-        границах мира). Рудам — свой провайдер с приглубным смещением
-        (_ore_height_provider), пещерным фичам — широкий (_cave_height_provider)."""
+        любую геометрию измерения; absolute - редко и тоже из _pair_y, в
+        границах мира). Рудам - свой провайдер с приглубным смещением
+        (_ore_height_provider), пещерным фичам - широкий (_cave_height_provider)."""
         rng = self.rng
-        if rng.random() < 0.25:  # изредка — absolute-якоря в границах мира
+        if rng.random() < 0.25:  # изредка - absolute-якоря в границах мира
             lo, hi = self._pair_y()
             kind = "minecraft:uniform" if rng.random() < 0.7 \
                 else "minecraft:trapezoid"
@@ -679,9 +679,9 @@ class _FeatureFactory:
 
     def _frac_height_provider(self, lo_f, hi_f):
         """Якоря height_range по ДОЛЯМ высоты мира (0.0 = дно, 1.0 =
-        верхний блок): нижняя граница — above_bottom, верхняя —
+        верхний блок): нижняя граница - above_bottom, верхняя -
         below_top. Полоса всегда внутри [min_y, max_y] и непустая при
-        ЛЮБОЙ геометрии мира — в отличие от фиксированных значений, не
+        ЛЮБОЙ геометрии мира - в отличие от фиксированных значений, не
         привязанных к высоте конкретного измерения."""
         rng = self.rng
         span = max(1, self.max_y - self.min_y)
@@ -697,11 +697,11 @@ class _FeatureFactory:
                 "max_inclusive": {"below_top": b}}
 
     def _ore_height_provider(self):
-        """Полоса высот РУДЫ в долях высоты мира — СМЕЩЕНА ВНИЗ, в
+        """Полоса высот РУДЫ в долях высоты мира - СМЕЩЕНА ВНИЗ, в
         рельеф: раньше absolute-полосы из _pair_y могли целиком попасть
-        в воздух над поверхностью (а низкие миры — выше половины высоты),
-        и жилы с discard_chance_on_air_exposure просто исчезали — «руды
-        не спавнятся». Типы полос — как в ванили: придонная «алмазная»,
+        в воздух над поверхностью (а низкие миры - выше половины высоты),
+        и жилы с discard_chance_on_air_exposure просто исчезали - «руды
+        не спавнятся». Типы полос - как в ванили: придонная «алмазная»,
         глубокая, средняя (уголь/железо), сквозная на всю высоту и
         редкая верхняя (ore_iron_upper)."""
         rng = self.rng
@@ -723,10 +723,10 @@ class _FeatureFactory:
 
     def _blob_height_provider(self, tier=None):
         """Полоса высот БЛОБА каменного семейства в долях высоты мира
-        (относительные якоря — тот же подход, что у руд, см.
-        _ore_height_provider): «частым» камням — широкие пласты (как
-        ванильный гранит верхней/нижней полосы), «обычным» — средние,
-        «редким» — узкие пояса."""
+        (относительные якоря - тот же подход, что у руд, см.
+        _ore_height_provider): «частым» камням - широкие пласты (как
+        ванильный гранит верхней/нижней полосы), «обычным» - средние,
+        «редким» - узкие пояса."""
         rng = self.rng
         if tier == "common":
             w = rnd_f(rng, 0.30, 0.80)
@@ -739,7 +739,7 @@ class _FeatureFactory:
 
     def _vein_height_provider(self):
         """Полоса высот «жилы-стержня»: высокий пояс (0.5-1.0 высоты
-        мира) — узкие блобы редкого камня пронизывают массив по
+        мира) - узкие блобы редкого камня пронизывают массив по
         вертикали, а не стелются горизонтальным слоем."""
         rng = self.rng
         w = rnd_f(rng, 0.50, 1.00)
@@ -747,10 +747,10 @@ class _FeatureFactory:
         return self._frac_height_provider(lo, lo + w)
 
     def _blob_targets(self, blk):
-        """Цели БЛОБА каменного семейства: state — ВСЕГДА переданный
+        """Цели БЛОБА каменного семейства: state - ВСЕГДА переданный
         блок (в отличие от рудных _ore_targets с их случайными state),
-        target — почти всегда тег «земли» измерения (блоб заменяет
-        фактический рельеф, как ванильный гранит — stone_ore_replaceables),
+        target - почти всегда тег «земли» измерения (блоб заменяет
+        фактический рельеф, как ванильный гранит - stone_ore_replaceables),
         изредка block_match по палитре."""
         self.ground_needed = True
         rng = self.rng
@@ -763,7 +763,7 @@ class _FeatureFactory:
         return [{"state": block_state(blk), "target": target}]
 
     def _cave_height_provider(self):
-        """Полоса высот пещерных фич: почти вся высота мира — как у
+        """Полоса высот пещерных фич: почти вся высота мира - как у
         ванильных пещерных placed-фич (glow_lichen: above_bottom(0)..
         absolute(256)). multiface/large_dripstone/sculk_patch/geode сами
         сканируют пространство вокруг позиции, полоса лишь задаёт
@@ -860,7 +860,7 @@ class _FeatureFactory:
                     "base_height": rng.randint(4, 12),
                     "height_rand_a": rng.randint(0, 4),
                     "height_rand_b": rng.randint(0, 3)}
-        if t in ("giant", "mega_jungle"):  # толстые 2x2 стволы — повыше
+        if t in ("giant", "mega_jungle"):  # толстые 2x2 стволы - повыше
             return {"type": "minecraft:%s_trunk_placer" % t,
                     "base_height": rng.randint(8, 16),
                     "height_rand_a": rng.randint(0, 6),
@@ -893,7 +893,7 @@ class _FeatureFactory:
                     "branch_start_offset_from_top": {
                         "min_inclusive": start,
                         "max_inclusive": start + rng.randint(1, 2)}}
-        # upwards_branching — формат из mangrove.json
+        # upwards_branching - формат из mangrove.json
         return {"type": "minecraft:upwards_branching_trunk_placer",
                 "base_height": rng.randint(2, 6),
                 "height_rand_a": rng.randint(1, 3),
@@ -935,28 +935,28 @@ class _FeatureFactory:
                                "min_inclusive": 2, "max_inclusive": 3},
                     "trunk_height": {"type": "minecraft:uniform",
                                      "min_inclusive": 0, "max_inclusive": 2}}
-        if t == "pine":  # height — IntProvider (pine.json)
+        if t == "pine":  # height - IntProvider (pine.json)
             return {"type": "minecraft:pine_foliage_placer",
                     "height": {"type": "minecraft:uniform",
                                "min_inclusive": rng.randint(3, 4),
                                "max_inclusive": rng.randint(4, 6)},
                     "offset": rng.randint(0, 2), "radius": rng.randint(0, 2)}
-        if t == "mega_pine":  # crown_height — IntProvider (mega_spruce.json)
+        if t == "mega_pine":  # crown_height - IntProvider (mega_spruce.json)
             return {"type": "minecraft:mega_pine_foliage_placer",
                     "crown_height": {"type": "minecraft:uniform",
                                      "min_inclusive": rng.randint(8, 14),
                                      "max_inclusive": rng.randint(14, 20)},
                     "offset": 0, "radius": rng.randint(0, 2)}
-        if t == "cherry":  # cherry.json — шансы «дырок» в кроне
+        if t == "cherry":  # cherry.json - шансы «дырок» в кроне
             return {"type": "minecraft:cherry_foliage_placer",
-                    # height — IntProvider с минимумом 4 (IntProviders.codec(4, 16))
+                    # height - IntProvider с минимумом 4 (IntProviders.codec(4, 16))
                     "height": rng.randint(4, 8), "offset": 0,
                     "radius": rng.randint(2, 5),
                     "corner_hole_chance": rnd_f(rng, 0.0, 0.5),
                     "hanging_leaves_chance": rnd_f(rng, 0.0, 0.5),
                     "hanging_leaves_extension_chance": rnd_f(rng, 0.0, 0.5),
                     "wide_bottom_layer_hole_chance": rnd_f(rng, 0.0, 0.5)}
-        # random_spread — формат из azalea_tree
+        # random_spread - формат из azalea_tree
         return {"type": "minecraft:random_spread_foliage_placer",
                 "foliage_height": rng.randint(1, 3),
                 "leaf_placement_attempts": rng.randint(20, 80),
@@ -964,14 +964,14 @@ class _FeatureFactory:
 
     def _tree(self):
         rng = self.rng
-        # материал: обычно ванильная порода, но ~25% деревьев — «из чего
+        # материал: обычно ванильная порода, но ~25% деревьев - «из чего
         # попало»: ствол и листва из случайных solid-блоков БЕЗ block
-        # entity (стволов тысячи — BE в каждом = «чанки из сундуков» и
+        # entity (стволов тысячи - BE в каждом = «чанки из сундуков» и
         # DUMMY-мусор над потолком мира). Странность распределена весами
-        # тиров (16/8/4/2/1) — почти всегда обычный камень, барьер/свет —
+        # тиров (16/8/4/2/1) - почти всегда обычный камень, барьер/свет -
         # редкий сюрреализм. Безопасность для произвольных блоков сверена
-        # javap: trunk placer'ы 26.2 не трогают свойства ствола (Cherry —
-        # trySetValue), foliage — hasProperty.
+        # javap: trunk placer'ы 26.2 не трогают свойства ствола (Cherry -
+        # trySetValue), foliage - hasProperty.
         custom = rng.random() < 0.25
         if custom:
             log = rng.choice(self._safe_pool)[0]
@@ -979,7 +979,7 @@ class _FeatureFactory:
         else:
             log, leaf = rng.choice(TREE_WOODS)
         # листва: своя порода, иногда с примесью азалиевых; простой или
-        # взвешенный провайдер (как azalea_tree). Properties не задаём —
+        # взвешенный провайдер (как azalea_tree). Properties не задаём -
         # значения по умолчанию совпадают с ванильными (distance=7 и т.д.)
         pool = [leaf]
         if not custom and rng.random() < 0.35:
@@ -992,7 +992,7 @@ class _FeatureFactory:
         else:
             foliage_provider = {"type": "minecraft:simple_state_provider",
                                 "state": {"Name": rng.choice(pool)}}
-        # ствол: Properties не задаём — trunk placer сам ставит axis
+        # ствол: Properties не задаём - trunk placer сам ставит axis
         trunk_provider = {"type": "minecraft:simple_state_provider",
                           "state": {"Name": log}}
         # блок под стволом: как ванильные деревья (rule_based) или просто
@@ -1009,7 +1009,7 @@ class _FeatureFactory:
         else:
             below = {"type": "minecraft:simple_state_provider",
                      "state": {"Name": rng.choice(DIRT_BLOCKS)}}
-        # декораторы — обычно пусто (как у простых деревьев)
+        # декораторы - обычно пусто (как у простых деревьев)
         decorators = []
         if rng.random() < 0.35:
             for _ in range(rng.randint(1, 2)):
@@ -1044,7 +1044,7 @@ class _FeatureFactory:
     def _ground_tag(self):
         """Тег «земли» измерения: все блоки палитры рельефа. Рельеф мира
         состоит ИМЕННО из них (default_block + слои surface rules), поэтому
-        tag_match на этот тег заменяет блок В ЛЮБОМ месте рельефа — в отличие
+        tag_match на этот тег заменяет блок В ЛЮБОМ месте рельефа - в отличие
         от ванильных #stone_ore_replaceables, которые в случайном рельефе
         не встречаются и руды из-за этого не генерировались вовсе.
         Файл тега создаёт rand_features (по self.ground_needed)."""
@@ -1052,12 +1052,12 @@ class _FeatureFactory:
         return "%s:%s_ground" % (self.ns, self.name)
 
     def _ore_targets(self, safe=False):
-        """1-3 цели замены: почти всегда — тег «земли» измерения (жила
+        """1-3 цели замены: почти всегда - тег «земли» измерения (жила
         заменяет фактический рельеф); изредка ванильный тег/блок (миры, где
         рельеф совпал с ванильным камнем, и просто разнообразие).
-        safe=True — блоки жилы из БЕЗОПАСНОГО пула (без block entity и
-        ТНТ): рудная система даёт до count 100/чанк (×5), жилы такого
-        масштаба — уже «массовая заливка», как стены структур. Маленькие
+        safe=True - блоки жилы из БЕЗОПАСНОГО пула (без block entity и
+        ТНТ): рудная система даёт до count 100/чанк (x5), жилы такого
+        масштаба - уже «массовая заливка», как стены структур. Маленькие
         пользователи целей (replace_single_block) оставляют полный пул.
         В void-режиме оба пула уже без сыпучих (см. __init__)."""
         rng = self.rng
@@ -1072,7 +1072,7 @@ class _FeatureFactory:
                 target = {"predicate_type": "minecraft:tag_match",
                           "tag": rng.choice(ORE_TARGET_TAGS)}
             else:
-                # block_match: цель — блок из палитры (могла попасть в рельеф)
+                # block_match: цель - блок из палитры (могла попасть в рельеф)
                 target = {"predicate_type": "minecraft:block_match",
                           "block": rng.choice(_palette_ids())}
             targets.append({"state": block_state(rng.choice(pool)),
@@ -1082,18 +1082,18 @@ class _FeatureFactory:
     def _ore(self):
         rng = self.rng
         ftype = "minecraft:scattered_ore" if rng.random() < 0.2 else "minecraft:ore"
-        # размер жилы: 2-20 с тяжёлым хвостом — обычные жилы компактные
-        # (2-9), каждый четвёртый вид руды — «толстожильный» до 20
+        # размер жилы: 2-20 с тяжёлым хвостом - обычные жилы компактные
+        # (2-9), каждый четвёртый вид руды - «толстожильный» до 20
         size = rng.randint(10, 20) if rng.random() < 0.25 else rng.randint(2, 9)
         # discard_on_air_exposure: ваниль у большинства руд 0.0, у
-        # «погребённых» (ore_diamond_buried) — до 1.0; большой discard +
+        # «погребённых» (ore_diamond_buried) - до 1.0; большой discard +
         # полоса у поверхности = руда исчезает целиком, поэтому веса
         # смещены к нулю
         discard = rng.choice([0.0, 0.0, 0.0, rnd_f(rng, 0.1, 0.5), 1.0])
         return {"type": ftype, "config": {
             "discard_chance_on_air_exposure": discard,
             "size": size,
-            # блоки жилы — БЕЗ block entity и ТНТ (жилы до 100 попыток/чанк)
+            # блоки жилы - БЕЗ block entity и ТНТ (жилы до 100 попыток/чанк)
             "targets": self._ore_targets(safe=True),
         }}
 
@@ -1121,15 +1121,15 @@ class _FeatureFactory:
         radius = {"type": "minecraft:uniform", "min_inclusive": rmin,
                   "max_inclusive": rng.randint(rmin, 8)}
         # state_provider: простой или rule_based (как disk_sand/disk_grass);
-        # блоки — ТОЛЬКО без block entity: диск радиусом до 8 и толщиной
-        # до 4 — это сотни блоков «рельефа» (сундук-диск = чанк сундуков)
+        # блоки - ТОЛЬКО без block entity: диск радиусом до 8 и толщиной
+        # до 4 - это сотни блоков «рельефа» (сундук-диск = чанк сундуков)
         if rng.random() < 0.4:
-            if rng.random() < 0.5:  # disk_sand: под воздухом — другой блок
+            if rng.random() < 0.5:  # disk_sand: под воздухом - другой блок
                 rule = {"if_true": {"type": "minecraft:matching_blocks",
                                     "blocks": "minecraft:air",
                                     "offset": [0, -1, 0]},
                         "then": self._safe_provider()}
-            else:  # disk_grass: сверху не твёрдое и не вода — трава
+            else:  # disk_grass: сверху не твёрдое и не вода - трава
                 rule = {"if_true": {"type": "minecraft:not",
                                     "predicate": {
                                         "type": "minecraft:any_of",
@@ -1145,7 +1145,7 @@ class _FeatureFactory:
                               "rules": [rule]}
         else:
             state_provider = self._safe_provider()
-        # target: чаще тег «земли» измерения (диск реально появится —
+        # target: чаще тег «земли» измерения (диск реально появится -
         # ванильные dirt/grass в случайном рельефе почти не встречаются),
         # изредка список блоков (формат из disk-фич)
         if rng.random() < 0.6:
@@ -1166,7 +1166,7 @@ class _FeatureFactory:
     # ---------------- configured: озёра ----------------
 
     def _lake(self):
-        # Формат 26.2 (lake_lava.json): 5 полей — fluid, barrier,
+        # Формат 26.2 (lake_lava.json): 5 полей - fluid, barrier,
         # can_place_feature, can_replace_with_air_or_fluid,
         # can_replace_with_barrier. В 1.21.x были только fluid+barrier!
         rng = self.rng
@@ -1192,12 +1192,12 @@ class _FeatureFactory:
         rng = self.rng
         config = {"state": {"Name": rng.choice(FLUIDS),
                             "Properties": {"falling": "true"}}}
-        # valid_blocks: один блок (строка) или список — оба варианта в jar
+        # valid_blocks: один блок (строка) или список - оба варианта в jar
         if rng.random() < 0.35:
             config["valid_blocks"] = rng.choice(SPRING_BLOCKS)
         else:
             config["valid_blocks"] = rng.sample(SPRING_BLOCKS, rng.randint(2, 6))
-        # необязательные поля — формат из spring_nether_closed
+        # необязательные поля - формат из spring_nether_closed
         if rng.random() < 0.3:
             config["hole_count"] = rng.randint(0, 2)
             config["requires_block_below"] = rng.random() < 0.5
@@ -1207,13 +1207,13 @@ class _FeatureFactory:
     # ---------------- configured: валуны ----------------
 
     def _block_blob(self):
-        # forest_rock.json: "state" — blockstate (НЕ provider!), can_place_on —
+        # forest_rock.json: "state" - blockstate (НЕ provider!), can_place_on -
         # предикат. В 1.21.x были state_provider + tries.
         rng = self.rng
         if rng.random() < 0.3:
             can_place_on = {"type": "minecraft:matching_block_tag",
                             "tag": "minecraft:forest_rock_can_place_on"}
-        elif rng.random() < 0.5:  # тег «земли» — валун встанет на рельеф
+        elif rng.random() < 0.5:  # тег «земли» - валун встанет на рельеф
             can_place_on = {"type": "minecraft:matching_block_tag",
                             "tag": self._ground_tag()}
         else:
@@ -1234,7 +1234,7 @@ class _FeatureFactory:
         rng = self.rng
         layers = []
         for _ in range(rng.randint(1, 3)):
-            if rng.random() < 0.4:  # кактус/тростник — растение
+            if rng.random() < 0.4:  # кактус/тростник - растение
                 state = {"Name": rng.choice(PLANT_BLOCKS)}
             else:  # или просто случайный блок
                 state = block_state(self._block())
@@ -1252,7 +1252,7 @@ class _FeatureFactory:
     # ---------------- configured: кучи ----------------
 
     def _block_pile(self):
-        # pile_hay.json: state_provider — rotated_block_provider или простой
+        # pile_hay.json: state_provider - rotated_block_provider или простой
         rng = self.rng
         state = block_state(self._block())
         if rng.random() < 0.4:
@@ -1264,14 +1264,14 @@ class _FeatureFactory:
     # ---------------- configured: пятна замены ----------------
 
     def _replace_blobs(self):
-        # basalt_blobs.json: radius (IntProvider), state и target —
+        # basalt_blobs.json: radius (IntProvider), state и target -
         # ОБА простые blockstate (не провайдеры!)
         rng = self.rng
         rmin = rng.randint(1, 4)
-        # target — простой blockstate: блок из ВЗВЕШЕННОЙ палитры (веса
+        # target - простой blockstate: блок из ВЗВЕШЕННОЙ палитры (веса
         # тиров: обычные блоки рельефа вероятнее), а не ванильный камень,
-        # которого в случайном рельефе может не быть; state — без BE
-        # (пятно радиуса до 9 — массовая заливка). В void-режиме оба из
+        # которого в случайном рельефе может не быть; state - без BE
+        # (пятно радиуса до 9 - массовая заливка). В void-режиме оба из
         # уже отфильтрованных пулов (без сыпучих)
         return {"type": "minecraft:netherrack_replace_blobs", "config": {
             "radius": {"type": "minecraft:uniform", "min_inclusive": rmin,
@@ -1304,12 +1304,12 @@ class _FeatureFactory:
         return self._none_cfg("blue_ice")
 
     def _coral(self):
-        # все три типа — NoneFeatureConfiguration (warm_ocean_vegetation.json)
+        # все три типа - NoneFeatureConfiguration (warm_ocean_vegetation.json)
         return self._none_cfg(self.rng.choice(
             ["coral_tree", "coral_claw", "coral_mushroom"]))
 
     def _delta(self):
-        # delta.json: contents/rim — blockstate, size/rim_size — IntProvider
+        # delta.json: contents/rim - blockstate, size/rim_size - IntProvider
         rng = self.rng
         smin = rng.randint(0, 4)
         rmin = rng.randint(0, 2)
@@ -1332,8 +1332,8 @@ class _FeatureFactory:
         # fallen_oak_tree.json: trunk_provider, log_length (IntProvider 0-16),
         # декораторы attached_to_logs / trunk_vine (поля по javap)
         rng = self.rng
-        # обычно ванильный ствол, но ~25% — из любого solid-блока
-        # БЕЗ block entity (массовая фича; странность — веса тиров)
+        # обычно ванильный ствол, но ~25% - из любого solid-блока
+        # БЕЗ block entity (массовая фича; странность - веса тиров)
         if rng.random() < 0.25:
             log = rng.choice(self._safe_pool)[0]
         else:
@@ -1363,11 +1363,11 @@ class _FeatureFactory:
         }}
 
     def _fill_layer(self):
-        # LayerConfiguration: height — ОБЫЧНОЕ int (intRange 0..MAX), state
-        # Слой заливает ЦЕЛЫЙ Y-слой ВСЕГО мира — это масштаб рельефа:
+        # LayerConfiguration: height - ОБЫЧНОЕ int (intRange 0..MAX), state
+        # Слой заливает ЦЕЛЫЙ Y-слой ВСЕГО мира - это масштаб рельефа:
         # только безопасный пул БЕЗ block entity (сундук в каждом чанке
         # на одной высоте = катастрофа) и БЕЗ сыпучих в void-режиме.
-        # Руды/патчи/диски — локальные, им _feat_pool по-прежнему разрешён.
+        # Руды/патчи/диски - локальные, им _feat_pool по-прежнему разрешён.
         return {"type": "minecraft:fill_layer", "config": {
             "height": self.rng.randint(0, 24),
             "state": block_state(self.rng.choice(self._pal_pool))}}
@@ -1387,8 +1387,8 @@ class _FeatureFactory:
 
     def _geode(self):
         # Формат 26.2 (amethyst_geode.json + javap GeodeConfiguration):
-        # блоки слоёв вынесены в "blocks", толщины — в "layers" (все double
-        # 0.01-50), crack — {generate_crack_chance, base_crack_size 0-5,
+        # блоки слоёв вынесены в "blocks", толщины - в "layers" (все double
+        # 0.01-50), crack - {generate_crack_chance, base_crack_size 0-5,
         # crack_point_offset 0-10}; outer_wall_distance 1-20,
         # distribution_points 1-20, point_offset 0-10 (IntProviders).
         rng = self.rng
@@ -1399,7 +1399,7 @@ class _FeatureFactory:
             if rng.random() < 0.35:  # кластеры аметиста как в ванили
                 inner.append({"Name": rng.choice(buds), "Properties": {
                     "facing": "up", "waterlogged": "false"}})
-            else:  # или случайные блоки (жеод — сфера в сотни блоков: без BE)
+            else:  # или случайные блоки (жеод - сфера в сотни блоков: без BE)
                 inner.append(block_state(self._safe_block()))
         wall = rng.randint(1, 5)
         # Радиусы держим ванильными (ваниль: wall 4-6, сумма толщин ~4,
@@ -1437,9 +1437,9 @@ class _FeatureFactory:
             "distribution_points": self._int_provider(1, 12),
             "point_offset": self._int_provider(0, 2),
             # min/max_gen_offset (рамка итерации геода): ванильные дефолты
-            # ±16 + граничный peek на 1 блок у FluidState = 17 от позиции,
+            # +/-16 + граничный peek на 1 блок у FluidState = 17 от позиции,
             # что у края чанка даёт «unsafe terrain read» (distance 2);
-            # держим ±14, чтобы записи/чтения не выходили за соседний чанк
+            # держим +/-14, чтобы записи/чтения не выходили за соседний чанк
             "min_gen_offset": rng.randint(-14, -1),
             "max_gen_offset": rng.randint(1, 14),
             "noise_multiplier": rnd_f(rng, 0.01, 0.3),
@@ -1455,8 +1455,8 @@ class _FeatureFactory:
                 for d in ("down", "east", "north", "south", "up", "west")}
 
     def _huge_mushroom(self, red):
-        # HugeMushroomFeatureConfiguration (javap): cap/stem — провайдеры,
-        # foliage_radius — опционально (по умолч. 2), can_place_on — предикат.
+        # HugeMushroomFeatureConfiguration (javap): cap/stem - провайдеры,
+        # foliage_radius - опционально (по умолч. 2), can_place_on - предикат.
         rng = self.rng
         cap = (("minecraft:%s_mushroom_block" % ("red" if red else "brown"),
                 self._mushroom_faces()) if rng.random() < 0.7
@@ -1485,13 +1485,13 @@ class _FeatureFactory:
 
     def _huge_fungus(self):
         # HugeFungusConfiguration (javap): 5 обязательных полей + planted.
-        # replaceable_blocks — BlockPredicate (в ванили — matching_blocks).
+        # replaceable_blocks - BlockPredicate (в ванили - matching_blocks).
         rng = self.rng
         base = (rng.choice(FUNGUS_BASES), None) if rng.random() < 0.5 \
             else self._safe_block()
-        # обычно ванильский ствол, но ~30% — из любого solid-блока БЕЗ
+        # обычно ванильский ствол, но ~30% - из любого solid-блока БЕЗ
         # block entity (шляпка гриба большая, стволов много; свойства
-        # ствола placer'ы не трогают — javap)
+        # ствола placer'ы не трогают - javap)
         if rng.random() < 0.3:
             stem = self._safe_block()
         else:
@@ -1516,9 +1516,9 @@ class _FeatureFactory:
         return self._none_cfg("kelp")
 
     def _large_dripstone(self):
-        # large_dripstone.json + javap: column_radius — IntProvider 1-16,
-        # height_scale — Float 0-20, bluntness — Float 0.1-10,
-        # wind_speed — Float 0-2, floor_to_ceiling_search_range 1-512.
+        # large_dripstone.json + javap: column_radius - IntProvider 1-16,
+        # height_scale - Float 0-20, bluntness - Float 0.1-10,
+        # wind_speed - Float 0-2, floor_to_ceiling_search_range 1-512.
         rng = self.rng
         return {"type": "minecraft:large_dripstone", "config": {
             "replaceable_blocks": rng.choice(
@@ -1558,7 +1558,7 @@ class _FeatureFactory:
         return {"type": "minecraft:multiface_growth", "config": cfg}
 
     def _replace_single_block(self):
-        # ReplaceBlockConfiguration — только targets (наследник OreConfiguration)
+        # ReplaceBlockConfiguration - только targets (наследник OreConfiguration)
         return {"type": "minecraft:replace_single_block", "config": {
             "targets": self._ore_targets()}}
 
@@ -1602,19 +1602,21 @@ class _FeatureFactory:
     def _sculk_patch(self):
         # sculk_patch_deep_dark.json + javap: charge_count 1-32,
         # amount_per_charge 1-500, spread_attempts 1-64, rounds 0-8,
-        # extra_rare_growths — IntProvider, catalyst_chance 0-1.
+        # extra_rare_growths - IntProvider, catalyst_chance 0-1.
         rng = self.rng
+        _gr = rng.randint(0, 8)
+        _sr = rng.randint(0, 8)
         return {"type": "minecraft:sculk_patch", "config": {
             "charge_count": rng.randint(1, 32),
             "amount_per_charge": rng.randint(1, 128),
             "spread_attempts": rng.randint(1, 64),
-            "growth_rounds": rng.randint(0, 8),
-            "spread_rounds": rng.randint(0, 8),
+            "growth_rounds": 0,
+            "spread_rounds": 1,
             "extra_rare_growths": self._int_provider(0, 4),
             "catalyst_chance": rnd_f(rng, 0.0, 1.0)}}
 
     def _sea_pickle(self):
-        # CountConfiguration: count — int ИЛИ IntProvider, диапазон 0-256
+        # CountConfiguration: count - int ИЛИ IntProvider, диапазон 0-256
         rng = self.rng
         if rng.random() < 0.5:
             count = rng.randint(0, 40)
@@ -1628,7 +1630,7 @@ class _FeatureFactory:
             "probability": rnd_f(self.rng, 0.0, 1.0)}}
 
     def _simple_random_selector(self):
-        # pointed_dripstone.json: features — список placed-фич (inline)
+        # pointed_dripstone.json: features - список placed-фич (inline)
         return {"type": "minecraft:simple_random_selector", "config": {
             "features": [self._placed_ref()
                          for _ in range(self.rng.randint(1, 3))]}}
@@ -1650,8 +1652,8 @@ class _FeatureFactory:
             "placement_probability_per_valid_position": rnd_f(rng, 0.0, 1.0)}}
 
     def _vegetation_patch_cfg(self):
-        # moss_patch.json + javap: depth — IntProvider 1-128,
-        # vertical_range 1-256, xz_radius — IntProvider, шансы 0-1.
+        # moss_patch.json + javap: depth - IntProvider 1-128,
+        # vertical_range 1-256, xz_radius - IntProvider, шансы 0-1.
         rng = self.rng
         veg_ids = [i for i in self.configured
                    if "_patch" in i or "simple" in i]
@@ -1695,7 +1697,7 @@ class _FeatureFactory:
                          for _ in range(rng.randint(1, 4))]}}
 
     def _sequence(self):
-        # CompositeFeatureConfiguration: features — список placed-фич,
+        # CompositeFeatureConfiguration: features - список placed-фич,
         # размещаются по очереди до первой удачной
         return {"type": "minecraft:sequence", "config": {
             "features": [self._placed_ref()
@@ -1726,7 +1728,7 @@ class _FeatureFactory:
                          for _ in range(rng.randint(1, 3))]}}
 
     def _random_boolean_selector(self):
-        # feature_true / feature_false — placed-фичи
+        # feature_true / feature_false - placed-фичи
         return {"type": "minecraft:random_boolean_selector", "config": {
             "feature_true": self._placed_ref(),
             "feature_false": self._placed_ref()}}
@@ -1757,7 +1759,7 @@ class _FeatureFactory:
         return {"type": "minecraft:speleothem", "config": cfg}
 
     def _speleothem_cluster(self):
-        # dripstone_cluster.json + javap: height/radius — IntProvider 1-128,
+        # dripstone_cluster.json + javap: height/radius - IntProvider 1-128,
         # thickness 0-128, floor_to_ceiling 1-512, height_deviation 1-64.
         rng = self.rng
         hmin = rng.randint(1, 3)
@@ -1788,7 +1790,7 @@ class _FeatureFactory:
 
     def _spike(self):
         # SpikeConfiguration (javap): state + два предиката, все обязательны;
-        # state — без BE: шип — высокий столб до потолка, BE-блок лезет
+        # state - без BE: шип - высокий столб до потолка, BE-блок лезет
         # выше потолка мира и оставляет DUMMY-мусор
         return {"type": "minecraft:spike", "config": {
             "state": block_state(self._safe_block()),
@@ -1801,7 +1803,7 @@ class _FeatureFactory:
     # ---------------- placed: placement-конвейер ----------------
 
     # Поверхностная растительность: ей нужны «рецепты естественной
-    # плотности» (см. _count_modifier) — иначе фиксированный count на
+    # плотности» (см. _count_modifier) - иначе фиксированный count на
     # чанк даёт равномерную «дрожащую сетку» 1 дерево/чанк.
     _SURFACE_VEG = {
         "tree", "fallen_tree", "root_system", "bamboo",
@@ -1810,7 +1812,7 @@ class _FeatureFactory:
         "waterlogged_vegetation_patch",
     }
 
-    # Незер/пещерные виды — единственные ванильные пользователи
+    # Незер/пещерные виды - единственные ванильные пользователи
     # count_on_every_layer (crimson_forest_vegetation, delta, basalt_columns,
     # cave_vine...): он сам находит Y по слоям, heightmap после него не нужен
     _LAYERED_KINDS = {
@@ -1820,7 +1822,7 @@ class _FeatureFactory:
     }
 
     # Пещерным видам, которым подходит послойное размещение: к незерным
-    # добавлена «напольная» растительность и грибы — в пещерах им нужен
+    # добавлена «напольная» растительность и грибы - в пещерах им нужен
     # пол, который count_on_every_layer находит сам (ваниль размещает
     # так огромные грибы и растительность незера)
     _CAVE_LAYERED = _LAYERED_KINDS | {
@@ -1830,7 +1832,7 @@ class _FeatureFactory:
     }
 
     # Этим видам в пещерном height_range-пути нужен фильтр «под позицией
-    # твёрдый блок» — иначе растения и валуны висят в воздухе
+    # твёрдый блок» - иначе растения и валуны висят в воздухе
     _CAVE_FLOOR = {
         "patch", "block_pile", "block_column", "block_blob", "fallen_tree",
         "huge_brown_mushroom", "huge_red_mushroom", "huge_fungus",
@@ -1841,13 +1843,13 @@ class _FeatureFactory:
         """Count-часть конвейера. Возвращает СПИСОК модификаторов (иногда
         их несколько: rarity + count = «рощи»).
 
-        Для поверхностной растительности — ванильные рецепты естественной
+        Для поверхностной растительности - ванильные рецепты естественной
         плотности (почему это важно: фиксированный count даёт каждому чанку
         одинаковое число попыток, а in_square лишь равномерно бросает позицию
-        внутри чанка — получается почти равномерная сетка «1 дерево/чанк»;
-        ваниль рвёт её тремя способами: ДИСПЕРСИЯ count (IntProvider —
+        внутри чанка - получается почти равномерная сетка «1 дерево/чанк»;
+        ваниль рвёт её тремя способами: ДИСПЕРСИЯ count (IntProvider -
         trees_birch: weighted_list 10/11), РЕГИОНАЛЬНЫЙ шум (noise_based_count
-        — бамбук; noise_threshold_count — цветы) и RARITY (луга: 1/100
+        - бамбук; noise_threshold_count - цветы) и RARITY (луга: 1/100
         чанков; грибы: 1/256..512)."""
         rng = self.rng
         if kind == "patch":  # «tries» патча: 8-96 попыток
@@ -1858,7 +1860,7 @@ class _FeatureFactory:
                      "count": self._int_provider(8, 96)}]
 
         if kind == "ore":
-            # руды — ванильные масштабы жил (coal 20, iron 8-16, diamond
+            # руды - ванильные масштабы жил (coal 20, iron 8-16, diamond
             # 4-8 попыток/чанк): чаще всего густо, изредка «редкая руда»
             # (rarity + несколько жил), как древние обломки в незере
             r = rng.random()
@@ -1878,19 +1880,19 @@ class _FeatureFactory:
         if kind in self._SURFACE_VEG:
             r = rng.random()
             if r < 0.30:
-                # густой лес: count-провайдер с большой дисперсией —
-                # соседние чанки получают РАЗНЫЕ значения (2 и 16) → рощи
+                # густой лес: count-провайдер с большой дисперсией -
+                # соседние чанки получают РАЗНЫЕ значения (2 и 16) -> рощи
                 lo = rng.randint(0, 3)
                 hi = rng.randint(6, 20)
                 prov = self._int_provider(lo, hi)
                 if prov["type"] == "minecraft:weighted_list":
-                    # в weighted_list подмешиваем 0 — пустые прогалы
+                    # в weighted_list подмешиваем 0 - пустые прогалы
                     prov["distribution"].insert(
                         0, {"data": 0, "weight": rng.randint(1, 3)})
                 return [{"type": "minecraft:count", "count": prov}]
             if r < 0.50:
                 # редкие одиночки/пары: rarity как у деревьев луга (1/100)
-                # и грибов (1/256..512) — изолированные, пуассоново
+                # и грибов (1/256..512) - изолированные, пуассоново
                 return [{"type": "minecraft:rarity_filter",
                          "chance": rng.choice([4, 8, 16, 32, 64, 100,
                                                171, 256, 384])}]
@@ -1912,11 +1914,11 @@ class _FeatureFactory:
                          "above_noise": rng.randint(4, 12),
                          "below_noise": rng.randint(0, 15),
                          "noise_level": -0.8}]
-            # старый вид: фиксированный count — редко и маленький
+            # старый вид: фиксированный count - редко и маленький
             return [{"type": "minecraft:count", "count": rng.randint(1, 3)}]
 
         if kind == "lake":
-            # озёра: 1-3 на чанк (раньше шли через общий branch —
+            # озёра: 1-3 на чанк (раньше шли через общий branch -
             # 1-24 озера на чанк = «спам озёрами»)
             return [{"type": "minecraft:count", "count": rng.randint(1, 3)}]
 
@@ -1929,7 +1931,7 @@ class _FeatureFactory:
                      "count": self._int_provider(1, 24)}]
         if r < 0.72 and kind in self._LAYERED_KINDS:
             # count_on_every_layer: count опционален, int/провайдер;
-            # только незер/пещерным — деревьям он не нужен (ваниль им его
+            # только незер/пещерным - деревьям он не нужен (ваниль им его
             # не даёт), и после него heightmap не ставится (см. _placement)
             if rng.random() < 0.5:
                 return [{"type": "minecraft:count_on_every_layer",
@@ -1951,12 +1953,12 @@ class _FeatureFactory:
                  "noise_to_count_ratio": rng.randint(40, 240)}]
 
     def _random_offset(self):
-        """Разброс патча — формат patch_grass_normal.json (провайдеры)
+        """Разброс патча - формат patch_grass_normal.json (провайдеры)
         или pointed_dripstone.json (простые int)."""
         rng = self.rng
         xz = rng.randint(1, 7)
         y = rng.randint(1, 5)
-        if rng.random() < 0.4:  # простые int — как pointed_dripstone
+        if rng.random() < 0.4:  # простые int - как pointed_dripstone
             return {"type": "minecraft:random_offset",
                     "xz_spread": xz, "y_spread": y}
         return {"type": "minecraft:random_offset",
@@ -1971,7 +1973,7 @@ class _FeatureFactory:
         if r < 0.35:
             return {"type": "minecraft:biome"}
         if r < 0.62:
-            # деревьям часто — проверку «саженец выживет» (как *_checked)
+            # деревьям часто - проверку «саженец выживет» (как *_checked)
             if kind == "tree" and rng.random() < 0.6:
                 predicate = {"type": "minecraft:would_survive",
                              "state": {"Name": rng.choice(SAPLINGS),
@@ -1990,28 +1992,31 @@ class _FeatureFactory:
                     "type": "minecraft:matching_block_tag",
                     "tag": "minecraft:air"}
             return mod
-        if r < 0.90:  # lake_lava_underground.json; min/max — оба опциональны
+        if r < 0.90:  # lake_lava_underground.json; min/max - оба опциональны
             mod = {"type": "minecraft:surface_relative_threshold_filter",
                    "heightmap": rng.choice(HEIGHTMAPS),
                    "max_inclusive": rng.randint(-16, 0)}
             if rng.random() < 0.5:
-                mod["min_inclusive"] = rng.randint(-24, -1)
+                # Inclusive integer offsets may coincide, but must not cross.
+                # Keep the same RNG draws so cave/biome generation is unchanged.
+                mod["min_inclusive"], mod["max_inclusive"] = sorted((
+                    rng.randint(-24, -1), mod["max_inclusive"]))
             return mod
         # patch_sugar_cane.json
         return {"type": "minecraft:surface_water_depth_filter",
                 "max_water_depth": rng.randint(0, 8)}
 
     def _placement(self, kind):
-        """Конвейер placement длиной 1-4 (патчу — до 5: нужен random_offset).
+        """Конвейер placement длиной 1-4 (патчу - до 5: нужен random_offset).
         Порядок как в ванильных фичах: count -> in_square -> высота ->
         random_offset -> фильтры.
         Ванильные инварианты (проверено на сервере 26.2):
         - count_on_every_layer сам рандомизирует позицию внутри чанка и
-          НИКОГДА не идёт вместе с in_square — иначе позиции уходят на
+          НИКОГДА не идёт вместе с in_square - иначе позиции уходят на
           2 чанка в сторону («setBlock in a far chunk»/«unsafe terrain
           read», вплоть до зависания генерации);
         - fixed_placement задаёт АБСОЛЮТНЫЕ координаты и годится только
-          для разовых фич (end_platform) — в пер-чанковой декорации он
+          для разовых фич (end_platform) - в пер-чанковой декорации он
           писал бы в далёкие чанки из каждого чанка, поэтому здесь
           не используется."""
         if self.cave:
@@ -2024,16 +2029,16 @@ class _FeatureFactory:
             pipeline.extend(first_mods)
         first_types = {m["type"] for m in first_mods}
         layered = "minecraft:count_on_every_layer" in first_types
-        # in_square — ОБЯЗАТЕЛЕН (кроме layered): без него x/z остаются
+        # in_square - ОБЯЗАТЕЛЕН (кроме layered): без него x/z остаются
         # УГЛОМ ЧАНКА и фичи встают в идеальную сетку с шагом 16. В ванили
         # у каждой пер-чанковой фичи есть in_square / random_offset /
-        # count_on_every_layer — что-то одно всегда рандомизирует позицию.
+        # count_on_every_layer - что-то одно всегда рандомизирует позицию.
         if not layered:
             pipeline.append({"type": "minecraft:in_square"})
         if rng.random() < 0.9 and not layered:  # высота (не после layered!)
-            # руды — ВСЕГДА height_range: жила должна быть ВНУТРИ рельефа
+            # руды - ВСЕГДА height_range: жила должна быть ВНУТРИ рельефа
             # (как ванильные ore_*), heightmap ставил бы её на поверхность;
-            # подводным фичам — дно океана, остальным — любой heightmap
+            # подводным фичам - дно океана, остальным - любой heightmap
             if kind == "ore":
                 pipeline.append({"type": "minecraft:height_range",
                                  "height": self._height_provider()})
@@ -2055,14 +2060,18 @@ class _FeatureFactory:
                 else:
                     pipeline.append({"type": "minecraft:height_range",
                                      "height": self._height_provider()})
-        if kind == "patch":  # обязателен: без него патч — точка
+                    pipeline.append({"type": "minecraft:environment_scan",
+                                     "direction_of_search": "down",
+                                     "max_steps": 32,
+                                     "target_condition": {"type": "minecraft:solid"}})
+        if kind == "patch":  # обязателен: без него патч - точка
             pipeline.append(self._random_offset())
         for _ in range(rng.randint(0, 2)):  # фильтры
             pipeline.append(self._filter_modifier(kind))
-        # деревьям с высокой плотностью — прореживание как в ванили
-        # (trees_birch: count 10-16 + would_survive/surface_water_depth —
+        # деревьям с высокой плотностью - прореживание как в ванили
+        # (trees_birch: count 10-16 + would_survive/surface_water_depth -
         # иначе «густой лес» из count-провайдера стоит стеной). Работает на
-        # любой поверхности — в отличие от would_survive (тому нужна земля).
+        # любой поверхности - в отличие от would_survive (тому нужна земля).
         if kind == "tree" and not any(
                 m["type"] == "minecraft:block_predicate_filter"
                 for m in pipeline) and rng.random() < 0.75:
@@ -2082,17 +2091,17 @@ class _FeatureFactory:
 
     def _cave_placement(self, kind):
         """Placement для ПОДЗЕМНЫХ биомов (self.cave). ГЛАВНОЕ: никогда
-        heightmap — он ставит фичу на ПОВЕРХНОСТЬ мира (первый воздух
+        heightmap - он ставит фичу на ПОВЕРХНОСТЬ мира (первый воздух
         сверху), а нужен пол пещеры. Вместо него:
         - count_on_every_layer (ванильный пещерный механизм, см.
           _LAYERED_KINDS): сам находит позиции на твёрдых блоках в
-          воздушных слоях — так размещают растительность незера и пещер;
+          воздушных слоях - так размещают растительность незера и пещер;
         - height_range с широкой относительной полосой (почти вся
-          высота мира, как ванильные glow_lichen/large_dripstone) —
+          высота мира, как ванильные glow_lichen/large_dripstone) -
           фичи, которые сами сканируют пространство (multiface,
           sculk_patch, speleothem, geode, monster_room), находят стены,
           полы и потолки сами.
-        Растительности — фильтр «под позицией твёрдое»: не висит в
+        Растительности - фильтр «под позицией твёрдое»: не висит в
         воздухе. surface_relative_threshold_filter не используем: он
         сравнивает Y с ПОВЕРХНОСТЬЮ мира и в пещерах режет всё."""
         rng = self.rng
@@ -2104,12 +2113,12 @@ class _FeatureFactory:
             return [{"type": "minecraft:count_on_every_layer", "count": cnt}]
         pipeline = self._count_modifier(kind)
         if any(m["type"] == "minecraft:count_on_every_layer" for m in pipeline):
-            return pipeline  # слойный механизм уже нашёл Y — после него ничего
+            return pipeline  # слойный механизм уже нашёл Y - после него ничего
         pipeline.append({"type": "minecraft:in_square"})
         pipeline.append({"type": "minecraft:height_range",
                          "height": self._cave_height_provider()})
         if kind in self._CAVE_FLOOR:
-            # «под позицией твёрдое»: растения и валуны — на полу
+            # «под позицией твёрдое»: растения и валуны - на полу
             pipeline.append({"type": "minecraft:block_predicate_filter",
                              "predicate": {"type": "minecraft:solid",
                                            "offset": [0, -1, 0]}})
@@ -2128,19 +2137,19 @@ class _FeatureFactory:
 def rand_features(rng, ns, name, min_y, max_y, count=None, cave=False,
                  no_gravity=False):
     """Случайные configured+placed features. Возвращает
-    (configured, placed, tags): три dict {id: json}, id — namespaced строки
-    'ns:...'. tags — block-теги («земля» измерения для рудных целей),
+    (configured, placed, tags): три dict {id: json}, id - namespaced строки
+    'ns:...'. tags - block-теги («земля» измерения для рудных целей),
     пишутся в data/<ns>/tags/block/.
 
-    count — сколько configured-фич создать (по умолчанию 4-14 — старое
+    count - сколько configured-фич создать (по умолчанию 4-14 - старое
     поведение; вызывается с числом из тяжело-хвостового распределения).
-    cave=True — пещерный режим для ПОДЗЕМНЫХ биомов: только виды, не
+    cave=True - пещерный режим для ПОДЗЕМНЫХ биомов: только виды, не
     требующие ни неба, ни поверхности (CAVE_FEATURE_KINDS), и placement
-    без heightmap — он ставит фичу на верх мира, а не на пол пещеры
-    (см. _cave_placement). no_gravity=True — VOID-режим: пулы
+    без heightmap - он ставит фичу на верх мира, а не на пол пещеры
+    (см. _cave_placement). no_gravity=True - VOID-режим: пулы
     размещения без сыпучих (падающий блок над пустотой обращается в
     entity FALLING_BLOCK; см. _FeatureFactory.__init__). Формат каждой фичи подтверждён ванильным
-    jar 26.2, по 1-2 placed на каждую. Весь рандом — только через rng
+    jar 26.2, по 1-2 placed на каждую. Весь рандом - только через rng
     (random.Random)."""
     factory = _FeatureFactory(rng, ns, name, min_y, max_y, cave=cave,
                               no_gravity=no_gravity)
@@ -2166,34 +2175,34 @@ def rand_features(rng, ns, name, min_y, max_y, count=None, cave=False,
 
 
 def rand_ores(rng, ns, name, min_y, max_y, count=None, no_gravity=False):
-    """Рудная система измерения — отдельный проход поверх rand_features
+    """Рудная система измерения - отдельный проход поверх rand_features
     (руды убраны из общего FEATURE_KINDS, чтобы число видов было
     управляемым: по аудиту существующих данных медиана была 1 руда на
-    измерение, а 3 мира из 32 — вообще без руд).
+    измерение, а 3 мира из 32 - вообще без руд).
 
     Что создаёт на каждое измерение:
     - count (по умолчанию 5-9) ВИДОВ руд: свои блоки/цели/размер жилы
       (2-20 с тяжёлым хвостом; обычным, НЕ-редким видам нижняя
-      граница count поднята до 3 — юзер просил гуще обычные руды),
+      граница count поднята до 3 - юзер просил гуще обычные руды),
       иногда scattered_ore;
-    - у каждого вида ЧЕТЫРЕ placed-варианта богатства — ×0.3/×1/×2.5/×5
+    - у каждого вида ЧЕТЫРЕ placed-варианта богатства - x0.3/x1/x2.5/x5
       от базового count 2-20 (id <name>_oreM_p1..p4 по порядку
-      множителей); ~20% видов — «редкие» (rarity_filter 1/2-1/8 чанков,
+      множителей); ~20% видов - «редкие» (rarity_filter 1/2-1/8 чанков,
       как древние обломки в незере);
-    - высоты — ОТНОСИТЕЛЬНЫЕ якоря (above_bottom/below_top) по ДОЛЯМ
+    - высоты - ОТНОСИТЕЛЬНЫЕ якоря (above_bottom/below_top) по ДОЛЯМ
       высоты мира, полосы смещены вниз, в рельеф (см.
       _ore_height_provider): absolute-полосы из _pair_y могли целиком
-      попасть в воздух над поверхностью — и жилы с
+      попасть в воздух над поверхностью - и жилы с
       discard_chance_on_air_exposure не спавнились вовсе.
 
-    Цели замены (targets) — как раньше: почти всегда тег «земли»
-    измерения (вся палитра рельефа) — руда заменяет фактический рельеф,
+    Цели замены (targets) - как раньше: почти всегда тег «земли»
+    измерения (вся палитра рельефа) - руда заменяет фактический рельеф,
     а не ванильный камень, которого в случайном мире может не быть.
 
-    Возвращает (configured, placed, tags, variants): variants —
+    Возвращает (configured, placed, tags, variants): variants -
     {configured_id: {"poor": placed_id, "normal": ..., "rich": ...,
     "motherlode": ...}} для пер-биомной раздачи в generate_dimension.
-    no_gravity=True — VOID-режим: блоки жил без сыпучих (см.
+    no_gravity=True - VOID-режим: блоки жил без сыпучих (см.
     _FeatureFactory.__init__)."""
     factory = _FeatureFactory(rng, ns, name, min_y, max_y,
                               no_gravity=no_gravity)
@@ -2204,15 +2213,15 @@ def rand_ores(rng, ns, name, min_y, max_y, count=None, no_gravity=False):
         configured[cid] = factory._ore()
         hp = factory._ore_height_provider()
         # базовый count (он же «normal»-вариант): 2-20 (НЕ-редким видам
-        # нижняя граница 3 — обычные руды встречаются почаще), мелкие
-        # чаще — дисперсия между видами руд одного мира
+        # нижняя граница 3 - обычные руды встречаются почаще), мелкие
+        # чаще - дисперсия между видами руд одного мира
         rare = rng.random() < 0.2
         base = rng.randint(2 if rare else 3, 10) \
             if rng.random() < 0.7 else rng.randint(11, 20)
         tiers = {}
         for k, (tier, mult) in enumerate(ORE_MULTIPLIERS):
             # конвейер как у ванильных ore_*: count -> in_square ->
-            # height_range -> biome (биом-фильтр — двойная проверка, что
+            # height_range -> biome (биом-фильтр - двойная проверка, что
             # позиция всё ещё в биоме, разместившем фичу)
             mods = []
             if rare:
@@ -2234,30 +2243,30 @@ def rand_ores(rng, ns, name, min_y, max_y, count=None, no_gravity=False):
 
 
 def rand_stone_blobs(rng, ns, name, min_y, max_y, family, vein=None):
-    """Блобы КАМЕННОГО СЕМЕЙСТВА — «большие блобы» как ванильные
+    """Блобы КАМЕННОГО СЕМЕЙСТВА - «большие блобы» как ванильные
     андезит/диорит/гранит/туф: ore-фича с size 15-64 и count 1-6 на
     чанк, полоса высот по ДОЛЯМ высоты мира (относительные якоря,
     _blob_height_provider), discard_on_air_exposure 0.0 (камень не
     прячется от воздуха, как ванильные блобы гранита).
 
-    family — [(блок, тир), ...] от generate_dimension._select_stone_family
-    (тиры "common"/"normal"/"rare"; блоки — (id, props) кортежи, уже без
+    family - [(блок, тир), ...] от generate_dimension._select_stone_family
+    (тиры "common"/"normal"/"rare"; блоки - (id, props) кортежи, уже без
     сыпучих для void-миров). Параметры по тирам:
-      «частые»  — size 33-64, count 3-6 (гуще и крупнее);
-      «обычные» — size 20-48, count 2-4;
-      «редкие»  — size 15-33, count 1-2 + rarity_filter 1/4-1/16
-                  (редкие — ещё реже).
-    vein — опциональная «жила-стержень» одного РЕДКОГО блока:
+      «частые»  - size 33-64, count 3-6 (гуще и крупнее);
+      «обычные» - size 20-48, count 2-4;
+      «редкие»  - size 15-33, count 1-2 + rarity_filter 1/4-1/16
+                  (редкие - ещё реже).
+    vein - опциональная «жила-стержень» одного РЕДКОГО блока:
     вертикальные узкие блобы (size 2-6 + count 8-24, rarity 1/2-1/8,
-    высокий пояс высот — см. _vein_height_provider).
+    высокий пояс высот - см. _vein_height_provider).
 
-    id: configured <name>_stoneN, placed <name>_blobN — один блоб на
+    id: configured <name>_stoneN, placed <name>_blobN - один блоб на
     камень (+жила). Блобы кладём в ОБЩИЙ пул измерения (каждый биом,
-    как ванильные ore_granite/ore_andesite — камень генерится везде,
+    как ванильные ore_granite/ore_andesite - камень генерится везде,
     это не пер-биомная декорация); пер-биомные множители руд НЕ трогаем.
 
-    Возвращает (configured, placed, tags): tags — тег «земли» (цели
-    блобов tag_match). Семейство фильтрует от сыпучих вызывающий код —
+    Возвращает (configured, placed, tags): tags - тег «земли» (цели
+    блобов tag_match). Семейство фильтрует от сыпучих вызывающий код -
     сюда блоки приходят уже чистыми, отдельный флаг не нужен."""
     factory = _FeatureFactory(rng, ns, name, min_y, max_y)
     configured, placed = {}, {}
@@ -2322,44 +2331,44 @@ def rand_stone_blobs(rng, ns, name, min_y, max_y, family, vein=None):
 # ---------------------------------------------------------------------------
 # Сигнатурные фичи АРХЕТИПОВ подземных биомов (rand_cave_features)
 # ---------------------------------------------------------------------------
-# Восемь архетипов «как в ваниле» (lush/dripstone/deep_dark — эталонная
+# Восемь архетипов «как в ваниле» (lush/dripstone/deep_dark - эталонная
 # тройка, плюс кристальная/грибная/корневая/магмовая/замёрзшая). Фичи
-# архетипа строятся ПО ЗАДАННЫМ блокам (не случайным пулом) — это и есть
+# архетипа строятся ПО ЗАДАННЫМ блокам (не случайным пулом) - это и есть
 # идентичность: пышная пещера = мох + светящиеся ягоды + споры, натёчная
 # = кластеры натёков, глубокая тьма = вены скалка без монстров.
 #
 # Все форматы скопированы с ванильных configured/placed-фич jar 26.2:
-#   cave_vine.json          — block_column ВНИЗ (cave_vines_plant + ягоды)
-#   moss_patch.json         — vegetation_patch (пол, ground=moss_block)
-#   spore_blossom.json/pl.  — simple_block + environment_scan ВВЕРХ
-#   dripleaf.json           — simple_random_selector малой/большой листвы
-#   dripstone_cluster.json  — speleothem_cluster (dripstone_block)
-#   pointed_dripstone.json  — simple_random_selector из двух speleothem
+#   cave_vine.json          - block_column ВНИЗ (cave_vines_plant + ягоды)
+#   moss_patch.json         - vegetation_patch (пол, ground=moss_block)
+#   spore_blossom.json/pl.  - simple_block + environment_scan ВВЕРХ
+#   dripleaf.json           - simple_random_selector малой/большой листвы
+#   dripstone_cluster.json  - speleothem_cluster (dripstone_block)
+#   pointed_dripstone.json  - simple_random_selector из двух speleothem
 #                             (с INLINE-сканом пола/потолка)
-#   sculk_patch_deep_dark.. — sculk_patch (extra_rare_growths 0 — у нас
-#                             0-2: сенсоры это block entity, ≤2 на пятно)
-#   amethyst_geode.json     — geode с аметистовыми слоями
-#   huge_brown_mushroom...  — огромные грибы (стволы/шляпки ванильские)
-#   rooted_azalea_tree.json — root_system (корни + свисающие корни)
-# Плотности — ванильные (count на чанк; большинство попыток не проходит
-# скан — поэтому у cave_vines/sculk_vein счётёт трёхзначный).
+#   sculk_patch_deep_dark.. - sculk_patch (extra_rare_growths 0 - у нас
+#                             0-2: сенсоры это block entity, <=2 на пятно)
+#   amethyst_geode.json     - geode с аметистовыми слоями
+#   huge_brown_mushroom...  - огромные грибы (стволы/шляпки ванильские)
+#   rooted_azalea_tree.json - root_system (корни + свисающие корни)
+# Плотности - ванильные (count на чанк; большинство попыток не проходит
+# скан - поэтому у cave_vines/sculk_vein счётёт трёхзначный).
 #
 # ВИДЫ (поле type configured-фичи) у ЛЮБЫХ двух архетипов пересекаются
-# не более чем на один — инвариант различимости биомов сохраняется без
+# не более чем на один - инвариант различимости биомов сохраняется без
 # перегенераций (набор архетипа фиксирован, фильтр сигнатурности
 # _rand_biome_features его менять не может). Таблицу соответствия см.
-# _CAVE_RECIPE_TYPE — самотест проверяет попарные пересечения.
+# _CAVE_RECIPE_TYPE - самотест проверяет попарные пересечения.
 
 # (placement-стиль, (count_lo, count_hi)) для каждого рецепта.
 # Стили placement (все заканчиваются biome-фильтром, как ваниль):
-#   "floor"   — count → in_square → height_range → environment_scan ВНИЗ
-#               (воздух → solid) → random_offset(+1) → biome: на пол пещеры
-#   "ceil"    — то же, но скан ВВЕРХ и offset(-1): под потолок
-#   "berries" — скан ВВЕРХ до has_sturdy_face down: свисающие лозы/ягоды
-#   "wide"    — без скана (фича сама ищет пространство вокруг позиции):
+#   "floor"   - count -> in_square -> height_range -> environment_scan ВНИЗ
+#               (воздух -> solid) -> random_offset(+1) -> biome: на пол пещеры
+#   "ceil"    - то же, но скан ВВЕРХ и offset(-1): под потолок
+#   "berries" - скан ВВЕРХ до has_sturdy_face down: свисающие лозы/ягоды
+#   "wide"    - без скана (фича сама ищет пространство вокруг позиции):
 #               speleothem_cluster/large_dripstone/sculk/geode/multiface
-#   "rare"    — wide + rarity_filter (жеоды: 1/8-1/24 чанков)
-#   "layer"   — count_on_every_layer (незер-механизм: сам находит слой)
+#   "rare"    - wide + rarity_filter (жеоды: 1/8-1/24 чанков)
+#   "layer"   - count_on_every_layer (незер-механизм: сам находит слой)
 _CAVE_RECIPE_SPEC = {
     # --- пышная (lush) ---
     "cave_vines":      ("berries", (96, 188)),
@@ -2409,7 +2418,7 @@ _CAVE_RECIPE_SPEC = {
 }
 
 # type configured-фичи каждого рецепта (для самотеста попарных
-# пересечений видов между архетипами — см. таблицу в generate_dimension)
+# пересечений видов между архетипами - см. таблицу в generate_dimension)
 _CAVE_RECIPE_TYPE = {
     "cave_vines": "minecraft:block_column",
     "moss_floor": "minecraft:vegetation_patch",
@@ -2452,16 +2461,18 @@ _CAVE_RECIPE_TYPE = {
 
 
 def _cave_recipe_placement(factory, style, count, rarity=None):
-    """Placement сигнатурной фичи архетипа — ванильные конвейеры
+    """Placement сигнатурной фичи архетипа - ванильные конвейеры
     пещерных фич (см. placed_feature/cave_vines.json, lush_caves_
-    vegetation.json, dripstone_cluster.json). height_range — ВСЯ высота
-    мира относительными якорями (выше/ниже — пусто, ваниль использует
-    above_bottom(0)..absolute(256) — у нас миры до 2032, поэтому доли).
+    vegetation.json, dripstone_cluster.json). height_range - ВСЯ высота
+    мира относительными якорями (выше/ниже - пусто, ваниль использует
+    above_bottom(0)..absolute(256) - у нас миры до 2032, поэтому доли).
     Никогда heightmap (ставит на ПОВЕРХНОСТЬ мира) и никогда ничего
     после count_on_every_layer."""
     rng = factory.rng
     if style == "layer":
-        return [{"type": "minecraft:count_on_every_layer", "count": count}]
+        # count_on_every_layer searches the entire column; use a bounded floor
+        # search so this biome's decorations cannot leak into other strata.
+        style = "floor"
     pipeline = []
     if style == "rare":
         pipeline.append({"type": "minecraft:rarity_filter",
@@ -2471,7 +2482,7 @@ def _cave_recipe_placement(factory, style, count, rarity=None):
     pipeline.append({"type": "minecraft:height_range",
                      "height": factory._frac_height_provider(0.0, 1.0)})
     if style in ("floor", "ceil", "berries"):
-        # environment_scan — ванильный механизм «найди пол/потолок пещеры»
+        # environment_scan - ванильный механизм «найди пол/потолок пещеры»
         target = {"type": "minecraft:solid"}
         if style == "berries":
             target = {"type": "minecraft:has_sturdy_face",
@@ -2492,11 +2503,11 @@ def _cave_recipe_placement(factory, style, count, rarity=None):
 
 
 def _cave_recipe(factory, rname, ctx):
-    """configured-фича рецепта архетипа. ctx — контекст измерения:
-    ground_tag (тег «земли» палитры), terrain (id default_block — цель
-    прожилок), floor/sub (блоки пола архетипа — в предикатах replaceable
-    и can_be_placed_on: рельеф случайный, ванильные теги stone-семейства
-    его не покрывают). Возвращает (configured, placement)."""
+    """configured-фича рецепта архетипа. ctx - контекст измерения:
+    terrain (id default_block - цель прожилок), floor (блоки пола
+    архетипа), extra_tags (дополнительные теги HolderSet<Block>).
+    Рельеф случайный, ванильные теги stone-семейства его не покрывают.
+    Возвращает (configured, placement); extra_tags собираются в ctx."""
     rng = factory.rng
     style, (clo, chi) = _CAVE_RECIPE_SPEC[rname]
     count = rng.randint(clo, chi)
@@ -2506,14 +2517,14 @@ def _cave_recipe(factory, rname, ctx):
                 "state": block_state(blk)}
 
     def _wsp(entries):
-        # entries — [(имя_блока, свойства|None, вес), ...]
+        # entries - [(имя_блока, свойства|None, вес), ...]
         return {"type": "minecraft:weighted_state_provider",
                 "entries": [{"data": block_state((b, p)), "weight": w}
                             for b, p, w in entries]}
 
     def _replaceable():
         # ванильные теги (moss/dripstone_replaceable) покрывают только
-        # stone-семейство — наш рельеф случайный; поэтому ИЛИ тег «земли»
+        # stone-семейство - наш рельеф случайный; поэтому ИЛИ тег «земли»
         # измерения (вся палитра рельефа), ИЛИ блоки пола архетипа
         preds = [{"type": "minecraft:matching_block_tag",
                   "tag": factory._ground_tag()}]
@@ -2522,8 +2533,19 @@ def _cave_recipe(factory, rname, ctx):
                           "blocks": sorted({b[0] for b in ctx["floor"]})})
         return {"type": "minecraft:any_of", "predicates": preds}
 
+    def _replaceable_blocks():
+        # 26.2 vegetation_patch/speleothem expect HolderSet<Block>, NOT
+        # BlockPredicate. A generated tag expresses ground UNION cave floor;
+        # a list containing a '#tag' would not be a valid direct holder set.
+        tag_id = "%s:%s_cave_replaceable" % (factory.ns, factory.name)
+        ctx.setdefault("extra_tags", {})[tag_id] = {
+            "replace": False,
+            "values": ["#" + factory._ground_tag()] +
+                      sorted({b[0] for b in ctx["floor"]})}
+        return "#" + tag_id
+
     def _blobs(state_blk, target_blk=None):
-        # netherrack_replace_blobs: state — блок прожилки, target — порода
+        # netherrack_replace_blobs: state - блок прожилки, target - порода
         rmin = rng.randint(1, 4)
         return {"type": "minecraft:netherrack_replace_blobs", "config": {
             "radius": {"type": "minecraft:uniform", "min_inclusive": rmin,
@@ -2600,7 +2622,7 @@ def _cave_recipe(factory, rname, ctx):
                         ("minecraft:short_grass", None, 45),
                         ("minecraft:tall_grass",
                          {"half": "lower"}, 10),
-                        ("minecraft:pale_hanging_roots", None, 10)])
+                        ("minecraft:pale_moss_carpet", None, 10)])
         else:
             # копия ванильного moss_vegetation.json
             veg = _wsp([("minecraft:flowering_azalea", None, 4),
@@ -2611,7 +2633,7 @@ def _cave_recipe(factory, rname, ctx):
                          {"half": "lower"}, 10)])
         rmin = rng.randint(2, 4)
         cfg = {"type": "minecraft:vegetation_patch", "config": {
-            "replaceable": _replaceable(),
+            "replaceable": _replaceable_blocks(),
             "ground_state": _sp((ground, None)),
             "vegetation_feature": {
                 "feature": {"type": "minecraft:simple_block",
@@ -2631,7 +2653,7 @@ def _cave_recipe(factory, rname, ctx):
                   if rname.startswith("pale") else "minecraft:moss_block")
         rmin = rng.randint(2, 4)
         cfg = {"type": "minecraft:vegetation_patch", "config": {
-            "replaceable": _replaceable(),
+            "replaceable": _replaceable_blocks(),
             "ground_state": _sp((ground, None)),
             "vegetation_feature": {
                 "feature": {"type": "minecraft:simple_block",
@@ -2710,7 +2732,7 @@ def _cave_recipe(factory, rname, ctx):
                               "Properties": {"thickness": "tip",
                                              "vertical_direction": "up",
                                              "waterlogged": "false"}},
-            "replaceable_blocks": _replaceable(),
+            "replaceable_blocks": _replaceable_blocks(),
             "floor_to_ceiling_search_range": rng.randint(8, 24),
             "height": {"type": "minecraft:uniform", "min_inclusive": hmin,
                        "max_inclusive": rng.randint(hmin + 1, 8)},
@@ -2730,7 +2752,7 @@ def _cave_recipe(factory, rname, ctx):
             "max_distance_from_edge_affecting_chance_of_speleothem": 3,
             "max_distance_from_center_affecting_height_bias": 8}}
     elif rname == "pointed_dripstone":
-        # копия ванильного pointed_dripstone.json: два speleothem —
+        # копия ванильного pointed_dripstone.json: два speleothem -
         # «вверх» (скан ВНИЗ до пола) и «вниз» (скан ВВЕРХ до потолка),
         # INLINE-placement внутри configured-фичи
         def _sph(direction):
@@ -2746,7 +2768,7 @@ def _cave_recipe(factory, rname, ctx):
                                 "thickness": "tip",
                                 "vertical_direction": "up",
                                 "waterlogged": "false"}},
-                        "replaceable_blocks": _replaceable()}},
+                        "replaceable_blocks": _replaceable_blocks()}},
                 "placement": [
                     {"type": "minecraft:environment_scan",
                      "direction_of_search": "down" if direction == "up"
@@ -2784,7 +2806,7 @@ def _cave_recipe(factory, rname, ctx):
             "can_place_on_wall": True,
             "chance_of_spreading": 0.5}}
     elif rname == "sculk_patch":
-        # sculk_patch_deep_dark.json; extra_rare_growths 0-2 — сенсоры
+        # sculk_patch_deep_dark.json; extra_rare_growths 0-2 - сенсоры
         # это block entity: не больше пары на пятно (не массовая заливка)
         cfg = {"type": "minecraft:sculk_patch", "config": {
             "charge_count": rng.randint(8, 16),
@@ -2800,7 +2822,7 @@ def _cave_recipe(factory, rname, ctx):
         cfg = _blobs("minecraft:deepslate")
     elif rname == "amethyst_geode":
         # ванильный amethyst_geode.json (все слои аметистовые); рамка
-        # итерации ±14 — граничный peek геода не читает соседний+1 чанк
+        # итерации +/-14 - граничный peek геода не читает соседний+1 чанк
         cfg = {"type": "minecraft:geode", "config": {
             "blocks": {
                 "filling_provider": _sp(("minecraft:air", None)),
@@ -2888,7 +2910,7 @@ def _cave_recipe(factory, rname, ctx):
         cfg = _blobs("minecraft:mycelium")
     elif rname == "root_system":
         # rooted_azalea_tree.json: корни + свисающие корни + дерево
-        # (ванильные azalea_tree/pale_oak — деревья не наши случайные)
+        # (ванильные azalea_tree/pale_oak - деревья не наши случайные)
         tree = rng.choice(["minecraft:azalea_tree", "minecraft:pale_oak"])
         cfg = {"type": "minecraft:root_system", "config": {
             "feature": {"feature": tree, "placement": []},
@@ -2952,28 +2974,42 @@ def _cave_recipe(factory, rname, ctx):
         cfg = _blobs("minecraft:powder_snow")
     else:
         raise ValueError("неизвестный рецепт архетипа: %s" % rname)
-    return cfg, _cave_recipe_placement(factory, style, count)
+    placement = _cave_recipe_placement(factory, style, min(count, 24))
+    if ctx.get("height_bounds"):
+        lo, hi = ctx["height_bounds"]
+        for modifier in placement:
+            if modifier["type"] == "minecraft:height_range":
+                modifier["height"] = {"type": "minecraft:uniform",
+                                      "min_inclusive": {"absolute": lo},
+                                      "max_inclusive": {"absolute": hi}}
+    return cfg, placement
 
 
 def rand_cave_features(rng, ns, name, min_y, max_y, recipes, terrain=None,
-                       floor_blocks=(), no_gravity=False):
+                       floor_blocks=(), no_gravity=False, height_bounds=None):
     """Сигнатурные фичи ПОДЗЕМНОГО БИОМА-АРХЕТИПА (generate_dimension.
-    CAVE_ARCHETYPES[...]["recipes"]). recipes — [(имя, вес), ...]: 4-6
-    рецептов выбираются взвешенной выборкой БЕЗ повторов — вес решает,
+    CAVE_ARCHETYPES[...]["recipes"]). recipes - [(имя, вес), ...]: 4-6
+    рецептов выбираются взвешенной выборкой БЕЗ повторов - вес решает,
     что попадёт почти всегда (cave_vines у пышной), а что изредка.
     Все блоки фиксированы рецептом (идентичность!), случайны только
-    плотности и мелкие параметры. terrain — id блока рельефа
+    плотности и мелкие параметры. terrain - id блока рельефа
     (default_block измерения): цель прожилок netherrack_replace_blobs.
-    floor_blocks — блоки пола архетипа (в any_of-предикатах replaceable:
-    рельеф случайный, ванильные теги stone-семейства его не покрывают).
+    floor_blocks - блоки пола архетипа (в HolderSet-тегах replaceable и
+    предикатах can_place_on: рельеф случайный, ванильные теги stone-семейства
+    его не покрывают). Теги HolderSet объединяют тег земли с блоками пола.
+    height_bounds - необязательная абсолютная полоса Y биома (inclusive);
+    без неё сохраняется прежний API с размещением по всей высоте.
+    В ограниченной полосе достаточно не более 24 попыток на фичу.
 
-    Возвращает (configured, placed, tags) — как rand_features; id вида
+    Возвращает (configured, placed, tags) - как rand_features; id вида
     <ns>:<name>_<рецепт>N, по ОДНОМУ placed на configured (у сигнатурных
-    фич размножать размещение незачем — плотность уже ванильная)."""
+    фич размножать размещение незачем - плотность уже ванильная)."""
     factory = _FeatureFactory(rng, ns, name, min_y, max_y, cave=True,
                               no_gravity=no_gravity)
     ctx = {"terrain": terrain or "minecraft:stone",
-           "floor": [b for b in floor_blocks if isinstance(b, tuple)]}
+           "floor": [b for b in floor_blocks if isinstance(b, tuple)],
+           "height_bounds": height_bounds,
+           "extra_tags": {}}
     pool = list(recipes)
     k = min(len(pool), rng.randint(4, 6))
     k = max(3, k)
@@ -2990,7 +3026,7 @@ def rand_cave_features(rng, ns, name, min_y, max_y, recipes, terrain=None,
         cfg, placement = _cave_recipe(factory, rname, ctx)
         configured[cid] = cfg
         placed["%s_p1" % cid] = {"feature": cid, "placement": placement}
-    tags = {}
+    tags = dict(ctx["extra_tags"])
     if factory.ground_needed:
         tags["%s:%s_ground" % (ns, name)] = {
             "replace": False, "values": _palette_ids()}
@@ -2999,7 +3035,7 @@ def rand_cave_features(rng, ns, name, min_y, max_y, recipes, terrain=None,
 
 def _collect_state_names(node, out):
     """Рекурсивно собрать все имена blockstate'ов (поле "Name") из JSON
-    фичи — для самотестов VOID-миров: blockstate-позиции — это
+    фичи - для самотестов VOID-миров: blockstate-позиции - это
     РАЗМЕЩЕНИЕ блоков (сыпучие там запрещены), а предикаты
     matching_blocks/block_match/matching_block_tag используют другие
     ключи ("blocks"/"block"/"tag") и в выборку не попадают.
@@ -3020,7 +3056,7 @@ def _collect_state_names(node, out):
 # ---------------------------------------------------------------------------
 
 def _resolve_anchor_y(anchor, min_y, max_y):
-    """Якорь height_range → абсолютный Y (max_y — включительный верх,
+    """Якорь height_range -> абсолютный Y (max_y - включительный верх,
     как везде в этом модуле)."""
     if "absolute" in anchor:
         return anchor["absolute"]
@@ -3030,7 +3066,7 @@ def _resolve_anchor_y(anchor, min_y, max_y):
 
 
 def _kind_of(fid, name):
-    """Вид фичи из её id: <ns>:<name>_<kind><N> → kind."""
+    """Вид фичи из её id: <ns>:<name>_<kind><N> -> kind."""
     rest = fid.split(":", 1)[1]
     assert rest.startswith(name + "_"), fid
     return re.sub(r"\d+$", "", rest[len(name) + 1:])
@@ -3039,19 +3075,19 @@ def _kind_of(fid, name):
 def _self_test():
     """Самотест без записи файлов:
     - rand_ores: 5-9 видов, у каждого 4 placed-варианта богатства со
-      строго возрастающим count; height_range всех вариантов —
+      строго возрастающим count; height_range всех вариантов -
       относительные якоря, полоса внутри [min_y, max_y] и непустая при
       ЛЮБОЙ геометрии мира;
     - cave-режим rand_features: только пещерные виды (CAVE_FEATURE_KINDS),
       placement БЕЗ heightmap (heightmap ставит фичу на поверхность
-      мира, а не на пол пещеры), после count_on_every_layer — ни
+      мира, а не на пол пещеры), после count_on_every_layer - ни
       in_square, ни heightmap; «напольной» растительности в
-      height_range-пути — фильтр твёрдого блока снизу;
+      height_range-пути - фильтр твёрдого блока снизу;
     - rand_stone_blobs: id <name>_stoneN / <name>_blobN, size <= 64,
       count по тирам (частые 3-6, обычные 2-4, редкие 1-2 + rarity
-      1/4-1/16, жила 8-24), высоты — относительные якоря внутри мира;
+      1/4-1/16, жила 8-24), высоты - относительные якоря внутри мира;
     - no_gravity (VOID-режим): ни одного сыпучего блока в blockstate-
-      позициях фич (диски/слои/жеоды/деревья/руды...) — падающий блок
+      позициях фич (диски/слои/жеоды/деревья/руды...) - падающий блок
       над пустотой обращается в entity FALLING_BLOCK."""
     import random
     falling = _gd().FALLING_BLOCK_IDS
@@ -3063,7 +3099,7 @@ def _self_test():
             nm = "st%d" % seed
             cfg, placed, tags, variants = rand_ores(
                 rng, "rndim", nm, min_y, max_y)
-            assert 5 <= len(cfg) <= 9, "видов руд %d — должно быть 5-9" % len(cfg)
+            assert 5 <= len(cfg) <= 9, "видов руд %d - должно быть 5-9" % len(cfg)
             assert all(v["type"] in ("minecraft:ore",
                                      "minecraft:scattered_ore")
                        for v in cfg.values())
@@ -3087,7 +3123,7 @@ def _self_test():
                     assert min_y <= lo <= hi <= max_y, \
                         "полоса руды вне мира: %s..%s (мир %s..%s)" % (
                             lo, hi, min_y, max_y)
-                    # якоря — относительные (масштаб под высоту мира)
+                    # якоря - относительные (масштаб под высоту мира)
                     assert "above_bottom" in hp[0]["min_inclusive"] \
                         and "below_top" in hp[0]["max_inclusive"], hp[0]
                 assert counts[0] < counts[1] < counts[2] < counts[3], \
@@ -3189,7 +3225,7 @@ def _self_test():
                 floor_blocks=[("minecraft:moss_block", None)],
                 no_gravity=((seed % 2) == 0))
             assert 3 <= len(acfg) <= 6, \
-                "фичей архетипа %d — должно быть 3-6" % len(acfg)
+                "фичей архетипа %d - должно быть 3-6" % len(acfg)
             for cid, cjson in acfg.items():
                 rname = _kind_of(cid, nm)
                 assert cjson["type"] == _CAVE_RECIPE_TYPE[rname], \
@@ -3219,10 +3255,10 @@ def _self_test():
                 if cnt:
                     clo, chi = _CAVE_RECIPE_SPEC[
                         _kind_of(pl["feature"], nm)][1]
-                    assert len(cnt) == 1 and clo <= cnt[0] <= chi, \
+                    assert len(cnt) == 1 and min(clo, 24) <= cnt[0] <= min(chi, 24), \
                         "count %s вне диапазона %s: %s" % (
                             cnt, (clo, chi), pid)
-            if (seed % 2) == 0:      # no_gravity — сыпучих нет нигде
+            if (seed % 2) == 0:      # no_gravity - сыпучих нет нигде
                 anames = set()
                 for j in list(acfg.values()) + list(aplaced.values()):
                     _collect_state_names(j, anames)
@@ -3231,7 +3267,7 @@ def _self_test():
                     "сыпучие в no_gravity-фичах архетипа: %s" % sorted(abad)
         print("  seed %d: OK" % seed)
     # каждый рецепт строится и даёт заявленный тип (в т.ч. не вошедшие
-    # в выборку выше — по одному разу на фиксированном rng)
+    # в выборку выше - по одному разу на фиксированном rng)
     import random as _random
     _f = _FeatureFactory(_random.Random(99), "rndim", "rectest", -64, 63,
                          cave=True)

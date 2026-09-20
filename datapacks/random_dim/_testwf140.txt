@@ -1,1 +1,0 @@
-probe named attr write_file
