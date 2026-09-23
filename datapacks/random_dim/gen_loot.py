@@ -1536,6 +1536,30 @@ minecraft:wooden_spear minecraft:wooden_sword minecraft:writable_book
 minecraft:yellow_bed minecraft:yellow_bundle minecraft:yellow_harness
 minecraft:yellow_shulker_box""".split())
 
+ULTRA_RARE_VALUABLES = frozenset([
+    "minecraft:nether_star", "minecraft:elytra", "minecraft:beacon",
+    "minecraft:heavy_core", "minecraft:conduit", "minecraft:enchanted_golden_apple",
+    "minecraft:dragon_egg", "minecraft:dragon_head", "minecraft:netherite_block",
+    "minecraft:lodestone", "minecraft:recovery_compass", "minecraft:sponge",
+    "minecraft:wet_sponge", "minecraft:totem_of_undying", "minecraft:trial_key",
+    "minecraft:ominous_trial_key", "minecraft:mace", "minecraft:trident",
+    "minecraft:shulker_box", "minecraft:white_shulker_box", "minecraft:orange_shulker_box",
+    "minecraft:magenta_shulker_box", "minecraft:light_blue_shulker_box", "minecraft:yellow_shulker_box",
+    "minecraft:lime_shulker_box", "minecraft:pink_shulker_box", "minecraft:gray_shulker_box",
+    "minecraft:light_gray_shulker_box", "minecraft:cyan_shulker_box", "minecraft:purple_shulker_box",
+    "minecraft:blue_shulker_box", "minecraft:brown_shulker_box", "minecraft:green_shulker_box",
+    "minecraft:red_shulker_box", "minecraft:black_shulker_box"
+])
+
+RARE_VALUABLES = frozenset([
+    "minecraft:netherite_ingot", "minecraft:netherite_scrap",
+    "minecraft:netherite_upgrade_smithing_template", "minecraft:diamond_block",
+    "minecraft:emerald_block", "minecraft:gold_block", "minecraft:heart_of_the_sea",
+    "minecraft:nautilus_shell", "minecraft:echo_shard", "minecraft:disc_fragment_5",
+    "minecraft:golden_apple", "minecraft:wither_skeleton_skull"
+])
+
+
 # спавн-яйца из полного каталога - для «сюрпризных» записей (варианты
 # сущностей на яйцах: cat/variant, wolf/variant и т.д.)
 SPAWN_EGGS = [i for i in ALL_ITEMS if i.endswith("_spawn_egg")]
@@ -2461,8 +2485,10 @@ def _enchantments_map(rng, item):
     # Свой уровень 1-3 с убывающей вероятностью (max_level чужого модуля
     # мы не знаем, берём безопасный низкий)
     cpool = [e for e in CUSTOM_ENCHS if _custom_ench_ok(e, item)]
-    if cpool and rng.random() < 0.45:
-        out[rng.choice(cpool)] = _decaying_int(rng, 3)
+    if cpool and rng.random() < 0.80:
+        k = rng.choice([1, 1, 2]) if len(cpool) >= 2 else 1
+        for ce in rng.sample(cpool, min(k, len(cpool))):
+            out[ce] = _decaying_int(rng, 3)
     return out
 
 
@@ -2623,29 +2649,23 @@ def _rarity(rng):
 # ---------------------------------------------------------------------------
 
 def _consume_effect(rng):
-    """Один consume-эффект (consumable.on_consume_effects,
-    death_protection.death_effects). Пять типов из реестра."""
     r = rng.random()
-    if r < 0.35:  # apply_effects
+    if r < 0.70:  # apply_effects
         effects = []
-        for eid in rng.sample(MOB_EFFECTS, rng.randint(1, 2)):
-            effects.append({
-                "id": "minecraft:" + eid,
-                "amplifier": rng.randint(0, 2),
-                "duration": int(_decaying_int(rng, 400, 0.5) + 20)})
-        return {"type": "minecraft:apply_effects", "effects": effects,
-                "probability": round(rng.uniform(0.3, 1.0), 2)}
-    if r < 0.55:  # remove_effects
+        for eid in rng.sample(MOB_EFFECTS, rng.randint(2, 4)):
+            is_god = rng.random() < 0.15
+            amp = rng.randint(4, 7) if is_god else rng.randint(1, 4)
+            dur = rng.randint(6000, 12000) if is_god else rng.randint(1200, 4800)
+            effects.append({"id": "minecraft:" + eid, "amplifier": amp, "duration": dur})
+        return {"type": "minecraft:apply_effects", "effects": effects, "probability": 1.0}
+    if r < 0.80:  # remove_effects
         return {"type": "minecraft:remove_effects",
-                "effects": ["minecraft:" + e for e in
-                            rng.sample(MOB_EFFECTS, rng.randint(1, 3))]}
-    if r < 0.7:  # clear_all_effects
+                "effects": ["minecraft:" + e for e in rng.sample(MOB_EFFECTS, rng.randint(1, 3))]}
+    if r < 0.88:  # clear_all_effects
         return {"type": "minecraft:clear_all_effects"}
-    if r < 0.85:  # teleport_randomly
-        return {"type": "minecraft:teleport_randomly",
-                "diameter": float(rng.randint(4, 32))}
-    return {"type": "minecraft:play_sound",
-            "sound": rng.choice(SOUNDS)}
+    if r < 0.95:  # teleport_randomly
+        return {"type": "minecraft:teleport_randomly", "diameter": float(rng.randint(4, 32))}
+    return {"type": "minecraft:play_sound", "sound": rng.choice(SOUNDS)}
 
 
 def _consumable(rng):
@@ -2849,35 +2869,27 @@ def _stack(rng, lo=1, hi=3, comps=None):
     Стек-1 предметам count>1 нельзя - validateContainedItemSizes
     («Item stack with count of N was larger than maximum: 1»)."""
     it = rng.choice(ALL_ITEMS)
-    s = {"id": it, "count": 1 if it in _STACK1 else rng.randint(lo, hi)}
+    if it in ULTRA_RARE_VALUABLES:
+        cnt = 1
+    elif it in RARE_VALUABLES:
+        cnt = 1 if rng.random() < 0.8 else 2
+    else:
+        cnt = 1 if it in _STACK1 else rng.randint(lo, hi)
+    s = {"id": it, "count": cnt}
     if comps:
         s["components"] = comps
     return s
 
 
 def _book_pages(rng, n, component_form):
-    """Страницы книг: Filterable - {raw, filtered?}.
-    component_form=False -> raw строка (writable_book),
-    True -> raw text-component (written_book). filtered - того же типа.
-    Каждая страница - 1-2 предложения русского флейвора (дневник/записки);
-    в text-компонентах 26.2 разрешены text/color/italic/bold."""
-    pages = []
-    for _ in range(n):
-        text = "\n".join(rng.choice(_BOOK_PAGE_SENTENCES)
-                         for _ in range(rng.randint(1, 2)))
-        if component_form:
-            raw = {"text": text,
-                   "color": rng.choice(_BOOK_PAGE_COLORS),
-                   "italic": True}
-            if rng.random() < 0.15:
-                raw["bold"] = True
-        else:
-            raw = text
-        p = {"raw": raw}
-        if rng.random() < 0.2:
-            p["filtered"] = "..." if not component_form else {"text": "..."}
-        pages.append(p)
-    return pages
+    try:
+        from gen_lore import generate_50_book_pages
+        return generate_50_book_pages(rng, component_form=component_form)
+    except ImportError:
+        import sys, os
+        sys.path.insert(0, os.path.dirname(__file__))
+        from gen_lore import generate_50_book_pages
+        return generate_50_book_pages(rng, component_form=component_form)
 
 
 _RU_AUTHORS = ["Стив", "Алекс", "Безымянный монах", "Картограф Тимофей",
@@ -3403,7 +3415,7 @@ def _nbt_stack(rng, cls, slot=None):
             comps["minecraft:lore"] = hints
     # имя - только снаряжению с компонентами (есть что раскрывать)
     if comps and rng.random() < 0.3:
-        comps["minecraft:custom_name"] = _reveal_name(rng, item, comps, [])
+        comps["minecraft:item_name"] = _reveal_name(rng, item, comps, [])
     if rng.random() < 0.2:
         comps["minecraft:unbreakable"] = {}
     if comps:
@@ -3488,6 +3500,8 @@ def _mob_nbt(rng, mob, table_ids):
 
 
 def _is_material(item):
+    if item in ULTRA_RARE_VALUABLES or item in RARE_VALUABLES:
+        return False
     """Возвращает True, если предмет является обычным материалом/ресурсом/блоком
     без активных боевых, защитных или интерактивных способностей."""
     kind = _kind_of(item)
@@ -3547,7 +3561,16 @@ def _nested_stack(rng):
         ((MISC, "misc"), 6)])
     item = rng.choice(pool)
     hi = {"resource": 12, "food": 6, "junk": 8, "valuable": 3}.get(cls, 1)
-    s = {"id": item, "count": 1 if item in _STACK1 else rng.randint(1, hi)}
+    if item in ULTRA_RARE_VALUABLES:
+        s = {"id": item, "count": 1}
+    elif item in RARE_VALUABLES:
+        s = {"id": item, "count": 1 if rng.random() < 0.8 else 2}
+    elif _is_material(item) or cls == "resource":
+        lo = 4 if item not in _STACK1 else 1
+        hi_mat = 32 if (cls == "resource" or _is_material(item)) else 12
+        s = {"id": item, "count": 1 if item in _STACK1 else rng.randint(lo, hi_mat)}
+    else:
+        s = {"id": item, "count": 1 if item in _STACK1 else rng.randint(1, hi)}
     if _is_material(item):
         if rng.random() < 0.06:
             nprefix = "nested_%d" % rng.randint(0, 10 ** 6)
@@ -3557,7 +3580,7 @@ def _nested_stack(rng):
                 "minecraft:rarity": rng.choice(["rare", "epic"]),
                 "minecraft:enchantment_glint_override": True,
             }
-            ncomp["minecraft:custom_name"] = _reveal_name(rng, item, ncomp, [])
+            ncomp["minecraft:item_name"] = _reveal_name(rng, item, ncomp, [])
             clines = _component_lore(rng, item, ncomp, [])
             if clines:
                 ncomp["minecraft:lore"] = clines
@@ -3624,7 +3647,7 @@ def _nested_stack(rng):
                 for sl in slots]
     # имя - только предмету с компонентами (есть что раскрывать)
     if ncomp and rng.random() < 0.12:
-        ncomp["minecraft:custom_name"] = _reveal_name(rng, item, ncomp, [])
+        ncomp["minecraft:item_name"] = _reveal_name(rng, item, ncomp, [])
     if rng.random() < 0.08:
         ncomp["minecraft:rarity"] = _rarity(rng)
     # «только визуал» невозможен и в глубине: вложенный предмет с одной
@@ -3940,8 +3963,6 @@ def _reveal_name(rng, item, comps, funcs):
         add(3, "Нажитого")
     if "minecraft:custom_model_data" in comps:
         add(3, "Чужой Формы")
-    if "minecraft:use_cooldown" in comps:
-        add(4, "Выдержки")
     if "minecraft:use_effects" in comps:
         add(4, "Отзвука")
     if "minecraft:equippable" in comps and kind == "generic":
@@ -4090,33 +4111,7 @@ def _component_lore(rng, item, comps, funcs):
             if eff.get("type") == "minecraft:teleport_randomly":
                 cand.append("После еды переносит в случайное место.")
                 break
-    # собственные атрибут-модификаторы (не базовые!): до двух строк
-    shown = 0
-    for mod in comps.get("minecraft:attribute_modifiers") or []:
-        if shown >= 2 or not isinstance(mod, dict):
-            continue
-        if "_base" in str(mod.get("id", "")):
-            continue
-        wr = _ATTR_RU.get(mod.get("type"))
-        if not wr:
-            continue
-        shown += 1
-        amt = mod.get("amount", 0)
-        sign = "" if amt < 0 else "+"
-        if mod.get("operation") == "add_value":
-            cand.append("Тяжесть даёт %s%s %s."
-                        % (sign, _fmt_num(amt),
-                           wr[0].lower()))
-        else:  # умножающие операции - процентами (родительный падеж:
-        # «даёт +25% яркости» - как и с аддитивными величинами)
-            cand.append("Тяжесть даёт %s%d%% %s."
-                        % (sign, int(round(abs(amt) * 100)) * (-1 if amt < 0 else 1),
-                           wr[0].lower()))
-    # чары: ванильные НЕ описываем (жалоба юзера: «игроки их знают»);
-    # кастомные зачарования измерения получают СВОИ строки-подсказки
-    # «Имя - описание действия» (см. _ench_hint_lines - вызывается из
-    # _item_components ПОСЛЕ этого блока, и в _nested_stack)
-    # еда и превращения
+    # attribute modifiers omitted from lore per requirement
     food = comps.get("minecraft:food")
     if isinstance(food, dict):
         cand.append("Утоляет голод (%s ед.)."
@@ -4282,6 +4277,26 @@ _COSMETIC_KEYS = frozenset([
 ])
 
 
+_BONUS_ONLY_KEYS = frozenset([
+    "minecraft:repairable",
+    "minecraft:swing_animation",
+])
+
+def _has_mechanical_uniqueness(comps, funcs=()):
+    for k in comps:
+        if k in _COSMETIC_KEYS or k in _BONUS_ONLY_KEYS:
+            continue
+        if k in ("minecraft:damage", "minecraft:repair_cost", "minecraft:break_sound"):
+            continue
+        return True
+    if funcs:
+        for f in funcs:
+            if isinstance(f, dict):
+                fn = f.get("function", "")
+                if fn in ("minecraft:set_enchantments", "minecraft:set_potion", "minecraft:apply_bonus"):
+                    return True
+    return False
+
 def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
     """ФИКС «предмет только с визуалом» (жалоба юзера: предмет с rarity
     и item_name - по факту обычный). Если после генерации компонентов у
@@ -4298,7 +4313,7 @@ def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
     Возвращает True, если предмет был «только визуалом» и получил фичу."""
     if not comps or funcs:
         return False
-    if any(k not in _COSMETIC_KEYS for k in comps):
+    if any(k not in _COSMETIC_KEYS and k not in _BONUS_ONLY_KEYS for k in comps):
         return False
     if _is_material(item):
         return False
@@ -4350,24 +4365,19 @@ def _fix_visual_only(rng, item, comps, funcs, tag_prefix, equip_slot):
 
 
 def _ench_hint_lines(rng, comps, funcs):
-    """Lore-подсказки КАСТОМНЫХ зачарований измерения: по строке
-    «Имя зачарования - описание действия» на каждое (обычно одно).
-    Ванильные зачарования не описываем - игроки их знают. Источник имён
-    и описаний - _ENCH_INFO (set_ench_summaries + автопоиск по
-    gen_enchantments.LAST_ENCHANTMENTS)."""
+    """Lore-подсказки к кастомным чарам предмета: только кастомные механики/чары."""
     ids = []
     for ekey in ("minecraft:enchantments", "minecraft:stored_enchantments"):
         emap = comps.get(ekey)
         if isinstance(emap, dict):
-            ids.extend(e for e in emap if e in _ENCH_INFO)
+            ids.extend(e for e in emap if e in _ENCH_INFO and not str(e).startswith("minecraft:"))
     for f in funcs:
-        if isinstance(f, dict) \
-                and f.get("function") == "minecraft:set_enchantments":
+        if isinstance(f, dict) and f.get("function") == "minecraft:set_enchantments":
             emap = f.get("enchantments") or {}
             if isinstance(emap, dict):
-                ids.extend(e for e in emap if e in _ENCH_INFO)
+                ids.extend(e for e in emap if e in _ENCH_INFO and not str(e).startswith("minecraft:"))
     out = []
-    for e in ids[:2]:
+    for e in list(dict.fromkeys(ids)):
         nm = _ENCH_INFO[e].get("name") or e
         desc = _ENCH_INFO[e].get("desc") or ""
         txt = "%s - %s" % (nm, desc) if desc else str(nm)
@@ -4406,7 +4416,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
                 rng, item, tag_prefix, None, strong=True)
             comps["minecraft:rarity"] = rng.choice(["rare", "epic"])
             comps["minecraft:enchantment_glint_override"] = True
-            comps["minecraft:custom_name"] = _reveal_name(rng, item, comps, funcs)
+            comps["minecraft:item_name"] = _reveal_name(rng, item, comps, funcs)
             clines = _component_lore(rng, item, comps, funcs)
             if clines:
                 if rng.random() < 0.40:
@@ -4455,9 +4465,19 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         emap = _enchantments_map(rng, item)
         if emap:
             comps["minecraft:stored_enchantments"] = emap
+    gearish = kind in _KIND_SLOTS and kind != "book"
+    # Extra bonus roll for custom enchantments on gear / books (Requirement 10)
+    cpool = [e for e in CUSTOM_ENCHS if _custom_ench_ok(e, item)]
+    if cpool and (gearish or item in ENCH_BOOKS) and rng.random() < 0.55:
+        ce = rng.choice(cpool)
+        lvl = _decaying_int(rng, 3)
+        ekey = "minecraft:stored_enchantments" if item in ENCH_BOOKS else "minecraft:enchantments"
+        if ekey not in comps:
+            comps[ekey] = {}
+        if ce not in comps[ekey]:
+            comps[ekey][ce] = lvl
     # атрибут-модификаторы (тематические пулы/слоты - см.
     # _attribute_modifiers; equip_slot - слот «дикого» equippable)
-    gearish = kind in _KIND_SLOTS and kind != "book"
     attr_p = {"weapons": 0.5, "treasure": 0.30, "mixed": 0.35}.get(char, 0.10)
     if (gearish or equip_slot) and rng.random() < attr_p:
         comps["minecraft:attribute_modifiers"] = _attribute_modifiers(
@@ -4471,13 +4491,6 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
     # tooltip_display/tooltip_style НЕ генерируются: прятать компоненты
     # и рисовать рамки - запутывает игроков (жалоба; самотест грепает
     # сгенерированный JSON на эти ключи)
-    if rng.random() < 0.06:  # группа перезарядки
-        comps["minecraft:use_cooldown"] = {
-            "seconds": round(rng.uniform(1.0, 30.0), 1),
-            # БЕЗ namespace-префикса: cooldown_group - произвольный
-            # идентификатор, ns:id-вид притягивает ложные срабатывания
-            # проверки битых ссылок датапака
-            "cooldown_group": tag_prefix}
     if rng.random() < 0.04:  # эффекты при ВЗАИМОДЕЙСТВИИ (не еде)
         comps["minecraft:use_effects"] = {
             "can_sprint": rng.random() < 0.5,
@@ -4496,9 +4509,14 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         comps["minecraft:damage"] = _decaying_int(rng, 40)
     if gear and rng.random() < 0.15:
         comps["minecraft:repair_cost"] = _decaying_int(rng, 8)
-    if gear and rng.random() < 0.20:
-        comps["minecraft:enchantable"] = {"value": rng.randint(1, 30)}
-    if gear and rng.random() < 0.30:
+    has_any_ench = (
+        bool(comps.get("minecraft:enchantments"))
+        or bool(comps.get("minecraft:stored_enchantments"))
+        or any(isinstance(f, dict) and f.get("function") == "minecraft:set_enchantments" for f in funcs)
+    )
+    if gear and not has_any_ench and rng.random() < 0.25:
+        comps["minecraft:enchantable"] = {"value": rng.randint(15, 50)}
+    if gear and _has_mechanical_uniqueness(comps, funcs) and rng.random() < 0.35:
         comps["minecraft:repairable"] = {
             "items": rng.choice(REPAIR_VARIANTS)}
     if gear and rng.random() < 0.06:
@@ -4533,9 +4551,9 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
             "mob_factor": round(rng.uniform(0.5, 2.0), 2),
             "min_creative_reach": round(mn + 0.5, 2),
             "max_creative_reach": round(rng.uniform(4.0, 6.0), 2)}
-    if kind in _MELEE_KINDS and rng.random() < 0.30:
+    if kind in _MELEE_KINDS and _has_mechanical_uniqueness(comps, funcs) and rng.random() < 0.35:
         comps["minecraft:swing_animation"] = {
-            "type": rng.choice(["stab", "whack", "none"]),  # БЕЗ namespace
+            "type": rng.choice(["stab", "whack", "none"]),
             "duration": rng.randint(3, 10)}
     if kind == "mace" and rng.random() < 0.50:
         comps["minecraft:kinetic_weapon"] = _kinetic_weapon(rng)
@@ -4618,7 +4636,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
         r2 = rng.random()
         if r2 < 0.35:  # КАСТОМНЫЙ именной остаток
             base = rng.choice(_REMAINDER_POOL)
-            rcomps = {"minecraft:custom_name": {
+            rcomps = {"minecraft:item_name": {
                 "text": "%s %s" % (_REMAINDER_NOUNS[base],
                                    rng.choice(_REMAINDER_FROM)),
                 "color": rng.choice(_NAME_COLORS),
@@ -4948,7 +4966,7 @@ def _item_components(rng, item, char, tag_prefix, want_name, ns="minecraft",
             "minecraft:set_potion", "minecraft:set_enchantments",
             "minecraft:set_instrument") for f in funcs)
     if can_reveal and (want_name or (strong and rng.random() < name_bonus)):
-        comps["minecraft:custom_name"] = _reveal_name(rng, item, comps, funcs)
+        comps["minecraft:item_name"] = _reveal_name(rng, item, comps, funcs)
         # lore - ИЗ ФАКТИЧЕСКОГО содержимого предмета (зелья - эффект,
         # атрибуты - «тяжесть даёт +X к защите», чары, еда, планер
         # «планирует, как семя клёна», инструмент...): 1-3 строки +
@@ -5305,8 +5323,21 @@ class _LootGen(object):
         else:
             pool, pclass = self._pick_item(char)
             item = rng.choice(pool)
-        entry = {"type": "minecraft:item", "name": item,
-                 "weight": rng.randint(1, 20)}
+        if item in ULTRA_RARE_VALUABLES:
+            if rng.random() < 0.75:
+                item = rng.choice(RESOURCES)
+                pclass = "resource"
+                entry = {"type": "minecraft:item", "name": item,
+                         "weight": rng.randint(1, 20)}
+            else:
+                entry = {"type": "minecraft:item", "name": item,
+                         "weight": 1}
+        elif item in RARE_VALUABLES:
+            entry = {"type": "minecraft:item", "name": item,
+                     "weight": rng.randint(1, 3)}
+        else:
+            entry = {"type": "minecraft:item", "name": item,
+                     "weight": rng.randint(1, 20)}
         funcs = []
         # вероятность «крутого» предмета зависит от характера таблицы
         echar = _THEME_CHAR.get(theme, char)
@@ -5338,19 +5369,36 @@ class _LootGen(object):
         # (uniform/binomial/константа), поверх изредка limit_count
         # (ванильный приём грибных блоков); мобам - скромные стопки
         stackable = item not in _NON_STACKABLE and item not in _STACK1
-        if stackable and rng.random() < (0.30 if light else 0.55):
-            hi = {"valuable": 5, "resource": 12, "junk": 24}.get(pclass, 8)
-            if light:
-                hi = min(hi, 4)
-            # верхняя граница варьируется от таблицы к таблице
-            hi += rng.randint(0, max(1, hi // 2))
+        is_mat = _is_material(item) or pclass == "resource"
+        if item in ULTRA_RARE_VALUABLES:
             funcs.append({"function": "minecraft:set_count",
-                          "count": _num_provider(rng, 1, max(2, hi))})
-            if rng.random() < 0.25:  # ограничитель сверху (кривая «с потолком»)
-                funcs.append({"function": "minecraft:limit_count",
-                              "limit": {"min": 1.0,
-                                        "max": float(max(2, hi))}})
-            if (pclass == "resource" and self.ttype in _TOOL_TYPES
+                          "count": {"type": "minecraft:constant", "value": 1.0}})
+        elif item in RARE_VALUABLES:
+            c = 1.0 if rng.random() < 0.80 else 2.0
+            funcs.append({"function": "minecraft:set_count",
+                          "count": {"type": "minecraft:constant", "value": c}})
+        elif stackable:
+            if is_mat:
+                c_min = rng.randint(4, 8) if not light else rng.randint(2, 4)
+                c_max = rng.randint(16, 48) if not light else rng.randint(8, 16)
+                funcs.append({"function": "minecraft:set_count",
+                              "count": _num_provider(rng, c_min, c_max)})
+                if rng.random() < 0.25:
+                    funcs.append({"function": "minecraft:limit_count",
+                                  "limit": {"min": float(c_min),
+                                            "max": float(c_max)}})
+            elif rng.random() < (0.30 if light else 0.55):
+                hi = {"valuable": 5, "junk": 24}.get(pclass, 8)
+                if light:
+                    hi = min(hi, 4)
+                hi += rng.randint(0, max(1, hi // 2))
+                funcs.append({"function": "minecraft:set_count",
+                              "count": _num_provider(rng, 1, max(2, hi))})
+                if rng.random() < 0.25:
+                    funcs.append({"function": "minecraft:limit_count",
+                                  "limit": {"min": 1.0,
+                                            "max": float(max(2, hi))}})
+        if (pclass == "resource" and self.ttype in _TOOL_TYPES
                     and rng.random() < 0.3 and not light):
                 formula = rng.choice(["minecraft:ore_drops",
                                       "minecraft:uniform_bonus_count",
@@ -6240,7 +6288,7 @@ def _run_selftest(n_tables, seed, verbose=True):
                 if f.get("function") == "minecraft:set_components":
                     ncomp += 1
                     comp_kinds.update(f["components"])
-                    cn = f["components"].get("minecraft:custom_name")
+                    cn = f["components"].get("minecraft:item_name") or f["components"].get("minecraft:custom_name")
                     if cn:
                         names.append(cn["text"])
                     if "minecraft:enchantments" in f["components"]:
@@ -6327,7 +6375,7 @@ def _run_selftest(n_tables, seed, verbose=True):
                         "minecraft:item_name", "minecraft:custom_name",
                         "minecraft:lore"}:
                     only_look += 1
-                cn = cs.get("minecraft:custom_name")
+                cn = cs.get("minecraft:item_name") or cs.get("minecraft:custom_name")
                 if cn and len(examples) < 14:
                     def _am_s(m):
                         a = m.get("amount", 0)
@@ -6632,12 +6680,13 @@ def _run_selftest(n_tables, seed, verbose=True):
                         viol.append("use_remainder вне пула: %s -> %s"
                                     % (tid, rid))
                     rc = rem.get("components") or {}
-                    if isinstance(rc.get("minecraft:custom_name"), dict):
+                    cname = rc.get("minecraft:item_name") or rc.get("minecraft:custom_name")
+                    if isinstance(cname, dict):
                         _rem_stat["custom"] += 1
                         if len(_rem_stat["examples"]) < 8:
                             _rem_stat["examples"].append(
                                 (nm_it, rid,
-                                 rc["minecraft:custom_name"].get("text", ""),
+                                 cname.get("text", ""),
                                  [l.get("text", "") for l in
                                   (rc.get("minecraft:lore") or [])]))
 
@@ -6651,7 +6700,7 @@ def _run_selftest(n_tables, seed, verbose=True):
             if isinstance(node.get("id"), str) and "count" in node \
                     and pkey != "minecraft:use_remainder":
                 cc = node.get("components") or {}
-                if cc and set(cc) <= _COSMETIC_KEYS:
+                if cc and set(cc) <= (_COSMETIC_KEYS | _BONUS_ONLY_KEYS):
                     _visual_only.append((where, node["id"]))
                 _check_ench_item(cc, [], where, node["id"])
                 if "minecraft:food" in cc and "minecraft:consumable" not in cc:

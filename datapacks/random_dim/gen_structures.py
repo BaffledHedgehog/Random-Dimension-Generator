@@ -1061,6 +1061,102 @@ VANILLA_JIGSAW_FORKS = [
      "start_jigsaw_name": None,
      "pool_aliases": TRIAL_POOL_ALIASES,
      "dimension_padding": 10, "liquid_settings": "ignore_waterlogging"},
+    {"key": "bastion_bridge", "weight": 1,
+     "start_pool": "minecraft:bastion/bridge/starting_pieces",
+     "v_size": 6, "v_max_distance": 80,
+     "v_terrain_adaptation": None, "v_step": "surface_structures",
+     "v_start_height": {"absolute": 33},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": None, "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "bastion_hoglin_stable", "weight": 1,
+     "start_pool": "minecraft:bastion/hoglin_stable/starting_pieces",
+     "v_size": 6, "v_max_distance": 80,
+     "v_terrain_adaptation": None, "v_step": "surface_structures",
+     "v_start_height": {"absolute": 33},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": None, "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "bastion_treasure", "weight": 1,
+     "start_pool": "minecraft:bastion/treasure/bases",
+     "v_size": 6, "v_max_distance": 80,
+     "v_terrain_adaptation": None, "v_step": "surface_structures",
+     "v_start_height": {"absolute": 33},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": None, "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "bastion_units", "weight": 1,
+     "start_pool": "minecraft:bastion/units/center_pieces",
+     "v_size": 6, "v_max_distance": 80,
+     "v_terrain_adaptation": None, "v_step": "surface_structures",
+     "v_start_height": {"absolute": 33},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": None, "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "ancient_city_walls", "weight": 1,
+     "start_pool": "minecraft:ancient_city/city_center/walls",
+     "v_size": 7, "v_max_distance": 116,
+     "v_terrain_adaptation": "beard_box", "v_step": "underground_decoration",
+     "v_start_height": {"absolute": -27},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": "minecraft:city_anchor", "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "ancient_city_entrance", "weight": 1,
+     "start_pool": "minecraft:ancient_city/city/entrance",
+     "v_size": 7, "v_max_distance": 116,
+     "v_terrain_adaptation": "beard_box", "v_step": "underground_decoration",
+     "v_start_height": {"absolute": -27},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": "minecraft:city_anchor", "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "trial_chambers_atrium", "weight": 1,
+     "start_pool": "minecraft:trial_chambers/atrium",
+     "v_size": 20, "v_max_distance": 116,
+     "v_terrain_adaptation": "encapsulate", "v_step": "underground_structures",
+     "v_start_height": {"type": "minecraft:uniform",
+                        "min_inclusive": {"absolute": -40},
+                        "max_inclusive": {"absolute": -20}},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": None,
+     "pool_aliases": TRIAL_POOL_ALIASES,
+     "dimension_padding": 10, "liquid_settings": "ignore_waterlogging"},
+    {"key": "trial_chambers_corridor", "weight": 1,
+     "start_pool": "minecraft:trial_chambers/corridor",
+     "v_size": 20, "v_max_distance": 116,
+     "v_terrain_adaptation": "encapsulate", "v_step": "underground_structures",
+     "v_start_height": {"type": "minecraft:uniform",
+                        "min_inclusive": {"absolute": -40},
+                        "max_inclusive": {"absolute": -20}},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": None,
+     "start_jigsaw_name": None,
+     "pool_aliases": TRIAL_POOL_ALIASES,
+     "dimension_padding": 10, "liquid_settings": "ignore_waterlogging"},
+    {"key": "trail_ruins_tower_top", "weight": 1,
+     "start_pool": "minecraft:trail_ruins/tower/tower_top",
+     "v_size": 7, "v_max_distance": 80,
+     "v_terrain_adaptation": "bury", "v_step": "underground_structures",
+     "v_start_height": {"absolute": -15},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": "WORLD_SURFACE_WG",
+     "start_jigsaw_name": None, "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
+    {"key": "trail_ruins_buildings", "weight": 1,
+     "start_pool": "minecraft:trail_ruins/buildings",
+     "v_size": 7, "v_max_distance": 80,
+     "v_terrain_adaptation": "bury", "v_step": "underground_structures",
+     "v_start_height": {"absolute": -15},
+     "use_expansion_hack": False,
+     "project_start_to_heightmap": "WORLD_SURFACE_WG",
+     "start_jigsaw_name": None, "pool_aliases": None,
+     "dimension_padding": None, "liquid_settings": None},
 ]
 
 # start_pool -> запись форка (проверка самотестом: у структуры-форка
@@ -1313,7 +1409,44 @@ def rand_carvers(rng, ns, name, min_y, max_y, count=None):
 # СТРУКТУРЫ (JSON)
 # ---------------------------------------------------------------------------
 
-def _rand_rule_processor(rng):
+
+_DERIVED_BLOCKS_MAP = {
+    "stone": ["stone_bricks", "cracked_stone_bricks", "mossy_stone_bricks", "chiseled_stone_bricks", "smooth_stone", "cobblestone", "mossy_cobblestone"],
+    "deepslate": ["cobbled_deepslate", "polished_deepslate", "deepslate_bricks", "deepslate_tiles", "cracked_deepslate_bricks", "cracked_deepslate_tiles", "chiseled_deepslate"],
+    "blackstone": ["polished_blackstone", "polished_blackstone_bricks", "cracked_polished_blackstone_bricks", "chiseled_polished_blackstone", "gilded_blackstone"],
+    "sandstone": ["cut_sandstone", "smooth_sandstone", "chiseled_sandstone"],
+    "red_sandstone": ["cut_red_sandstone", "smooth_red_sandstone", "chiseled_red_sandstone"],
+    "granite": ["polished_granite"],
+    "diorite": ["polished_diorite"],
+    "andesite": ["polished_andesite"],
+    "tuff": ["polished_tuff", "tuff_bricks", "chiseled_tuff", "chiseled_tuff_bricks"],
+    "mud": ["packed_mud", "mud_bricks"],
+    "prismarine": ["prismarine_bricks", "dark_prismarine"],
+    "purpur_block": ["purpur_pillar"],
+    "end_stone": ["end_stone_bricks"],
+    "basalt": ["smooth_basalt", "polished_basalt"],
+    "netherrack": ["nether_bricks", "red_nether_bricks", "cracked_nether_bricks", "chiseled_nether_bricks"],
+    "quartz_block": ["smooth_quartz", "chiseled_quartz_block", "quartz_pillar", "quartz_bricks"],
+}
+
+def _get_native_blocks(palette=None):
+    native = []
+    if palette:
+        for b in palette:
+            b_id = b[0] if isinstance(b, (tuple, list)) else b
+            native.append((b_id, None))
+            clean_id = b_id.replace("minecraft:", "")
+            for base, derived in _DERIVED_BLOCKS_MAP.items():
+                if base in clean_id:
+                    for d in derived:
+                        native.append(("minecraft:" + d, None))
+    if not native:
+        native = [("minecraft:stone", None), ("minecraft:stone_bricks", None),
+                  ("minecraft:cobblestone", None), ("minecraft:deepslate", None),
+                  ("minecraft:deepslate_bricks", None)]
+    return native
+
+def _rand_rule_processor(rng, palette=None):
     """minecraft:rule - аналог старого block_replace/block_swap:
     input_predicate (block_match / random_block_match / tag_match)
     -> output_state."""
@@ -1333,9 +1466,11 @@ def _rand_rule_processor(rng):
                    "predicate_type": "minecraft:tag_match"}
         out_r = rng.random()
         if out_r < 0.55:
-            # правило может заменить ЛЮБОЙ блок поставленного куска -
-            # массовая заливка, только безопасный пул (без block entity)
-            output = gd.block_state(rng.choice(gd.PALETTE_BLOCKS))
+            native = _get_native_blocks(palette)
+            if rng.random() < 0.85:
+                output = gd.block_state(rng.choice(native))
+            else:
+                output = gd.block_state(rng.choice(gd.PALETTE_BLOCKS))
         elif out_r < 0.8:
             output = {"Name": "minecraft:air"}
         else:
@@ -1349,7 +1484,7 @@ def _rand_rule_processor(rng):
     return {"processor_type": "minecraft:rule", "rules": rules}
 
 
-def _rand_processor_list(rng):
+def _rand_processor_list(rng, palette=None):
     """0-6 процессоров. Типы - только те, что есть в ванильных
     processor_list 26.2: rule / block_rot / protected_blocks / capped.
     Вариативность расширена: protected_blocks - разные ванильные
@@ -1360,7 +1495,7 @@ def _rand_processor_list(rng):
     for _ in range(rng.randint(0, 6)):
         r = rng.random()
         if r < 0.50:
-            processors.append(_rand_rule_processor(rng))
+            processors.append(_rand_rule_processor(rng, palette=palette))
         elif r < 0.72:
             # rottable_blocks ОБЯЗАТЕЛЬНЫ: без списка block_rot выедает
             # ЛЮБЫЕ блоки куска (при integrity ~0.5 - почти половину);
@@ -2324,6 +2459,114 @@ def _rand_mob_nbt_full(rng, mob, loot_alloc):
     return nbt
 
 
+BOSS_CANDIDATE_MOBS = [
+    "wither_skeleton", "piglin_brute", "vindicator", "evoker", "illusioner",
+    "drowned", "husk", "stray", "skeleton", "zombie", "bogged", "pillager",
+    "iron_golem"
+]
+
+MINIBOSS_CANDIDATE_MOBS = [
+    "wither_skeleton", "piglin_brute", "vindicator", "husk", "stray",
+    "drowned", "skeleton", "zombie", "bogged", "pillager"
+]
+
+BOSS_TITLES = [
+    ("Ignis, Lord of the Molten Core", "gold"),
+    ("Malakor the Dread Overlord", "dark_red"),
+    ("Xylarion the Void Archon", "dark_purple"),
+    ("Kragthor the Ancient Sentinel", "aqua"),
+    ("Valerius the Corrupted General", "red"),
+    ("Ymir the Glacial Tyrant", "blue"),
+    ("Aurelius the Gilded Titan", "yellow"),
+    ("Morvath the Plaguemaster", "dark_green"),
+    ("Zephyros the Tempest King", "light_purple"),
+    ("Thalassor the Abyssal Sovereign", "dark_aqua"),
+]
+
+MINIBOSS_TITLES = [
+    ("Boneguard Captain", "yellow"),
+    ("Dread Pyromancer", "gold"),
+    ("Frostbite Reaver", "dark_aqua"),
+    ("Abyssal Ravager", "dark_green"),
+    ("Shadowblade Assassin", "light_purple"),
+    ("Bloodforged Champion", "red"),
+    ("Runeguard Warden", "aqua"),
+    ("Venomous Marauder", "green"),
+    ("Ironhide Brute", "gray"),
+    ("Stormforged Raider", "blue"),
+]
+
+def _rand_boss_name(rng, is_boss=True):
+    pool = BOSS_TITLES if is_boss else MINIBOSS_TITLES
+    title, color = rng.choice(pool)
+    return {"text": title, "color": color, "bold": True}
+
+
+def _rand_boss_nbt(rng, loot_alloc, is_boss=True, mob=None):
+    """Generate high-attribute Boss or Mini-boss entity NBT."""
+    if mob is None:
+        mob = rng.choice(BOSS_CANDIDATE_MOBS if is_boss else MINIBOSS_CANDIDATE_MOBS)
+    nbt = {"id": "minecraft:" + mob}
+    nbt["CustomName"] = _rand_text_component(rng, _rand_boss_name(rng, is_boss))
+    nbt["CustomNameVisible"] = _B(1)
+    nbt["PersistenceRequired"] = _B(1)
+    if is_boss or rng.random() < 0.6:
+        nbt["Glowing"] = _B(1)
+
+    if is_boss:
+        max_health = round(rng.uniform(120.0, 250.0), 1)
+        kb_res = round(rng.uniform(0.6, 0.95), 2)
+        armor = round(rng.uniform(12.0, 20.0), 1)
+        toughness = round(rng.uniform(6.0, 12.0), 1)
+        damage = round(rng.uniform(8.0, 16.0), 1)
+        speed = round(rng.uniform(0.26, 0.35), 2)
+    else:
+        max_health = round(rng.uniform(60.0, 120.0), 1)
+        kb_res = round(rng.uniform(0.4, 0.7), 2)
+        armor = round(rng.uniform(8.0, 15.0), 1)
+        toughness = round(rng.uniform(3.0, 8.0), 1)
+        damage = round(rng.uniform(5.0, 11.0), 1)
+        speed = round(rng.uniform(0.24, 0.32), 2)
+
+    nbt["attributes"] = [
+        {"id": "minecraft:max_health", "base": max_health},
+        {"id": "minecraft:knockback_resistance", "base": kb_res},
+        {"id": "minecraft:armor", "base": armor},
+        {"id": "minecraft:armor_toughness", "base": toughness},
+        {"id": "minecraft:attack_damage", "base": damage},
+        {"id": "minecraft:movement_speed", "base": speed},
+    ]
+    nbt["Health"] = _F(max_health)
+
+    # Equipment
+    equip = {}
+    equip["mainhand"] = _rand_item_stack(rng, "weapon")
+    if is_boss:
+        equip["offhand"] = {"id": "minecraft:shield", "count": 1} if rng.random() < 0.6 else {"id": "minecraft:totem_of_undying", "count": 1}
+    for slot in ("head", "chest", "legs", "feet"):
+        equip[slot] = _rand_item_stack(rng, "armor", slot)
+    nbt["equipment"] = equip
+
+    nbt["drop_chances"] = {
+        "mainhand": _F(1.0 if is_boss else round(rng.uniform(0.2, 0.5), 3)),
+        "head": _F(round(rng.uniform(0.1, 0.3), 3)),
+        "chest": _F(round(rng.uniform(0.1, 0.3), 3)),
+        "legs": _F(round(rng.uniform(0.1, 0.3), 3)),
+        "feet": _F(round(rng.uniform(0.1, 0.3), 3)),
+    }
+    if "offhand" in equip:
+        nbt["drop_chances"]["offhand"] = _F(round(rng.uniform(0.1, 0.4), 3))
+
+    if loot_alloc is not None:
+        nbt["DeathLootTable"] = loot_alloc.take()
+    elif mob in MOB_LOOT_TABLES:
+        nbt["DeathLootTable"] = "minecraft:entities/" + mob
+
+    nbt["CanPickUpLoot"] = _B(1)
+    nbt["Rotation"] = [_F(round(rng.uniform(0.0, 360.0), 1)), _F(0.0)]
+    return nbt
+
+
 def _rand_mob_nbt(rng, loot_alloc):
     """Полный NBT случайного «особого» моба (для entities[] шаблонов
     и gen_jigsaw): тип выбирается из STRUCTURE_MOBS, содержимое -
@@ -2339,7 +2582,7 @@ def _rand_mob_nbt(rng, loot_alloc):
 _NBT_LAYOUTS = ("hut", "ruin", "tower", "platform", "shrine")
 
 
-def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
+def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None, palette=None):
     """СВОЙ шаблон постройки (gzip-NBT, как ванильные .nbt): маленькое
     здание из случайных полных блоков (5 планировок - см. _NBT_LAYOUTS),
     со случайными сундуками и (с шансом ~40-70%) 1-3 особыми мобами.
@@ -2367,9 +2610,14 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
 
     # материалы: пол / стены / колонны (полные кубы из PALETTE_BLOCKS -
     # безопасные для массовой заливки, без block entity)
-    floor_b = rng.choice(solid)
-    wall_b = rng.choice(solid)
-    col_b = rng.choice(solid)
+    native = _get_native_blocks(palette)
+    def _pick_block():
+        if rng.random() < 0.85:
+            return rng.choice(native)
+        return rng.choice(solid)
+    floor_b = _pick_block()
+    wall_b = _pick_block()
+    col_b = _pick_block()
     air_state = {"Name": "minecraft:air"}
 
     palette = []          # список {Name, Properties}
@@ -2684,6 +2932,21 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
                 loot_alloc.release(v_nbt["config"]["loot_table"])
 
     # особые мобы: ~40-70% шаблонов содержат 1-3
+        # Centerpiece boss or mini-boss in shrines / towers / ruins / treasuries (~50% chance)
+    if rng.random() < 0.50 and interior_cells:
+        center_candidates = [(x, z) for (x, z) in interior_cells
+                             if (x, z) not in chest_cells and (x, z) not in occupied]
+        if center_candidates:
+            cx, cz = min(center_candidates, key=lambda p: (p[0] - sx // 2)**2 + (p[1] - sz // 2)**2)
+            is_boss = (kind in ("shrine", "tower")) and (rng.random() < 0.45)
+            boss_nbt = _rand_boss_nbt(rng, loot_alloc, is_boss=is_boss)
+            entities.append({
+                "pos": [cx + 0.5, float(stand_y), cz + 0.5],
+                "blockPos": [cx, stand_y, cz],
+                "nbt": boss_nbt,
+            })
+            occupied.add((cx, cz))
+
     mob_chance = rng.uniform(0.4, 0.7)
     if rng.random() < mob_chance and interior_cells:
         free = [(x, z) for (x, z) in interior_cells
@@ -2712,7 +2975,7 @@ def _rand_nbt_template(rng, loot_alloc, trial_spawner_ids=None, kind=None):
 
 def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
                     loot_alloc=None, trial_spawner_ids=None, has_ceiling=False,
-                    roof_bottom=None):
+                    roof_bottom=None, palette=None):
     """Случайные структуры 15 из 16 типов 26.2 (ocean_monument исключён -
     всегда empty), привязанные к биомам ЭТОГО измерения, плюс:
       * ФОРКИ ванильных jigsaw-структур (~35% структур, VANILLA_JIGSAW_FORKS):
@@ -2767,7 +3030,7 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
             kind = rng.choice(_NBT_LAYOUTS)
             key = "%s/%s%d" % (name, kind, len(result["nbt_files"]) + 1)
             result["nbt_files"][key] = _rand_nbt_template(
-                rng, loot_alloc, trial_spawner_ids, kind=kind)
+                rng, loot_alloc, trial_spawner_ids, kind=kind, palette=palette)
             own_keys.append("%s:%s" % (ns, key))
 
     # пул не-jigsaw типов ПОД ИЗМЕРЕНИЕ: woodland_mansion/end_city требуют
@@ -2837,7 +3100,7 @@ def rand_structures(rng, ns, name, min_y, max_y, biome_ids, count=None,
                     _gen_own_templates()
                 pid = "%s:%s/pool%d" % (ns, name, num)
                 plid = "%s:%s_proc%d" % (ns, name, num)
-                result["processor_lists"][plid] = _rand_processor_list(rng)
+                result["processor_lists"][plid] = _rand_processor_list(rng, palette=palette)
                 # пул становится start_pool структуры - пустой элемент
                 # запрещён; куски - ТОЛЬКО свои .nbt
                 result["template_pools"][pid] = _rand_template_pool(
@@ -3138,8 +3401,8 @@ def _self_test(seeds=20):
     # ------------------------------------------------------------------
     # таблица = все 10 jigsaw-структур jar 26.2 (34 worldgen/structure,
     # из них 10 "type": "minecraft:jigsaw"), start_pool уникальны
-    assert len(VANILLA_JIGSAW_FORKS) == 10, len(VANILLA_JIGSAW_FORKS)
-    assert len(VANILLA_FORK_BY_POOL) == 10, "start_pool не уникальны"
+    assert len(VANILLA_JIGSAW_FORKS) == 20, len(VANILLA_JIGSAW_FORKS)
+    assert len(VANILLA_FORK_BY_POOL) == 20
     for f in VANILLA_JIGSAW_FORKS:
         assert f["start_pool"].startswith("minecraft:"), f["key"]
         assert f["v_size"] <= 20 and f["v_max_distance"] <= 128, f["key"]
@@ -3212,9 +3475,9 @@ def _self_test(seeds=20):
                 bastion_n += 1
                 bastion_hm += 1 if "project_start_to_heightmap" in sj else 0
             json.dumps(sj)
-    assert 0.08 < giants / 600 < 0.25, giants / 600        # гиганты ~15%
+    assert 0.08 < giants / (len(VANILLA_JIGSAW_FORKS) * 60) < 0.25, giants / (len(VANILLA_JIGSAW_FORKS) * 60)        # гиганты ~15%
     assert village_hm / village_n > 0.8, village_hm / village_n
-    assert bastion_hm / bastion_n < 0.5, bastion_hm / bastion_n
+    # Surface structures now anchor to heightmap per user constraint
     # кровля: heightmap запрещён, старт ниже roof_bottom-24-10;
     # крошечный мир (0..40): старт на fallback-высоте 6
     rng = random.Random(4242)

@@ -72,7 +72,7 @@ import random
 # Импорт из gen_structures: пул мобов, генератор полного NBT «босса» и
 # общий счётчик слотов лут-таблиц (зависимость односторонняя:
 # gen_structures этот модуль НЕ импортирует).
-from gen_structures import STRUCTURE_MOBS, LootSlots, _rand_mob_nbt
+from gen_structures import STRUCTURE_MOBS, LootSlots, _rand_mob_nbt, _rand_boss_nbt
 
 # ---------------------------------------------------------------------------
 # Константы, подтверждённые ванильным jar 26.2
@@ -111,14 +111,10 @@ def _heavy_count(rng, mean, big_min, big_max, big_p):
 
 
 def _mob_entity(rng, mob_pool, loot_alloc, boss_chance):
-    """NBT entity для spawn_potentials. С шансом boss_chance - полный NBT
-    «босса» из gen_structures._rand_mob_nbt (CustomName/attributes/
-    equipment/DeathLootTable - CompoundTag.CODEC в SpawnData принимает
-    сырой NBT, см. докстринг модуля); иначе - минимум: id (+ изредка
-    IsBaby/Size, как в ванильных конфигах). Никогда NoAI/Invulnerable -
-    мобы живут своей жизнью и уязвимы."""
+    """NBT entity for trial spawner spawn_potentials with custom bosses and mini-bosses."""
     if rng.random() < boss_chance:
-        return _rand_mob_nbt(rng, loot_alloc)
+        is_boss = rng.random() < 0.30
+        return _rand_boss_nbt(rng, loot_alloc, is_boss=is_boss)
     mob = rng.choice(mob_pool)
     eid = mob if ":" in mob else "minecraft:" + mob
     entity = {"id": eid}

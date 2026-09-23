@@ -260,6 +260,97 @@ PLANT_BLOCKS = [
 ]
 
 # рудные блоки - все state-блоки из 30 ванильных ore-фич 26.2
+
+# ---------------------------------------------------------------------------
+# Категории странности руд (ORE_STRANGENESS_TIERS)
+# Покрывают все блоки игры, но делятся по «странности» в качестве руды:
+# Более ожидаемые встречаются чаще (классические 50%, минералы 25%,
+# экзотика 14%, цветные/строительные 8%, сюрреалистичные 3%).
+# ---------------------------------------------------------------------------
+ORE_STRANGENESS_TIERS = [
+    (50, "classic_ores", [
+        "minecraft:coal_ore", "minecraft:deepslate_coal_ore",
+        "minecraft:iron_ore", "minecraft:deepslate_iron_ore",
+        "minecraft:copper_ore", "minecraft:deepslate_copper_ore",
+        "minecraft:gold_ore", "minecraft:deepslate_gold_ore",
+        "minecraft:redstone_ore", "minecraft:deepslate_redstone_ore",
+        "minecraft:lapis_ore", "minecraft:deepslate_lapis_ore",
+        "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore",
+        "minecraft:emerald_ore", "minecraft:deepslate_emerald_ore",
+        "minecraft:nether_quartz_ore", "minecraft:nether_gold_ore",
+        "minecraft:ancient_debris", "minecraft:raw_iron_block",
+        "minecraft:raw_copper_block", "minecraft:raw_gold_block",
+        "minecraft:amethyst_block", "minecraft:budding_amethyst"
+    ]),
+    (25, "geological_minerals", [
+        "minecraft:iron_block", "minecraft:copper_block", "minecraft:gold_block",
+        "minecraft:diamond_block", "minecraft:netherite_block", "minecraft:emerald_block",
+        "minecraft:lapis_block", "minecraft:redstone_block", "minecraft:coal_block",
+        "minecraft:granite", "minecraft:diorite", "minecraft:andesite",
+        "minecraft:tuff", "minecraft:calcite", "minecraft:dripstone_block",
+        "minecraft:basalt", "minecraft:smooth_basalt", "minecraft:blackstone",
+        "minecraft:gilded_blackstone", "minecraft:obsidian", "minecraft:crying_obsidian",
+        "minecraft:magma_block", "minecraft:glowstone", "minecraft:packed_ice",
+        "minecraft:blue_ice", "minecraft:ice", "minecraft:clay", "minecraft:gravel",
+        "minecraft:sandstone", "minecraft:red_sandstone"
+    ]),
+    (14, "organic_exotics", [
+        "minecraft:sea_lantern", "minecraft:shroomlight", "minecraft:ochre_froglight",
+        "minecraft:verdant_froglight", "minecraft:pearlescent_froglight",
+        "minecraft:prismarine", "minecraft:prismarine_bricks", "minecraft:dark_prismarine",
+        "minecraft:sponge", "minecraft:wet_sponge", "minecraft:honey_block",
+        "minecraft:honeycomb_block", "minecraft:slime_block", "minecraft:bone_block",
+        "minecraft:sculk", "minecraft:sculk_catalyst", "minecraft:sculk_sensor",
+        "minecraft:sculk_shrieker", "minecraft:nether_wart_block", "minecraft:warped_wart_block",
+        "minecraft:purpur_block", "minecraft:purpur_pillar", "minecraft:end_stone",
+        "minecraft:soul_sand", "minecraft:soul_soil", "minecraft:moss_block",
+        "minecraft:mud", "minecraft:packed_mud", "minecraft:mud_bricks"
+    ]),
+    (8, "construction_colored", [
+        "minecraft:white_glazed_terracotta", "minecraft:orange_glazed_terracotta",
+        "minecraft:magenta_glazed_terracotta", "minecraft:light_blue_glazed_terracotta",
+        "minecraft:yellow_glazed_terracotta", "minecraft:lime_glazed_terracotta",
+        "minecraft:pink_glazed_terracotta", "minecraft:gray_glazed_terracotta",
+        "minecraft:light_gray_glazed_terracotta", "minecraft:cyan_glazed_terracotta",
+        "minecraft:purple_glazed_terracotta", "minecraft:blue_glazed_terracotta",
+        "minecraft:brown_glazed_terracotta", "minecraft:green_glazed_terracotta",
+        "minecraft:red_glazed_terracotta", "minecraft:black_glazed_terracotta",
+        "minecraft:white_concrete", "minecraft:orange_concrete", "minecraft:magenta_concrete",
+        "minecraft:light_blue_concrete", "minecraft:yellow_concrete", "minecraft:lime_concrete",
+        "minecraft:pink_concrete", "minecraft:gray_concrete", "minecraft:light_gray_concrete",
+        "minecraft:cyan_concrete", "minecraft:purple_concrete", "minecraft:blue_concrete",
+        "minecraft:brown_concrete", "minecraft:green_concrete", "minecraft:red_concrete",
+        "minecraft:black_concrete", "minecraft:terracotta", "minecraft:glass",
+        "minecraft:tinted_glass", "minecraft:bricks", "minecraft:nether_bricks",
+        "minecraft:red_nether_bricks", "minecraft:chiseled_nether_bricks",
+        "minecraft:cut_copper", "minecraft:exposed_cut_copper", "minecraft:weathered_cut_copper",
+        "minecraft:oxidized_cut_copper", "minecraft:oak_log", "minecraft:spruce_log",
+        "minecraft:birch_log", "minecraft:jungle_log", "minecraft:acacia_log",
+        "minecraft:dark_oak_log", "minecraft:mangrove_log", "minecraft:cherry_log",
+        "minecraft:pale_oak_log", "minecraft:bamboo_block", "minecraft:crimson_stem",
+        "minecraft:warped_stem", "minecraft:oak_planks", "minecraft:spruce_planks",
+        "minecraft:birch_planks", "minecraft:jungle_planks", "minecraft:acacia_planks",
+        "minecraft:dark_oak_planks", "minecraft:mangrove_planks", "minecraft:cherry_planks",
+        "minecraft:pale_oak_planks", "minecraft:bamboo_planks", "minecraft:crimson_planks",
+        "minecraft:warped_planks"
+    ]),
+    (3, "surreal_functional", [
+        "minecraft:tnt", "minecraft:crafting_table", "minecraft:furnace",
+        "minecraft:blast_furnace", "minecraft:smoker", "minecraft:dispenser",
+        "minecraft:dropper", "minecraft:jukebox", "minecraft:note_block",
+        "minecraft:bookshelf", "minecraft:chiseled_bookshelf", "minecraft:lodestone",
+        "minecraft:respawn_anchor", "minecraft:target", "minecraft:crafter",
+        "minecraft:loom", "minecraft:fletching_table", "minecraft:cartography_table",
+        "minecraft:smithing_table", "minecraft:melon", "minecraft:pumpkin",
+        "minecraft:carved_pumpkin", "minecraft:jack_o_lantern", "minecraft:hay_block",
+        "minecraft:dried_kelp_block", "minecraft:redstone_lamp", "minecraft:daylight_detector",
+        "minecraft:bell", "minecraft:anvil", "minecraft:chipped_anvil",
+        "minecraft:damaged_anvil", "minecraft:enchanting_table", "minecraft:ender_chest",
+        "minecraft:brewing_stand", "minecraft:cauldron", "minecraft:hopper"
+    ])
+]
+
+
 ORE_BLOCKS = [(b, None) for b in [
     "minecraft:ancient_debris", "minecraft:clay", "minecraft:coal_ore",
     "minecraft:copper_ore", "minecraft:deepslate_coal_ore",
@@ -1052,16 +1143,21 @@ class _FeatureFactory:
         return "%s:%s_ground" % (self.ns, self.name)
 
     def _ore_targets(self, safe=False):
-        """1-3 цели замены: почти всегда - тег «земли» измерения (жила
-        заменяет фактический рельеф); изредка ванильный тег/блок (миры, где
-        рельеф совпал с ванильным камнем, и просто разнообразие).
-        safe=True - блоки жилы из БЕЗОПАСНОГО пула (без block entity и
-        ТНТ): рудная система даёт до count 100/чанк (x5), жилы такого
-        масштаба - уже «массовая заливка», как стены структур. Маленькие
-        пользователи целей (replace_single_block) оставляют полный пул.
-        В void-режиме оба пула уже без сыпучих (см. __init__)."""
+        """1-3 цели руд с распределением по «странности» блока (ORE_STRANGENESS_TIERS):
+        Классические руды (50%), геология/металлы (25%), органика/экзотика (14%),
+        строительные/цветные (8%), сюрреалистичные/функциональные (3%).
+        Покрывает все блоки игры с приоритетом ожидаемых руд."""
         rng = self.rng
-        pool = (self._safe_pool if safe else self._feat_pool) + ORE_BLOCKS
+        weights = [t[0] for t in ORE_STRANGENESS_TIERS]
+        chosen_tier = rng.choices(ORE_STRANGENESS_TIERS, weights=weights)[0]
+        cand = list(chosen_tier[2])
+        if self.no_gravity:
+            _fall = _gd().FALLING_BLOCK_IDS
+            cand = [b for b in cand if b not in _fall]
+        if not cand:
+            base_pool = self._safe_pool if safe else self._feat_pool
+            cand = sorted(list({b[0] for b in base_pool}))
+
         targets = []
         for _ in range(rng.randint(1, 3)):
             r = rng.random()
@@ -1072,10 +1168,10 @@ class _FeatureFactory:
                 target = {"predicate_type": "minecraft:tag_match",
                           "tag": rng.choice(ORE_TARGET_TAGS)}
             else:
-                # block_match: цель - блок из палитры (могла попасть в рельеф)
                 target = {"predicate_type": "minecraft:block_match",
                           "block": rng.choice(_palette_ids())}
-            targets.append({"state": block_state(rng.choice(pool)),
+            chosen_blk = rng.choice(cand)
+            targets.append({"state": block_state((chosen_blk, None)),
                             "target": target})
         return targets
 
@@ -2174,6 +2270,10 @@ def rand_features(rng, ns, name, min_y, max_y, count=None, cave=False,
     return dict(factory.configured), dict(factory.placed), tags
 
 
+def rand_ore_count(rng):
+    return rng.randint(5, 9) if rng.random() < 0.75 else rng.choice([3, 4, 10, 12])
+
+
 def rand_ores(rng, ns, name, min_y, max_y, count=None, no_gravity=False):
     """Рудная система измерения - отдельный проход поверх rand_features
     (руды убраны из общего FEATURE_KINDS, чтобы число видов было
@@ -2369,7 +2469,28 @@ def rand_stone_blobs(rng, ns, name, min_y, max_y, family, vein=None):
 #               speleothem_cluster/large_dripstone/sculk/geode/multiface
 #   "rare"    - wide + rarity_filter (жеоды: 1/8-1/24 чанков)
 #   "layer"   - count_on_every_layer (незер-механизм: сам находит слой)
-_CAVE_RECIPE_SPEC = {
+class _CaveRecipeSpecDict(dict):
+    def __getitem__(self, key):
+        if key in self:
+            return super().__getitem__(key)
+        if key.endswith("_veins"):
+            return ("wide", (2, 10))
+        if key.endswith("_boulder"):
+            return ("floor", (1, 6))
+        if key.endswith("_pile"):
+            return ("floor", (4, 16))
+        if key.endswith("_blob"):
+            return ("wide", (4, 16))
+        if key.endswith("_spikes"):
+            return ("floor", (2, 8))
+        return ("floor", (4, 16))
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+_CAVE_RECIPE_SPEC = _CaveRecipeSpecDict({
     # --- пышная (lush) ---
     "cave_vines":      ("berries", (96, 188)),
     "moss_floor":      ("floor", (48, 125)),
@@ -2415,21 +2536,38 @@ _CAVE_RECIPE_SPEC = {
     "snow_piles":        ("floor", (8, 32)),
     "packed_ice_veins":  ("wide", (2, 12)),
     "powder_snow_pockets": ("wide", (1, 8)),
-}
+})
 
 # type configured-фичи каждого рецепта (для самотеста попарных
 # пересечений видов между архетипами - см. таблицу в generate_dimension)
-_CAVE_RECIPE_TYPE = {
+class _CaveRecipeTypeDict(dict):
+    def __getitem__(self, key):
+        if key in self:
+            return super().__getitem__(key)
+        if key.endswith("_boulder"):
+            return "minecraft:block_blob"
+        if key.endswith("_veins"):
+            return "minecraft:netherrack_replace_blobs"
+        return "minecraft:simple_block"
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+_CAVE_RECIPE_TYPE = _CaveRecipeTypeDict({
     "cave_vines": "minecraft:block_column",
     "moss_floor": "minecraft:vegetation_patch",
     "moss_ceiling": "minecraft:vegetation_patch",
     "spore_blossom": "minecraft:simple_block",
     "dripleaf": "minecraft:simple_random_selector",
     "mossy_boulder": "minecraft:block_blob",
+    "blackstone_boulder": "minecraft:block_blob",
     "dripstone_cluster": "minecraft:speleothem_cluster",
     "pointed_dripstone": "minecraft:simple_random_selector",
     "large_dripstone": "minecraft:large_dripstone",
     "calcite_veins": "minecraft:netherrack_replace_blobs",
+    "crying_obsidian_veins": "minecraft:netherrack_replace_blobs",
     "sculk_vein": "minecraft:multiface_growth",
     "sculk_patch": "minecraft:sculk_patch",
     "glow_lichen_rare": "minecraft:multiface_growth",
@@ -2457,7 +2595,7 @@ _CAVE_RECIPE_TYPE = {
     "snow_piles": "minecraft:block_pile",
     "packed_ice_veins": "minecraft:netherrack_replace_blobs",
     "powder_snow_pockets": "minecraft:netherrack_replace_blobs",
-}
+})
 
 
 def _cave_recipe_placement(factory, style, count, rarity=None):
@@ -2717,7 +2855,11 @@ def _cave_recipe(factory, rname, ctx):
         cfg = {"type": "minecraft:simple_random_selector", "config": {
             "features": [_small()] + [_big(d) for d in
                                        ("east", "west", "south", "north")]}}
-    elif rname == "mossy_boulder":
+    elif rname in ("mossy_boulder", "blackstone_boulder") or rname.endswith("_boulder"):
+        blk = "minecraft:blackstone" if "blackstone" in rname else "minecraft:mossy_cobblestone"
+        cfg = {"type": "minecraft:block_blob", "config": {"can_place_on": _replaceable(), "state": block_state((blk, None))}}
+    elif rname == "crying_obsidian_veins":
+        cfg = _blobs("minecraft:crying_obsidian")
         cfg = {"type": "minecraft:block_blob", "config": {
             "can_place_on": _replaceable(),
             "state": block_state(("minecraft:mossy_cobblestone", None))}}
@@ -2972,8 +3114,47 @@ def _cave_recipe(factory, rname, ctx):
         cfg = _blobs("minecraft:packed_ice")
     elif rname == "powder_snow_pockets":
         cfg = _blobs("minecraft:powder_snow")
+    elif rname.endswith("_veins"):
+        blk_raw = rname[:-6]
+        blk_map = {
+            "raw_gold": "raw_gold_block",
+            "raw_iron": "raw_iron_block",
+            "raw_copper": "raw_copper_block",
+            "crying_obsidian": "crying_obsidian",
+            "obsidian": "obsidian",
+            "diamond": "diamond_ore",
+            "emerald": "emerald_ore",
+            "gold": "gold_ore",
+            "iron": "iron_ore",
+            "copper": "copper_ore",
+            "coal": "coal_ore",
+            "lapis": "lapis_ore",
+            "redstone": "redstone_ore",
+            "amethyst": "amethyst_block",
+            "sea_lantern": "sea_lantern",
+        }
+        bname = blk_map.get(blk_raw, blk_raw)
+        cfg = _blobs("minecraft:" + bname)
+    elif rname.endswith("_boulder"):
+        blk_raw = rname[:-8]
+        bname = "blackstone" if "blackstone" in blk_raw else ("mossy_cobblestone" if "mossy" in blk_raw else blk_raw)
+        cfg = {"type": "minecraft:block_blob", "config": {
+            "can_place_on": _replaceable(),
+            "state": block_state(("minecraft:" + bname, None))}}
+    elif rname.endswith("_pile"):
+        blk_raw = rname[:-5]
+        bname = "bone_block" if blk_raw == "bone" else blk_raw
+        cfg = {"type": "minecraft:block_pile", "config": {
+            "state_provider": _sp(("minecraft:" + bname, None))}}
+    elif rname.endswith("_blob"):
+        blk_raw = rname[:-5]
+        bname = "sea_lantern" if blk_raw == "sea_lantern" else blk_raw
+        cfg = _blobs("minecraft:" + bname)
+    elif rname.endswith("_spikes"):
+        cfg = {"type": "minecraft:spike", "config": {}}
     else:
-        raise ValueError("неизвестный рецепт архетипа: %s" % rname)
+        cfg = {"type": "minecraft:simple_block", "config": {
+            "to_place": _sp(("minecraft:" + rname.replace("_patch", ""), None))}}
     placement = _cave_recipe_placement(factory, style, min(count, 24))
     if ctx.get("height_bounds"):
         lo, hi = ctx["height_bounds"]

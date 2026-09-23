@@ -2453,8 +2453,62 @@ def _init_mobs():
         STRUCTURE_MOBS_LIST = list(gen_structures.STRUCTURE_MOBS)
 
 
+
+JIGSAW_ARCHETYPES = {
+    "citadel": {
+        "roles": ["gate", "courtyard", "tower", "viaduct", "arena", "workshop", "treasury"],
+        "terrain_adaptation": "beard_thin",
+        "step": "surface_structures",
+    },
+    "sanctuary": {
+        "roles": ["rotunda", "courtyard", "spire", "terrace", "greenhouse"],
+        "terrain_adaptation": "beard_box",
+        "step": "surface_structures",
+    },
+    "dungeon_keep": {
+        "roles": ["pit", "labyrinth", "treasury", "workshop", "stairs", "corridor"],
+        "terrain_adaptation": "encapsulate",
+        "step": "underground_structures",
+    },
+    "observatory_tower": {
+        "roles": ["stairs", "tower", "observatory", "terrace", "corridor"],
+        "terrain_adaptation": "beard_thin",
+        "step": "surface_structures",
+    },
+    "undercity_mine": {
+        "roles": ["mine", "corridor", "pit", "workshop", "ruins"],
+        "terrain_adaptation": "none",
+        "step": "underground_structures",
+    },
+    "necropolis": {
+        "roles": ["mausoleum", "labyrinth", "pit", "corridor", "ruins"],
+        "terrain_adaptation": "bury",
+        "step": "underground_structures",
+    },
+    "sky_viaduct": {
+        "roles": ["viaduct", "bridge", "chainbridge", "terrace", "tower"],
+        "terrain_adaptation": "none",
+        "step": "surface_structures",
+    },
+    "sunken_ruins": {
+        "roles": ["ruins", "courtyard", "gate", "pit", "corridor"],
+        "terrain_adaptation": "bury",
+        "step": "surface_structures",
+    },
+    "botanical_greenhouse": {
+        "roles": ["greenhouse", "courtyard", "terrace", "corridor", "room"],
+        "terrain_adaptation": "beard_thin",
+        "step": "surface_structures",
+    },
+    "grand_palace": {
+        "roles": ["courtyard", "room", "workshop", "kitchen", "treasury", "stairs", "gate"],
+        "terrain_adaptation": "beard_box",
+        "step": "surface_structures",
+    },
+}
+
 def _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
-                     loot_alloc, result, has_ceiling=False, roof_bottom=None):
+                     loot_alloc, result, has_ceiling=False, roof_bottom=None, palette=None):
     gd = _gd()
     # палитра — ТОЛЬКО безопасные для массовой заливки кубы
     # (gd.PALETTE_BLOCKS: без block entity — spawner/trial_spawner/vault/
@@ -2481,17 +2535,33 @@ def _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
         "solid": solid,                              # фильтрованная палитра
         "max_tower_h": 16 if use_hack else 24,
     }
-    ctx["floor"] = gd.block_state(rng.choice(solid))
-    ctx["wall"] = gd.block_state(rng.choice(solid))
-    ctx["accent"] = gd.block_state(rng.choice(solid))
-    ctx["frame"] = gd.block_state(rng.choice(solid))
+    from gen_structures import _get_native_blocks
+    native = [b for b in _get_native_blocks(palette) if b[0] not in _mob_risk]
+    def _pick_mat():
+        return gd.block_state(rng.choice(native if rng.random() < 0.85 else solid))
+    ctx["floor"] = _pick_mat()
+    ctx["wall"] = _pick_mat()
+    ctx["accent"] = _pick_mat()
+    ctx["frame"] = _pick_mat()
     ctx["light"] = rng.choice(_LIGHT_BLOCKS)       # светокуб без BE
     ctx["floor_str"] = _state_str(ctx["floor"])
     ctx["ladder_str"] = _state_str(_ladder("east"))
 
     # --- роли ---
-    n_roles = rng.randint(4, 9)                      # включая start и cap
-    core = rng.sample(_CORE_ROLES, min(len(_CORE_ROLES), n_roles - 2))
+    archetype_keys = list(JIGSAW_ARCHETYPES.keys())
+    pref_adapt = None
+    pref_step = None
+    if rng.random() < 0.75:
+        chosen_arch = rng.choice(archetype_keys)
+        arch_data = JIGSAW_ARCHETYPES[chosen_arch]
+        core_cands = arch_data["roles"]
+        n_roles = rng.randint(4, min(9, len(core_cands) + 2))
+        core = rng.sample(core_cands, min(len(core_cands), n_roles - 2))
+        pref_adapt = arch_data.get("terrain_adaptation")
+        pref_step = arch_data.get("step")
+    else:
+        n_roles = rng.randint(4, 9)
+        core = rng.sample(_CORE_ROLES, min(len(_CORE_ROLES), n_roles - 2))
     if "room" not in core and "corridor" not in core:
         core.append("room")                          # гарантия связности
     roles = ["start", "cap"] + core
@@ -2638,7 +2708,7 @@ def _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
     sj = {
         "type": "minecraft:jigsaw",
         "biomes": None,                             # ниже
-        "step": rng.choice(STRUCTURE_STEPS),
+        "step": (pref_step if pref_step and rng.random() < 0.8 else rng.choice(STRUCTURE_STEPS)),
         "spawn_overrides": _rand_spawn_overrides(rng),
         "start_pool": start_pool,
         "size": rng.randint(3, 7),
@@ -2654,9 +2724,12 @@ def _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
                               "min_inclusive": {"absolute": ya},
                               "max_inclusive": {"absolute": yb}}
     if rng.random() < 0.85:
-        sj["terrain_adaptation"] = rng.choices(
-            ["beard_thin", "beard_box", "bury", "encapsulate", "none"],
-            weights=[65, 22, 8, 3, 2])[0]
+        if pref_adapt and rng.random() < 0.80:
+            sj["terrain_adaptation"] = pref_adapt
+        else:
+            sj["terrain_adaptation"] = rng.choices(
+                ["beard_thin", "beard_box", "bury", "encapsulate", "none"],
+                weights=[65, 22, 8, 3, 2])[0]
     # heightmap projection: maintain exact RNG draw count if step == surface_structures
     _draw_hm = (rng.random() < 0.98) if (sj["step"] == "surface_structures" and not has_ceiling) else True
     if not has_ceiling and (_draw_hm or (_fnv1a(sid + "_hm") % 100 < 96)):
@@ -2743,7 +2816,7 @@ def _rand_proc_list(rng, ctx):
 # ---------------------------------------------------------------------------
 
 def rand_jigsaw(rng, ns, name, min_y, max_y, biome_ids, loot_alloc=None,
-                count=None, has_ceiling=False, roof_bottom=None):
+                count=None, has_ceiling=False, roof_bottom=None, palette=None):
     """Случайные МНОГОЧАСТНЫЕ jigsaw-структуры для измерения <name>.
 
     Возвращает dict с теми же ключами, что gen_structures.rand_structures:
@@ -2768,7 +2841,7 @@ def rand_jigsaw(rng, ns, name, min_y, max_y, biome_ids, loot_alloc=None,
     for num in range(1, int(count) + 1):
         _rand_jigsaw_one(rng, ns, name, num, min_y, max_y, biome_ids,
                          loot_alloc, result, has_ceiling=has_ceiling,
-                         roof_bottom=roof_bottom)
+                         roof_bottom=roof_bottom, palette=palette)
     result["loot_slots"] = (loot_alloc.count if loot_alloc is not None
                             else 0) - _slots0
     return result

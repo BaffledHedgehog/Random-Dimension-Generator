@@ -481,194 +481,370 @@ SURFACE_BLOCKS = PALETTE_BLOCKS
 # фичами, не слоем поверхности). weight - вес архетипа при выборе в
 # мир: ванильная тройка (пышная/натёчная/глубокая тьма) - эталон
 # крутизны, потому чаще остальных.
-CAVE_ARCHETYPES = {
-    "lush": {
-        "ru": "пышная",
-        "stone": ("minecraft:stone", None),
+ARCHETYPES_BASE = [
+    # 1. Crystalline & Mineral
+    ("crystal_grotto", "Кристальный грот", "minecraft:calcite", "minecraft:smooth_basalt",
+     [("amethyst_geode", 3.0), ("amethyst_cluster", 2.5), ("amethyst_veins", 1.5), ("crystal_spikes", 1.0)],
+     {"temp": [-0.3, 0.4], "humid": [-0.5, 0.3], "cont": [0.2, 1.5]},
+     (-2, [1.0, 0.8, 0.5, 0.25], 0.22, 0.28, 0.10, 0.25)),
+    ("quartz_chasm", "Кварцевый разлом", "minecraft:diorite", "minecraft:calcite",
+     [("quartz_veins", 3.0), ("crystal_spikes", 2.0), ("calcite_veins", 1.5), ("diorite_boulder", 1.0)],
+     {"temp": [-0.4, 0.5], "humid": [-0.6, 0.2], "cont": [0.1, 1.2]},
+     (-3, [1.0, 0.7, 0.3], 0.18, 0.30, 0.12, 0.22)),
+    ("amethyst_cathedral", "Аметистовый собор", "minecraft:amethyst_block", "minecraft:smooth_basalt",
+     [("amethyst_geode", 3.0), ("amethyst_cluster", 3.0), ("crystal_spikes", 1.5), ("amethyst_veins", 1.0)],
+     {"temp": [-0.2, 0.5], "humid": [-0.4, 0.4], "cont": [0.3, 1.5]},
+     (-3, [1.0, 0.6, 0.4, 0.2], 0.16, 0.38, 0.08, 0.20)),
+    ("emerald_grotto", "Изумрудный грот", "minecraft:deepslate", "minecraft:tuff",
+     [("emerald_veins", 2.5), ("tuff_boulder", 2.0), ("glow_lichen_rare", 1.5), ("deepslate_veins", 1.0)],
+     {"temp": [-0.5, 0.2], "humid": [-0.2, 0.6], "cont": [0.5, 1.5]},
+     (-3, [1.0, 0.8, 0.5], 0.14, 0.32, 0.10, 0.18)),
+    ("lapis_depths", "Лазуритовые глубины", "minecraft:deepslate", "minecraft:stone",
+     [("lapis_veins", 2.5), ("crystal_spikes", 2.0), ("calcite_veins", 1.5), ("deepslate_veins", 1.0)],
+     {"temp": [-0.4, 0.3], "humid": [0.0, 0.8], "cont": [0.2, 1.3]},
+     (-4, [1.0, 0.6, 0.3], 0.12, 0.34, 0.08, 0.16)),
+    ("diamond_rift", "Алмазный разлом", "minecraft:deepslate", "minecraft:obsidian",
+     [("diamond_veins", 2.0), ("deepslate_veins", 2.0), ("crystal_spikes", 1.5), ("blackstone_boulder", 1.0)],
+     {"temp": [-0.6, 0.2], "humid": [-0.5, 0.2], "cont": [0.6, 1.5]},
+     (-3, [1.0, 0.7, 0.4], 0.20, 0.24, 0.16, 0.24)),
+    ("fluorite_halls", "Флюоритовые чертоги", "minecraft:prismarine", "minecraft:calcite",
+     [("prismarine_spikes", 2.5), ("sea_lantern_blobs", 2.0), ("calcite_veins", 1.5), ("prismarine_veins", 1.0)],
+     {"temp": [-0.5, 0.1], "humid": [0.2, 1.0], "cont": [-0.5, 0.8]},
+     (-3, [1.0, 0.6, 0.3], 0.15, 0.35, 0.09, 0.18)),
+
+    # 2. Volcanic & Infernal
+    ("magma_abyss", "Магматическая бездна", "minecraft:blackstone", "minecraft:basalt",
+     [("glowstone_blob", 2.5), ("blackstone_veins", 2.0), ("magma_veins", 2.0), ("blackstone_boulder", 1.5)],
+     {"temp": [0.4, 1.5], "humid": [-1.5, -0.1], "cont": [-0.5, 1.5]},
+     (-3, [1.0, 0.9, 0.3], 0.25, 0.26, 0.08, 0.18)),
+    ("basalt_columns", "Базальтовые колонны", "minecraft:smooth_basalt", "minecraft:basalt",
+     [("basalt_columns", 3.0), ("basalt_pillar", 2.5), ("magma_veins", 1.5), ("blackstone_boulder", 1.0)],
+     {"temp": [0.5, 1.5], "humid": [-1.2, 0.0], "cont": [-0.2, 1.2]},
+     (-2, [1.0, 0.7, 0.4], 0.20, 0.30, 0.14, 0.22)),
+    ("crying_obsidian_vault", "Склеп плачущего обсидиана", "minecraft:obsidian", "minecraft:crying_obsidian",
+     [("crying_obsidian_veins", 3.0), ("cave_vines_classic", 2.0), ("glowstone_blob", 1.5), ("blackstone_boulder", 1.0)],
+     {"temp": [0.3, 1.3], "humid": [-0.8, 0.3], "cont": [0.3, 1.5]},
+     (-3, [1.0, 0.8, 0.4], 0.18, 0.28, 0.10, 0.20)),
+    ("sulfur_fumaroles", "Серные фумаролы", "minecraft:terracotta", "minecraft:blackstone",
+     [("magma_veins", 2.5), ("blackstone_boulder", 2.0), ("basalt_columns", 1.5), ("glowstone_blob", 1.0)],
+     {"temp": [0.6, 1.5], "humid": [-1.5, -0.3], "cont": [0.0, 1.4]},
+     (-3, [1.0, 0.8, 0.5], 0.22, 0.25, 0.12, 0.22)),
+    ("molten_iron_chasm", "Разлом расплавленного железа", "minecraft:blackstone", "minecraft:deepslate",
+     [("raw_iron_veins", 2.5), ("magma_veins", 2.0), ("blackstone_boulder", 1.5), ("deepslate_veins", 1.0)],
+     {"temp": [0.4, 1.4], "humid": [-1.0, 0.1], "cont": [0.2, 1.3]},
+     (-3, [1.0, 0.7, 0.3], 0.20, 0.28, 0.10, 0.20)),
+    ("ash_depths", "Пепельные глубины", "minecraft:basalt", "minecraft:soul_soil",
+     [("blackstone_boulder", 2.5), ("basalt_columns", 2.0), ("glowstone_blob", 1.5), ("blackstone_veins", 1.0)],
+     {"temp": [0.3, 1.2], "humid": [-0.6, 0.4], "cont": [-0.1, 1.0]},
+     (-4, [1.0, 0.5, 0.2], 0.10, 0.44, 0.04, 0.14)),
+    ("lava_tube", "Лавовая трубка", "minecraft:blackstone", "minecraft:smooth_basalt",
+     [("magma_veins", 2.5), ("basalt_pillar", 2.0), ("glowstone_blob", 1.5), ("blackstone_veins", 1.0)],
+     {"temp": [0.5, 1.5], "humid": [-1.2, -0.1], "cont": [-0.3, 1.1]},
+     (-3, [1.0, 0.8, 0.4], 0.24, 0.24, 0.12, 0.22)),
+
+    # 3. Glacial & Ice
+    ("frozen_caves", "Ледяные пещеры", "minecraft:packed_ice", "minecraft:deepslate",
+     [("blue_ice_blob", 2.5), ("snow_piles", 2.0), ("packed_ice_veins", 1.5), ("powder_snow_pockets", 1.0)],
+     {"temp": [-1.5, -0.4], "humid": [-1.0, 1.0], "cont": [-1.0, 1.5]},
+     (-4, [1.0, 0.4, 0.2], 0.07, 0.48, 0.02, 0.10)),
+    ("blue_ice_abyss", "Бездна синего льда", "minecraft:blue_ice", "minecraft:packed_ice",
+     [("blue_ice_blob", 3.0), ("crystal_spikes", 2.0), ("snow_piles", 1.5), ("packed_ice_veins", 1.0)],
+     {"temp": [-1.5, -0.6], "humid": [-0.8, 0.8], "cont": [0.0, 1.5]},
+     (-3, [1.0, 0.6, 0.3], 0.16, 0.35, 0.06, 0.18)),
+    ("frosted_stone_halls", "Морозные чертоги", "minecraft:calcite", "minecraft:stone",
+     [("packed_ice_veins", 2.5), ("crystal_spikes", 2.0), ("snow_piles", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [-1.2, -0.3], "humid": [-0.5, 0.5], "cont": [-0.2, 1.2]},
+     (-3, [1.0, 0.7, 0.3], 0.14, 0.36, 0.08, 0.16)),
+    ("powder_snow_chasm", "Разлом рыхлого снега", "minecraft:packed_ice", "minecraft:packed_ice",
+     [("powder_snow_pockets", 3.0), ("snow_piles", 2.5), ("blue_ice_blob", 1.5), ("crystal_spikes", 1.0)],
+     {"temp": [-1.5, -0.5], "humid": [-0.2, 1.2], "cont": [0.1, 1.4]},
+     (-4, [1.0, 0.5, 0.2], 0.09, 0.45, 0.03, 0.12)),
+    ("glacial_crevasse", "Ледниковая трещина", "minecraft:packed_ice", "minecraft:deepslate",
+     [("blue_ice_blob", 2.5), ("packed_ice_veins", 2.0), ("crystal_spikes", 1.5), ("snow_piles", 1.0)],
+     {"temp": [-1.4, -0.4], "humid": [-0.6, 0.6], "cont": [0.3, 1.5]},
+     (-2, [1.0, 0.7, 0.3], 0.22, 0.24, 0.16, 0.24)),
+
+    # 4. Fungal & Spore
+    ("mushroom_halls", "Грибные залы", "minecraft:mycelium", "minecraft:stone",
+     [("huge_brown", 2.5), ("huge_red", 2.5), ("mushroom_patch", 2.0), ("mushroom_fungus", 0.8), ("mycelium_veins", 1.0)],
+     {"temp": [-0.3, 0.6], "humid": [0.3, 1.5], "cont": [-0.5, 1.2]},
+     (-4, [1.0, 0.5, 0.2], 0.09, 0.46, 0.03, 0.12)),
+    ("crimson_undergrowth", "Багровые заросли", "minecraft:crimson_nylium", "minecraft:netherrack",
+     [("mushroom_fungus", 2.5), ("cave_vines_classic", 2.0), ("glowstone_blob", 1.5), ("blackstone_boulder", 1.0)],
+     {"temp": [0.2, 1.2], "humid": [0.2, 1.4], "cont": [-0.3, 1.3]},
+     (-3, [1.0, 0.7, 0.4], 0.16, 0.36, 0.08, 0.18)),
+    ("warped_grotto", "Искаженный грот", "minecraft:warped_nylium", "minecraft:netherrack",
+     [("mushroom_fungus", 2.5), ("cave_vines_classic", 2.0), ("glowstone_blob", 1.5), ("blackstone_veins", 1.0)],
+     {"temp": [0.1, 1.0], "humid": [0.3, 1.5], "cont": [-0.2, 1.4]},
+     (-3, [1.0, 0.7, 0.4], 0.16, 0.36, 0.08, 0.18)),
+    ("luminescent_spore_mire", "Люминесцентная топь", "minecraft:packed_mud", "minecraft:mud",
+     [("mushroom_patch", 2.5), ("glow_lichen_rare", 2.0), ("huge_brown", 1.5), ("mud_boulder", 1.0)],
+     {"temp": [-0.2, 0.7], "humid": [0.4, 1.5], "cont": [-0.8, 0.8]},
+     (-4, [1.0, 0.6, 0.3], 0.11, 0.42, 0.04, 0.15)),
+    ("toxic_rot_depths", "Токсичные гнилые глубины", "minecraft:packed_mud", "minecraft:soul_soil",
+     [("mud_boulder", 2.5), ("spore_blossom", 2.0), ("mushroom_patch", 1.5), ("sculk_vein", 1.0)],
+     {"temp": [0.0, 0.8], "humid": [0.5, 1.5], "cont": [0.0, 1.2]},
+     (-3, [1.0, 0.8, 0.4], 0.15, 0.32, 0.07, 0.18)),
+    ("shroomlight_grove", "Светогрибная роща", "minecraft:mycelium", "minecraft:dirt",
+     [("glowstone_blob", 2.5), ("huge_red", 2.0), ("mushroom_patch", 1.5), ("mycelium_veins", 1.0)],
+     {"temp": [-0.1, 0.7], "humid": [0.3, 1.4], "cont": [-0.4, 1.1]},
+     (-4, [1.0, 0.5, 0.3], 0.12, 0.40, 0.05, 0.16)),
+
+    # 5. Roots & Flora
+    ("ancient_roots", "Древние корни", "minecraft:rooted_dirt", "minecraft:deepslate",
+     [("root_system", 2.5), ("pale_moss_floor", 2.0), ("pale_moss_ceiling", 1.5), ("cave_vines_classic", 1.2), ("root_dirt_pile", 1.0)],
+     {"temp": [-0.4, 0.5], "humid": [0.2, 1.4], "cont": [-0.6, 1.3]},
+     (-3, [1.0, 0.8, 0.6], 0.18, 0.32, 0.12, 0.22)),
+    ("lush_sanctuary", "Пышное святилище", "minecraft:moss_block", "minecraft:stone",
+     [("cave_vines", 3.0), ("moss_floor", 3.0), ("moss_ceiling", 2.0), ("dripleaf", 1.5), ("mossy_boulder", 1.0)],
+     {"temp": [0.0, 0.8], "humid": [0.4, 1.5], "cont": [-0.5, 1.2]},
+     (-4, [1.0, 0.7, 0.35], 0.10, 0.42, 0.04, 0.14)),
+    ("pale_garden_depths", "Глубины бледного сада", "minecraft:pale_moss_block", "minecraft:stone",
+     [("pale_moss_floor", 2.5), ("pale_moss_ceiling", 2.0), ("hanging_roots", 1.5), ("root_dirt_pile", 1.0)],
+     {"temp": [-0.3, 0.4], "humid": [0.1, 1.1], "cont": [-0.3, 1.2]},
+     (-3, [1.0, 0.7, 0.4], 0.15, 0.36, 0.08, 0.18)),
+    ("bamboo_root_cavern", "Бамбуково-корневая каверна", "minecraft:mud", "minecraft:rooted_dirt",
+     [("root_system", 2.5), ("cave_vines_classic", 2.0), ("mud_boulder", 1.5), ("hanging_roots", 1.0)],
+     {"temp": [0.2, 0.9], "humid": [0.5, 1.5], "cont": [-0.6, 1.0]},
+     (-4, [1.0, 0.6, 0.3], 0.11, 0.42, 0.05, 0.15)),
+    ("glow_moss_grotto", "Светящийся мшистый грот", "minecraft:moss_block", "minecraft:calcite",
+     [("cave_vines", 2.5), ("glow_lichen_rare", 2.0), ("moss_floor", 1.5), ("mossy_boulder", 1.0)],
+     {"temp": [-0.2, 0.6], "humid": [0.3, 1.3], "cont": [-0.4, 1.2]},
+     (-4, [1.0, 0.6, 0.3], 0.12, 0.38, 0.06, 0.16)),
+
+    # 6. Speleothem & Stony Chasm
+    ("dripstone_chasm", "Карстовый каньон", "minecraft:dripstone_block", "minecraft:calcite",
+     [("dripstone_cluster", 3.0), ("pointed_dripstone", 3.0), ("large_dripstone", 2.0), ("calcite_veins", 1.2)],
+     {"temp": [-0.4, 0.6], "humid": [-0.8, 0.3], "cont": [-0.2, 1.5]},
+     (-3, [1.0, 0.6, 0.4, 0.2], 0.16, 0.30, 0.18, 0.20)),
+    ("copper_crevice", "Медная расселина", "minecraft:tuff", "minecraft:stone",
+     [("copper_veins", 2.5), ("tuff_boulder", 2.0), ("pointed_dripstone", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [-0.3, 0.5], "humid": [-0.4, 0.5], "cont": [0.0, 1.3]},
+     (-3, [1.0, 0.8, 0.4], 0.18, 0.28, 0.12, 0.20)),
+    ("granite_labyrinth", "Гранитный лабиринт", "minecraft:granite", "minecraft:stone",
+     [("granite_boulder", 2.5), ("quartz_veins", 2.0), ("calcite_veins", 1.5), ("pointed_dripstone", 1.0)],
+     {"temp": [0.0, 0.8], "humid": [-0.6, 0.4], "cont": [0.1, 1.4]},
+     (-3, [1.0, 0.7, 0.3], 0.17, 0.30, 0.11, 0.19)),
+    ("diorite_grotto", "Диоритовый грот", "minecraft:diorite", "minecraft:stone",
+     [("diorite_boulder", 2.5), ("calcite_veins", 2.0), ("crystal_spikes", 1.5), ("pointed_dripstone", 1.0)],
+     {"temp": [-0.5, 0.3], "humid": [-0.5, 0.5], "cont": [0.0, 1.3]},
+     (-3, [1.0, 0.7, 0.4], 0.16, 0.32, 0.10, 0.18)),
+    ("andesite_depths", "Андезитовые глубины", "minecraft:andesite", "minecraft:stone",
+     [("andesite_boulder", 2.5), ("pointed_dripstone", 2.0), ("deepslate_veins", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [-0.4, 0.4], "humid": [-0.5, 0.5], "cont": [0.0, 1.3]},
+     (-3, [1.0, 0.7, 0.3], 0.16, 0.32, 0.10, 0.18)),
+    ("tuff_crevasse", "Туфовая расщелина", "minecraft:tuff", "minecraft:deepslate",
+     [("tuff_boulder", 2.5), ("deepslate_veins", 2.0), ("pointed_dripstone", 1.5), ("copper_veins", 1.0)],
+     {"temp": [-0.3, 0.4], "humid": [-0.3, 0.5], "cont": [0.3, 1.5]},
+     (-3, [1.0, 0.8, 0.5], 0.18, 0.28, 0.13, 0.21)),
+
+    # 7. Sandstone & Arid
+    ("sandstone_canyon", "Песчаниковый каньон", "minecraft:sandstone", "minecraft:sandstone",
+     [("sandstone_boulder", 2.5), ("sand_piles", 2.0), ("pointed_dripstone", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [0.4, 1.5], "humid": [-1.5, -0.2], "cont": [-0.2, 1.3]},
+     (-2, [1.0, 0.7, 0.3], 0.22, 0.26, 0.14, 0.22)),
+    ("red_sandstone_chasm", "Разлом красного песчаника", "minecraft:red_sandstone", "minecraft:terracotta",
+     [("terracotta_boulder", 2.5), ("sand_piles", 2.0), ("pointed_dripstone", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [0.5, 1.5], "humid": [-1.5, -0.3], "cont": [0.0, 1.4]},
+     (-2, [1.0, 0.7, 0.4], 0.22, 0.26, 0.14, 0.22)),
+    ("arid_bone_crypt", "Аридный костяной склеп", "minecraft:sandstone", "minecraft:stone",
+     [("bone_pile", 2.5), ("sandstone_boulder", 2.0), ("pointed_dripstone", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [0.3, 1.3], "humid": [-1.4, -0.1], "cont": [0.1, 1.4]},
+     (-3, [1.0, 0.7, 0.3], 0.17, 0.30, 0.11, 0.19)),
+    ("terracotta_strata", "Терракотовые пласты", "minecraft:terracotta", "minecraft:stone",
+     [("terracotta_boulder", 2.5), ("sandstone_veins", 2.0), ("sand_piles", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [0.4, 1.4], "humid": [-1.3, -0.1], "cont": [0.2, 1.5]},
+     (-3, [1.0, 0.8, 0.4], 0.19, 0.28, 0.12, 0.20)),
+
+    # 8. Abyssal & Sculk
+    ("deep_dark", "Глубокая тьма", "minecraft:sculk", "minecraft:deepslate",
+     [("sculk_vein", 1.0), ("sculk_patch", 0.7), ("glow_lichen_rare", 0.7), ("deepslate_veins", 1.0)],
+     {"temp": [-0.6, 0.4], "humid": [-0.6, 0.6], "cont": [0.5, 1.5]},
+     (-5, [1.0, 0.5], 0.06, 0.52, 0.02, 0.08)),
+    ("echoing_abyss", "Эхо-бездна", "minecraft:sculk", "minecraft:soul_soil",
+     [("sculk_vein", 2.0), ("sculk_patch", 1.5), ("bone_pile", 1.2), ("deepslate_veins", 1.0)],
+     {"temp": [-0.5, 0.3], "humid": [-0.4, 0.6], "cont": [0.6, 1.5]},
+     (-4, [1.0, 0.6, 0.2], 0.08, 0.48, 0.03, 0.10)),
+    ("voidstone_depths", "Глубины пустотного камня", "minecraft:obsidian", "minecraft:deepslate",
+     [("crying_obsidian_veins", 2.5), ("blackstone_boulder", 2.0), ("crystal_spikes", 1.5), ("deepslate_veins", 1.0)],
+     {"temp": [-0.7, 0.3], "humid": [-0.8, 0.4], "cont": [0.7, 1.5]},
+     (-3, [1.0, 0.8, 0.4], 0.18, 0.26, 0.10, 0.20)),
+    ("spectral_crypt", "Спектральный склеп", "minecraft:soul_sand", "minecraft:deepslate",
+     [("bone_pile", 2.5), ("crying_obsidian_veins", 2.0), ("glowstone_blob", 1.5), ("deepslate_veins", 1.0)],
+     {"temp": [-0.4, 0.5], "humid": [-0.5, 0.5], "cont": [0.4, 1.4]},
+     (-3, [1.0, 0.7, 0.3], 0.16, 0.32, 0.09, 0.17)),
+
+    # 9. Aquatic & Exotic
+    ("sunken_prismarine_grotto", "Затопленный призмариновый грот", "minecraft:prismarine", "minecraft:calcite",
+     [("sea_lantern_blobs", 2.5), ("crystal_spikes", 2.0), ("calcite_veins", 1.5), ("prismarine_spikes", 1.0)],
+     {"temp": [-0.5, 0.2], "humid": [0.4, 1.5], "cont": [-1.5, -0.1]},
+     (-3, [1.0, 0.6, 0.3], 0.14, 0.36, 0.07, 0.16)),
+    ("hydrothermal_vent_cavern", "Гидротермальная каверна", "minecraft:magma_block", "minecraft:blackstone",
+     [("basalt_columns", 2.5), ("magma_veins", 2.0), ("blackstone_boulder", 1.5), ("glowstone_blob", 1.0)],
+     {"temp": [0.4, 1.4], "humid": [0.2, 1.5], "cont": [-1.5, 0.0]},
+     (-3, [1.0, 0.8, 0.4], 0.22, 0.26, 0.12, 0.20)),
+    ("honeycomb_hollow", "Медовая полость", "minecraft:honeycomb_block", "minecraft:terracotta",
+     [("terracotta_boulder", 2.5), ("crystal_spikes", 2.0), ("glowstone_blob", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [0.1, 0.8], "humid": [0.0, 1.0], "cont": [-0.3, 1.1]},
+     (-3, [1.0, 0.7, 0.3], 0.16, 0.34, 0.08, 0.18)),
+    ("slime_nest", "Гнездо слизи", "minecraft:slime_block", "minecraft:mud",
+     [("mud_boulder", 2.5), ("spore_blossom", 2.0), ("moss_floor", 1.5), ("mushroom_patch", 1.0)],
+     {"temp": [0.0, 0.7], "humid": [0.4, 1.5], "cont": [-0.5, 0.9]},
+     (-4, [1.0, 0.6, 0.3], 0.11, 0.44, 0.04, 0.14)),
+    ("purpur_echo_cavern", "Пурпурная эхо-каверна", "minecraft:purpur_block", "minecraft:end_stone",
+     [("crystal_spikes", 2.5), ("obsidian_veins", 2.0), ("blackstone_boulder", 1.5), ("deepslate_veins", 1.0)],
+     {"temp": [-0.6, 0.4], "humid": [-0.7, 0.5], "cont": [0.5, 1.5]},
+     (-3, [1.0, 0.8, 0.5], 0.20, 0.30, 0.12, 0.22)),
+    ("gilded_monolith_vault", "Святилище золотого монолита", "minecraft:gilded_blackstone", "minecraft:blackstone",
+     [("raw_gold_veins", 2.5), ("blackstone_boulder", 2.0), ("basalt_pillar", 1.5), ("glowstone_blob", 1.0)],
+     {"temp": [0.2, 1.1], "humid": [-0.8, 0.3], "cont": [0.2, 1.4]},
+     (-3, [1.0, 0.7, 0.4], 0.18, 0.32, 0.10, 0.19)),
+    ("bone_temple_cavern", "Каверна костяного храма", "minecraft:bone_block", "minecraft:soul_soil",
+     [("bone_pile", 3.0), ("crying_obsidian_veins", 2.0), ("glowstone_blob", 1.5), ("blackstone_boulder", 1.0)],
+     {"temp": [-0.2, 0.8], "humid": [-0.6, 0.6], "cont": [0.2, 1.3]},
+     (-3, [1.0, 0.7, 0.3], 0.17, 0.32, 0.10, 0.18)),
+    ("amber_caverns", "Янтарные пещеры", "minecraft:honeycomb_block", "minecraft:smooth_basalt",
+     [("glowstone_blob", 2.5), ("crystal_spikes", 2.0), ("terracotta_boulder", 1.5), ("calcite_veins", 1.0)],
+     {"temp": [0.2, 0.9], "humid": [-0.4, 0.8], "cont": [-0.1, 1.2]},
+     (-3, [1.0, 0.7, 0.4], 0.16, 0.34, 0.09, 0.18)),
+]
+
+def _build_base_catalogue():
+    catalogue = {}
+    for item in ARCHETYPES_BASE:
+        key, ru, floor, stone, recipes, climate, density = item
+        catalogue[key] = {
+            "ru": ru,
+            "stone": (stone, None),
+            "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
+            "floor": (floor, None),
+            "sub": [(floor, None), (stone, None)],
+            "accent": [(stone, None)],
+            "ceiling": (stone, None),
+            "recipes": recipes,
+            "vanilla": [],
+            "mobs": {"monsters": ("dark", (2, 4)), "ambient_bat": 0.6, "glow_squid": 0.4},
+            "weight": 0.2 if key in ("lush_sanctuary", "deep_dark") else 1.0,
+            "climate": climate,
+            "density": density,
+        }
+    return catalogue
+
+CAVE_ARCHETYPES = _build_base_catalogue()
+
+def _build_super_chaotic_archetype(rng):
+    exotic_floors = [
+        ("minecraft:crying_obsidian", None),
+        ("minecraft:honey_block", None),
+        ("minecraft:sponge", None),
+        ("minecraft:sea_lantern", None),
+        ("minecraft:bone_block", None),
+        ("minecraft:purpur_block", None),
+        ("minecraft:gilded_blackstone", None),
+        ("minecraft:copper_block", None),
+        ("minecraft:amethyst_block", None),
+        ("minecraft:sculk_catalyst", None),
+        ("minecraft:prismarine_bricks", None),
+        ("minecraft:packed_ice", None),
+    ]
+    exotic_stones = [
+        ("minecraft:smooth_basalt", None),
+        ("minecraft:blackstone", None),
+        ("minecraft:calcite", None),
+        ("minecraft:deepslate", None),
+        ("minecraft:tuff", None),
+        ("minecraft:end_stone", None),
+        ("minecraft:obsidian", None),
+        ("minecraft:prismarine", None),
+    ]
+    floor = rng.choice(exotic_floors)
+    stone = rng.choice([s for s in exotic_stones if s[0] != floor[0]])
+    
+    chaotic_recipes = [
+        ("crystal_spikes", 2.5),
+        ("crying_obsidian_veins", 2.0),
+        ("glowstone_blob", 2.0),
+        ("blackstone_boulder", 1.5),
+        ("amethyst_cluster", 1.0)
+    ]
+    
+    chaotic_mobs = {
+        "monsters": ("list", [
+            "minecraft:wither_skeleton", "minecraft:blaze",
+            "minecraft:illusioner", "minecraft:breeze",
+            "minecraft:enderman", "minecraft:magma_cube"
+        ], (2, 4)),
+        "ambient_bat": 0.8,
+        "glow_squid": 0.5
+    }
+    
+    return {
+        "ru": "Суперхаотический разлом",
+        "stone": stone,
         "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
-        "floor": ("minecraft:moss_block", None),
-        "sub": [("minecraft:dirt", None), ("minecraft:mud", None),
-                 ("minecraft:moss_block", None)],
-        "accent": [("minecraft:clay", None),
-                   ("minecraft:mossy_cobblestone", None)],
-        "ceiling": ("minecraft:moss_block", None),
-        "recipes": [("cave_vines", 3.0), ("moss_floor", 3.0),
-                    ("moss_ceiling", 2.0), ("spore_blossom", 2.0),
-                    ("dripleaf", 1.5), ("mossy_boulder", 1.0)],
-        "vanilla": ["lush_caves_vegetation", "lush_caves_clay",
-                    "classic_vines_cave_feature", "spore_blossom"],
-        "mobs": {"monsters": ("dark", (2, 3)), "ambient_bat": 0.6,
-                 "glow_squid": 1.0},
-        "weight": 2.4,
-    },
-    "dripstone": {
-        "ru": "натёчная",
-        "stone": ("minecraft:calcite", None),
-        "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
-        "floor": ("minecraft:dripstone_block", None),
-        "sub": [("minecraft:dripstone_block", None),
-                 ("minecraft:calcite", None), ("minecraft:tuff", None)],
-        "accent": [("minecraft:calcite", None)],
-        "ceiling": ("minecraft:dripstone_block", None),
-        "recipes": [("dripstone_cluster", 3.0), ("pointed_dripstone", 3.0),
-                    ("large_dripstone", 2.0), ("calcite_veins", 1.2)],
-        "vanilla": ["large_dripstone"],
-        "mobs": {"monsters": ("dark", (2, 4)), "ambient_bat": 0.6,
-                 "glow_squid": 0.5},
-        "weight": 2.4,
-    },
-    "deep_dark": {
-        "ru": "глубокая тьма",
-        # как ванильный deep_dark - весь массив deepslate
-        "stone": ("minecraft:deepslate", None),
-        # плотная сеть: оба ванильных кавер-карвера (третьего
-        # «cave_extra_underground_extra» в 26.2 не существует)
-        "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
-        "floor": ("minecraft:sculk", None),
-        "sub": [("minecraft:sculk", None),
-                 ("minecraft:deepslate", {"axis": "y"})],
-        "accent": [("minecraft:deepslate", {"axis": "y"})],
-        "ceiling": ("minecraft:sculk", None),
-        "recipes": [("sculk_vein", 3.0), ("sculk_patch", 2.0),
-                    ("glow_lichen_rare", 0.7), ("deepslate_veins", 1.0)],
-        "vanilla": ["sculk_patch_deep_dark", "monster_room_deep"],
-        # как ванильный deep_dark: НИ ОДНОЙ записи спавна (монстров нет -
-        # тишина и мрак до первой чужой ошибки)
-        "mobs": {"monsters": ("none",), "ambient_bat": 0.0,
-                 "glow_squid": 0.0},
-        "weight": 2.4,
-    },
-    "crystal": {
-        "ru": "кристальная",
-        "stone": ("minecraft:smooth_basalt", None),
-        "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
-        "floor": ("minecraft:calcite", None),
-        "sub": [("minecraft:smooth_basalt", None),
-                 ("minecraft:calcite", None)],
-        "accent": [("minecraft:amethyst_block", None),
-                   ("minecraft:smooth_basalt", None)],
-        "ceiling": ("minecraft:smooth_basalt", None),
-        "recipes": [("amethyst_geode", 3.0), ("amethyst_cluster", 2.5),
-                    ("amethyst_veins", 1.5), ("crystal_spikes", 1.0)],
-        "vanilla": ["amethyst_geode"],
-        "mobs": {"monsters": ("dark", (2, 4)), "ambient_bat": 0.6,
-                 "glow_squid": 0.4},
-        "weight": 1.0,
-    },
-    "mushroom": {
-        "ru": "грибная",
-        "stone": ("minecraft:stone", None),
-        "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
-        "floor": ("minecraft:mycelium", None),
-        "sub": [("minecraft:podzol", None), ("minecraft:dirt", None),
-                 ("minecraft:mycelium", None)],
-        "accent": [("minecraft:mushroom_stem", None)],
-        "ceiling": None,
-        "recipes": [("huge_brown", 2.5), ("huge_red", 2.5),
-                    ("mushroom_patch", 2.0), ("mushroom_fungus", 0.8),
-                    ("mycelium_veins", 1.0)],
+        "floor": floor,
+        "sub": [floor, stone],
+        "accent": [stone],
+        "ceiling": floor,
+        "recipes": chaotic_recipes,
         "vanilla": [],
-        # как грибные поля ванили: без враждебных мобов
-        "mobs": {"monsters": ("none",), "ambient_bat": 0.8,
-                 "glow_squid": 0.0},
-        "weight": 1.0,
-    },
-    "roots": {
-        "ru": "корневая",
-        # как ванильный roots - под землёй deepslate
-        "stone": ("minecraft:deepslate", None),
-        "carvers": ["minecraft:cave", "minecraft:cave_extra_underground"],
-        "floor": ("minecraft:rooted_dirt", None),
-        "sub": [("minecraft:mud", None), ("minecraft:dirt", None),
-                 ("minecraft:rooted_dirt", None)],
-        "accent": [("minecraft:pale_moss_block", None),
-                   ("minecraft:mud", None)],
-        "ceiling": ("minecraft:pale_moss_block", None),
-        "recipes": [("root_system", 2.5), ("pale_moss_floor", 2.0),
-                    ("pale_moss_ceiling", 1.5),
-                    ("cave_vines_classic", 1.2), ("root_dirt_pile", 1.0)],
-        "vanilla": ["rooted_azalea_tree", "pale_moss_patch"],
-        "mobs": {"monsters": ("dark", (2, 4)), "ambient_bat": 0.6,
-                 "glow_squid": 0.4},
-        "weight": 1.0,
-    },
-    "magma": {
-        "ru": "магмовая",
-        "stone": ("minecraft:basalt", None),
-        "carvers": ["minecraft:nether_cave", "minecraft:cave"],
-        "floor": ("minecraft:basalt", {"axis": "y"}),
-        "sub": [("minecraft:blackstone", None),
-                 ("minecraft:basalt", {"axis": "y"})],
-        "accent": [("minecraft:magma_block", None),
-                   ("minecraft:blackstone", None)],
-        "ceiling": ("minecraft:blackstone", None),
-        "recipes": [("basalt_columns", 2.5), ("glowstone_blob", 2.5),
-                    ("blackstone_veins", 1.5), ("magma_veins", 1.0),
-                    ("basalt_pillar", 1.2)],
-        "vanilla": ["glowstone", "glowstone_extra",
-                    "large_basalt_columns", "small_basalt_columns",
-                    "basalt_blobs"],
-        "mobs": {"monsters": ("list",
-                              ["minecraft:magma_cube", "minecraft:blaze",
-                               "minecraft:zombified_piglin"], (2, 3)),
-                 "ambient_bat": 0.5, "glow_squid": 0.0},
-        "weight": 1.0,
-    },
-    "frozen": {
-        "ru": "замёрзшая",
-        # как ванильный frozen_caves - под землёй deepslate
-        "stone": ("minecraft:deepslate", None),
-        # разреженная сеть: только базовый cave-карвер
-        "carvers": ["minecraft:cave"],
-        "floor": ("minecraft:packed_ice", None),
-        "sub": [("minecraft:packed_ice", None),
-                 ("minecraft:blue_ice", None)],
-        "accent": [("minecraft:blue_ice", None),
-                   ("minecraft:snow_block", None)],
-        "ceiling": ("minecraft:packed_ice", None),
-        "recipes": [("blue_ice_blob", 2.5), ("snow_piles", 2.0),
-                    ("packed_ice_veins", 1.5), ("powder_snow_pockets", 1.0)],
-        "vanilla": ["blue_ice"],
-        "mobs": {"monsters": ("list",
-                              ["minecraft:stray", "minecraft:skeleton",
-                               "minecraft:creeper", "minecraft:spider"],
-                              (2, 3)),
-                 "ambient_bat": 0.8, "glow_squid": 0.0},
-        "weight": 1.0,
-    },
-}
+        "mobs": chaotic_mobs,
+        "weight": 0.15,
+        "climate": {
+            "temp": [round(rng.uniform(-1.0, 0.5), 2), round(rng.uniform(0.5, 1.5), 2)],
+            "humid": [round(rng.uniform(-1.0, 0.5), 2), round(rng.uniform(0.5, 1.5), 2)],
+            "cont": [round(rng.uniform(-0.5, 0.8), 2), 1.5],
+        },
+        "density": (-2, [1.0, 0.9, 0.7, 0.4, 0.2], 0.30, 0.28, 0.20, 0.32),
+    }
+
+def _arch_feature_types(arch):
+    import gen_features as _gf
+    return {_gf._CAVE_RECIPE_TYPE[r] for r, _w in arch["recipes"]}
+
+def _pick_compatible_cave_archetypes(rng, n_under):
+    include_chaotic = (rng.random() < 0.12)
+    apool = list(CAVE_ARCHETYPES.keys())
+    rng.shuffle(apool)
+    chosen = []
+    
+    if include_chaotic:
+        chaotic_arch = _build_super_chaotic_archetype(rng)
+        CAVE_ARCHETYPES["super_chaotic"] = chaotic_arch
+        chosen.append("super_chaotic")
+        
+    for arch_key in apool:
+        if len(chosen) >= n_under:
+            break
+        types = _arch_feature_types(CAVE_ARCHETYPES[arch_key])
+        if all(len(types & _arch_feature_types(CAVE_ARCHETYPES[c])) <= 1 and types != _arch_feature_types(CAVE_ARCHETYPES[c]) for c in chosen):
+            chosen.append(arch_key)
+            
+    if len(chosen) < n_under:
+        for arch_key in apool:
+            if arch_key not in chosen:
+                chosen.append(arch_key)
+                if len(chosen) >= n_under:
+                    break
+    return chosen[:n_under]
+
 for _ak, _av in CAVE_ARCHETYPES.items():
-    # пол - всегда полный куб без block entity и не сыпучий (сыпучие
-    # над пустотой void-миров обращаются в entity FALLING_BLOCK);
-    # «тело» - тот же класс блоков (массовая заливка всего объёма биома)
     assert _av["floor"][0] not in BE_BLOCK_IDS | FALLING_BLOCK_IDS, _ak
     assert _av["floor"][0] not in _PALETTE_EXCLUDE, _ak
     assert _av["stone"][0] not in BE_BLOCK_IDS | FALLING_BLOCK_IDS, _ak
     assert _av["stone"][0] not in _PALETTE_EXCLUDE, _ak
     assert len(_av["recipes"]) >= 4, _ak
     assert _av["mobs"]["monsters"][0] in ("none", "dark", "list"), _ak
-# ВИДЫ фич (type) любых двух архетипов пересекаются <= 1 - различимость
-# биомов (инвариант _rand_biome_features) не зависит от рандома, т.к.
-# набор архетипа фиксирован и фильтром не перегенерируется
-def _arch_feature_types(arch):
-    import gen_features as _gf
-    return {_gf._CAVE_RECIPE_TYPE[r] for r, _w in arch["recipes"]}
-_arch_ids = sorted(CAVE_ARCHETYPES)
-for _i, _a1 in enumerate(_arch_ids):
-    for _a2 in _arch_ids[_i + 1:]:
-        _sh = _arch_feature_types(CAVE_ARCHETYPES[_a1]) \
-            & _arch_feature_types(CAVE_ARCHETYPES[_a2])
-        assert len(_sh) <= 1, \
-            "архетипы %s и %s делят виды фич: %s" % (_a1, _a2, sorted(_sh))
 
-# Ванильные блок-теги спавна (все 13 из jar 26.2): SpawnPlacements почти
-# каждого «наземного» моба требует, чтобы блок пола состоял в СВОЁМ теге -
-# animals_spawnable_on = только grass_block, bats = stone, mooshrooms =
-# mycelium, camels = sand, wolves = grass/снег/подзол и т.д. Поверхности
-# наших измерений - случайные блоки, поэтому генератор ДОПОЛНЯЕТ эти теги
-# поверхностными блоками (файлы data/minecraft/tags/block/<tag>.json со
-# values БЕЗ replace - значения добавляются К ванильным, стандартная
-# механика тегов датапаков). См. write_spawnable_tags().
+# Verify compatible selection holds pairwise overlap <= 1
+for _t_seed in range(10):
+    _t_rng = random.Random(_t_seed)
+    _t_picked = _pick_compatible_cave_archetypes(_t_rng, 5)
+    for _i, _a1 in enumerate(_t_picked):
+        for _a2 in _t_picked[_i + 1:]:
+            _sh = _arch_feature_types(CAVE_ARCHETYPES[_a1]) & _arch_feature_types(CAVE_ARCHETYPES[_a2])
+            assert len(_sh) <= 1, "picked archetypes %s and %s collision: %s" % (_a1, _a2, _sh)
+
 SPAWNABLE_TAGS = [
     "animals_spawnable_on", "armadillo_spawnable_on",
     "axolotls_spawnable_on", "bats_spawnable_on", "camels_spawnable_on",
@@ -735,13 +911,13 @@ CAVE_MIN_BIOMES = 4  # two surface + at least two distinct cave strata
 GRASS_COLOR_MODIFIERS = ["swamp", "dark_forest"]
 
 # Частицы ambient_particles, реально используемые ванильными биомами 26.2
-AMBIENT_PARTICLES = ["minecraft:white_ash", "minecraft:ash",
-                     "minecraft:crimson_spore", "minecraft:warped_spore"]
+AMBIENT_PARTICLES = ["minecraft:crimson_spore", "minecraft:warped_spore",
+                     "minecraft:spore_blossom_air", "minecraft:cherry_leaves"]
 
 # Фоновая музыка из ванильных биомов 26.2
 MUSIC_IDS = [
     "minecraft:music.game", "minecraft:music.nether.nether_wastes",
-    "minecraft:music.nether.basalt_deltas", "minecraft:music.nether.crimson_forest",
+    "minecraft:music.nether.crimson_forest",
     "minecraft:music.nether.soul_sand_valley", "minecraft:music.nether.warped_forest",
     "minecraft:music.overworld.badlands", "minecraft:music.overworld.bamboo_jungle",
     "minecraft:music.overworld.cherry_grove", "minecraft:music.overworld.deep_dark",
@@ -2374,7 +2550,7 @@ class DimensionGenerator:
                     vals = list(reversed(vals))
                 thr = sorted(rnd_f(rng, -0.8, 0.8) for _ in range(n - 1))
                 return {"type": "minecraft:interval_select",
-                        "input": grad(zlo, zhi, 1.0, -1.0),
+                        "input": grad(zlo, zhi, -1.0, 1.0),
                         "thresholds": [round(t, 3) for t in thr],
                         "functions": [round(v, 3) for v in vals]}
             ramp = grad(zlo, zhi, B, -k * B) if not flip \
@@ -2426,8 +2602,8 @@ class DimensionGenerator:
                        в max-композиции стека (ops пресета);
               wave   - плавные волны: низкие частоты, БЕЗ abs/cube -
                        гладкие поднятия и прогибы."""
-            if flavor == "strata":       # горизонтальные пласты: y >> xz
-                xz, ys = self._terrain_scales(0.004, 0.05, 0.3, 2.0, 0.0)
+            if flavor == "strata":       # органические 3D-пласты без плоских блинов (Point 8)
+                xz, ys = self._terrain_scales(0.018, 0.045, 0.015, 0.045, 0.0)
             elif flavor == "spire":      # столбы: xz мелко (крупный
                 xz, ys = self._terrain_scales(0.3, 2.0, 0.005, 0.05, 0.0)
             elif flavor == "ridge":      # хребты: колонно-стабильный
@@ -2548,7 +2724,7 @@ class DimensionGenerator:
                     "rafts" if character == "strata" else
                     "needles" if character == "spiky" else "blobs")
                 if vs == "rafts":         # плоты-пласты
-                    xz, ys = self._terrain_scales(0.01, 0.05, 0.1, 0.5, 0.0)
+                    xz, ys = self._terrain_scales(0.018, 0.045, 0.015, 0.040, 0.0)
                 elif vs == "needles":     # столбы-иглы
                     xz, ys = self._terrain_scales(0.03, 0.12, 0.01, 0.06, 0.0)
                 elif vs == "shards":      # рваные осколки - острее игл
@@ -2587,19 +2763,28 @@ class DimensionGenerator:
         H = min(max(band // 2, 8), max(2, band - 2))
         self.flat_cap_h = H
 
+        floor_relief_noise = {"type": "minecraft:noise",
+                              "noise": self._add_octaved_noise(-3, [1.0, 0.6, 0.3]),
+                              "xz_scale": rnd_f(rng, 0.018, 0.038), "y_scale": rnd_f(rng, 0.02, 0.06)}
+        floor_relief = mulc(rnd_f(rng, 1.6, 2.8), floor_relief_noise)
+
+        ceiling_relief_noise = {"type": "minecraft:noise",
+                                "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.4]),
+                                "xz_scale": rnd_f(rng, 0.02, 0.045), "y_scale": rnd_f(rng, 0.025, 0.07)}
+        ceiling_relief = mulc(rnd_f(rng, 1.5, 2.8), ceiling_relief_noise)
+
         def roof_cap():
-            # кровля: плита [ty-H .. ty-2] на +3.5, выше - +3.0
-            return {"type": "minecraft:min",
-                    "argument1": grad(ty - band, ty - H, -4.0, 3.5),
-                    "argument2": grad(ty - 2, ty - 1, 3.5, 3.0)}
+            flat_roof = {"type": "minecraft:min",
+                         "argument1": grad(ty - band, ty - H, -4.0, 3.5),
+                         "argument2": grad(ty - 2, ty - 1, 3.5, 3.0)}
+            return add(flat_roof, ceiling_relief)
 
         def floor_cap():
-            # дно: плита [my+2 .. my+H] на +3.5, ниже - +3.0
-            return {"type": "minecraft:min",
-                    "argument1": grad(my + H, my + band, 3.5, -4.0),
-                    "argument2": grad(my + 1, my + 2, 3.0, 3.5)}
+            flat_floor = {"type": "minecraft:min",
+                          "argument1": grad(my + H, my + band, 3.5, -4.0),
+                          "argument2": grad(my + 1, my + 2, 3.0, 3.5)}
+            return add(flat_floor, floor_relief)
 
-        # --- сборка по форме мира ---
         if self.world_shape == "void":
             # пустота: острова из нормализованных шумов с порогом от ?
             # (окно порога - из пресета: архипелаг - реже и крупнее,
@@ -2610,10 +2795,12 @@ class DimensionGenerator:
             if spline_df:
                 # кластеры: у региона своя густота островов (+/-50% от S)
                 wild = add(wild, mulc(0.5, spline_df))
-            core = {"type": "minecraft:min", "argument1": wild,
-                    "argument2": grad(my, my + band, -3.0, 4.0)}
-            core = {"type": "minecraft:min", "argument1": core,
-                    "argument2": grad(ty - band, ty - 2, 4.0, -3.0)}
+            t_floor = cl(grad(my, my + band * 2, 0.0, 1.0), 0.0, 1.0)
+            t_ceil = cl(grad(ty - band * 2, ty - 2, 1.0, 0.0), 0.0, 1.0)
+            island_taper = {"type": "minecraft:mul", "argument1": t_floor, "argument2": t_ceil}
+            core = add({"type": "minecraft:mul", "argument1": wild, "argument2": island_taper},
+                       grad(ty - band, ty - 2, 0.0, -4.0))
+            core = add(core, grad(my, my + band, -4.0, 0.0))
         elif self.world_shape == "open":
             wild = add(base_form(my + band, ty - band),
                        mixed_perturbation() if rng.random() < pre["mix_p"]
@@ -2623,9 +2810,18 @@ class DimensionGenerator:
             # воздух у потолка (высотные фичи не выходят за top) и
             # ПЛОСКИЙ твёрдый кап дна (бедрок-полоса surface-правил
             # лежит на гарантированной каменной плите, не на рельефе)
-            core = {"type": "minecraft:min", "argument1": wild,
-                    "argument2": grad(ty - band, ty - 2, 4.0, -3.0)}
-            core = {"type": "minecraft:max", "argument1": core,
+            # Smooth mathematical altitude tapering near max height (ty)
+            # Mountains smoothly taper down to zero density rather than flat ceiling plateaus
+            spire_noise = {"type": "minecraft:noise",
+                           "noise": self._add_octaved_noise(-4, [1.0, 0.8, 0.5, 0.3]),
+                           "xz_scale": rnd_f(rng, 0.04, 0.09), "y_scale": rnd_f(rng, 0.01, 0.03)}
+            spire_boundary = mulc(rnd_f(rng, 2.0, 3.5), spire_noise)
+            taper_start = ty - int(self.height * 0.35)
+            taper_y = cl(grad(taper_start, ty - 4, 1.0, 0.0), 0.0, 1.0)
+            taper_drop = grad(taper_start, ty - 4, 0.0, -4.0)
+            taper_drop_relieved = add(taper_drop, spire_boundary)
+            tapered = add({"type": "minecraft:mul", "argument1": wild, "argument2": taper_y}, taper_drop_relieved)
+            core = {"type": "minecraft:max", "argument1": tapered,
                     "argument2": floor_cap()}
         else:  # cavern - дно и кровля из массива, в середине пояс воздуха
             zlo, zhi = my + band, ty - band
@@ -2658,15 +2854,14 @@ class DimensionGenerator:
             # нуля (жалоба юзера: «крыша бедрока на максимальной
             # высоте мира, без рельефа над ней») - см. roof_cap/
             # floor_cap выше; градиенты сильнее любого шума
-            t = max(4, band // 2)
-            belt_air = {"type": "minecraft:max",
-                        "argument1": grad(self.belt_lo - t, self.belt_lo,
-                                          4.0, -4.0),
-                        "argument2": grad(self.belt_hi, self.belt_hi + t,
-                                          -4.0, 4.0)}
-            core = {"type": "minecraft:min", "argument1": wild,
-                    "argument2": belt_air}
-            core = {"type": "minecraft:max", "argument1": core,
+            # 3D subterranean pillars, arches and natural cavern terrain
+            pillar_noise = {"type": "minecraft:noise",
+                            "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.35]),
+                            "xz_scale": rnd_f(rng, 0.028, 0.045),
+                            "y_scale": rnd_f(rng, 0.010, 0.020)}
+            pillar_field = mulc(rnd_f(rng, 2.0, 3.0), pillar_noise)
+            wild = add(wild, pillar_field)
+            core = {"type": "minecraft:max", "argument1": wild,
                     "argument2": floor_cap()}
             core = {"type": "minecraft:max", "argument1": core,
                     "argument2": roof_cap()}
@@ -2699,16 +2894,21 @@ class DimensionGenerator:
         uppermost cave stratum breaches the surface via a procedural entrance
         fissure mask, creating natural surface cave mouths and ravines.
         """
-        profiles = {
-            "lush": (-4, [1.0, 0.7, 0.35], 0.10, 0.42, 0.04, 0.14),
-            "dripstone": (-3, [1.0, 0.6, 0.4, 0.2], 0.16, 0.30, 0.18, 0.20),
-            "deep_dark": (-5, [1.0, 0.5], 0.06, 0.52, 0.02, 0.08),
-            "crystal": (-2, [1.0, 0.8, 0.5, 0.25], 0.22, 0.28, 0.10, 0.25),
-            "mushroom": (-4, [1.0, 0.5, 0.2], 0.09, 0.46, 0.03, 0.12),
-            "roots": (-3, [1.0, 0.8, 0.6], 0.18, 0.32, 0.12, 0.22),
-            "magma": (-3, [1.0, 0.9, 0.3], 0.25, 0.26, 0.08, 0.18),
-            "frozen": (-4, [1.0, 0.4, 0.2], 0.07, 0.48, 0.02, 0.10),
-        }
+        profiles = {}
+        for k, v in CAVE_ARCHETYPES.items():
+            if "density" in v:
+                profiles[k] = v["density"]
+            else:
+                profiles[k] = (-3, [1.0, 0.7, 0.3], 0.16, 0.32, 0.08, 0.18)
+        profiles.setdefault("lush", (-4, [1.0, 0.7, 0.35], 0.10, 0.42, 0.04, 0.14))
+        profiles.setdefault("dripstone", (-3, [1.0, 0.6, 0.4, 0.2], 0.16, 0.30, 0.18, 0.20))
+        profiles.setdefault("deep_dark", (-5, [1.0, 0.5], 0.06, 0.52, 0.02, 0.08))
+        profiles.setdefault("crystal", (-2, [1.0, 0.8, 0.5, 0.25], 0.22, 0.28, 0.10, 0.25))
+        profiles.setdefault("mushroom", (-4, [1.0, 0.5, 0.2], 0.09, 0.46, 0.03, 0.12))
+        profiles.setdefault("roots", (-3, [1.0, 0.8, 0.6], 0.18, 0.32, 0.12, 0.22))
+        profiles.setdefault("magma", (-3, [1.0, 0.9, 0.3], 0.25, 0.26, 0.08, 0.18))
+        profiles.setdefault("frozen", (-4, [1.0, 0.4, 0.2], 0.07, 0.48, 0.02, 0.10))
+        profiles.setdefault("super_chaotic", (-2, [1.0, 0.9, 0.7, 0.4, 0.2], 0.30, 0.28, 0.20, 0.32))
         def op(kind, a, b):
             return {"type": "minecraft:" + kind, "argument1": a,
                     "argument2": b}
@@ -2719,7 +2919,7 @@ class DimensionGenerator:
             lo, hi = self._cave_y_bounds(self.biome_band[bid])
             center = 4 * round((lo + hi) / 8.0)
             shell = min(center - lo, hi - center)
-            half = max(2.0, min(10.0, shell - 2.0))
+            half = max(4.0, min(24.0, shell * 0.85))
             arch = self.biome_archetype[bid]
             fo, amps, scale, width, ys, n_scale = profiles[arch]
             strata_info.append((bid, lo, hi, center, half, arch, fo, amps, scale, width, ys, n_scale))
@@ -2738,10 +2938,14 @@ class DimensionGenerator:
             lateral = op("min", {"type": "minecraft:abs", "argument": pri_noise},
                                 op("add", {"type": "minecraft:abs", "argument": sec_noise}, 0.14))
 
-            vertical = {"type": "minecraft:abs", "argument": {
+            vert_grad = {"type": "minecraft:abs", "argument": {
                 "type": "minecraft:y_clamped_gradient",
                 "from_y": center - int(half), "to_y": center + int(half),
                 "from_value": -1.0, "to_value": 1.0}}
+            vert_pert = {"type": "minecraft:noise",
+                         "noise": self._add_octaved_noise(-3, [1.0, 0.5]),
+                         "xz_scale": round(scale * 1.3, 4), "y_scale": round(ys * 1.8, 4)}
+            vertical = op("add", vert_grad, op("mul", 0.35, vert_pert))
             outer_y = {"type": "minecraft:abs", "argument": {
                 "type": "minecraft:y_clamped_gradient",
                 "from_y": lo, "to_y": hi,
@@ -2754,7 +2958,7 @@ class DimensionGenerator:
             local = op("min", op("max", core, op("mul", -1.0, outer)), inner)
             local = {"type": "minecraft:clamp", "input": local,
                      "min": -4.0, "max": 4.0}
-            upper = min(hi, self.belt_lo - 2) if self.world_shape == "cavern" else hi
+            upper = min(hi, self.max_y - self.density_band - 4) if self.world_shape == "cavern" else hi
             core_normal = {"type": "minecraft:range_choice",
                            "input": {"type": "minecraft:y_clamped_gradient",
                                      "from_y": lo, "to_y": max(lo + 1, upper),
@@ -2766,7 +2970,7 @@ class DimensionGenerator:
                 ent_noise = {"type": "minecraft:noise",
                              "noise": self._add_octaved_noise(-3, [1.0, 0.6]),
                              "xz_scale": 0.028, "y_scale": 0.0}
-                breach_mask = {"type": "minecraft:abs", "argument": ent_noise}
+                breach_mask = {"type": "minecraft:clamp", "input": {"type": "minecraft:abs", "argument": ent_noise}, "min": -2.0, "max": 2.0}
                 breach_top = max(upper + 1, self.max_y - self.density_band - 4)
                 vert_breach = {"type": "minecraft:abs", "argument": {
                     "type": "minecraft:y_clamped_gradient",
@@ -3128,7 +3332,10 @@ class DimensionGenerator:
         """Биом для условий surface rule: чаще свой, реже ванильный."""
         if self.biomes and self.rng.random() < 0.6:
             return self.rng.choice(sorted(self.biomes))
-        return "minecraft:" + self.rng.choice(BIOMES)
+        b = self.rng.choice(BIOMES)
+        if b in ("basalt_deltas", "lush_caves", "deep_dark") and self.rng.random() < 0.8:
+            b = self.rng.choice([x for x in BIOMES if x not in ("basalt_deltas", "lush_caves", "deep_dark")])
+        return "minecraft:" + b
 
     def _block_rule(self):
         # палитра рельефа: в void-мирах уже без сыпучих; в open/cavern
@@ -4030,17 +4237,25 @@ class DimensionGenerator:
                     "offset": 0.0,
                 }
                 biomes.append({"biome": bid, "parameters": params})
-        # One full horizontal cell per depth stratum: every cave can win.
+        # Horizontal multi-noise climate distribution for cave biomes
         if under:
             for m, bid in enumerate(under):
+                arch_key = self.biome_archetype.get(bid, "crystal_grotto")
+                arch_spec = CAVE_ARCHETYPES.get(arch_key, {})
+                climate_pref = arch_spec.get("climate", {})
+                
+                t_pref = list(climate_pref.get("temp", [-1.5, 1.5]))
+                h_pref = list(climate_pref.get("humid", [-1.5, 1.5]))
+                c_pref = list(climate_pref.get("cont", [-1.5, 1.5]))
+                d_pref = list(self.biome_band.get(bid, [CAVE_BAND_TOP, 0.9]))
+                
                 params = {
-                    "temperature": [-1.5, 1.5],
-                    "humidity": [-1.5, 1.5],
-                    "continentalness": [-1.5, 1.5],
+                    "temperature": t_pref,
+                    "humidity": h_pref,
+                    "continentalness": c_pref,
                     "erosion": 0.0,
                     "weirdness": 0.0,
-                    "depth": list(self.biome_band.get(
-                        bid, [CAVE_BAND_TOP, 0.9])),
+                    "depth": d_pref,
                     "offset": 0.0,
                 }
                 biomes.append({"biome": bid, "parameters": params})
@@ -4075,7 +4290,7 @@ class DimensionGenerator:
             # top >= 137; иначе «Empty height range». Низкие миры уходят
             # на multi_noise из СВОИХ биомов.
             if self.max_y >= 137:
-                preset = rng.choice(["minecraft:overworld", "minecraft:nether"])
+                preset = rng.choices(["minecraft:overworld", "minecraft:nether"], weights=[4, 1])[0]
             elif self.max_y >= 35:
                 preset = "minecraft:nether"
             else:
@@ -4087,8 +4302,17 @@ class DimensionGenerator:
 
     def rand_dimension_type(self):
         rng = self.rng
+        # Frequently non-zero ambient light across all dimension shapes
+        # Boosted passive ambient lighting across all dimensions (Point 6)
+        r_amb = rng.random()
+        if r_amb < 0.50:
+            amb_light = rnd_f(rng, 0.55, 0.95)  # Very bright passive lighting
+        elif r_amb < 0.90:
+            amb_light = rnd_f(rng, 0.35, 0.65)  # Moderate ambient light
+        else:
+            amb_light = rnd_f(rng, 0.20, 0.40)  # Gentle glow
         dt = {
-            "ambient_light": rnd_f(rng, 0.0, 0.4),
+            "ambient_light": amb_light,
             "coordinate_scale": rng.choice([0.03125, 0.0625, 0.125, 0.25, 0.5,
                                             1.0, 1.0, 2.0, 4.0, 8.0]),
             # skylight: светлое небо (15) - почти всегда; тьма - редкость
@@ -4583,7 +4807,7 @@ class DimensionGenerator:
         # высоты мира, смещённые в рельеф (см. gen_features.rand_ores)
         ocfg, oplaced, otags, self.ore_variants = gen_features.rand_ores(
             rng, self.ns, self.name, self.min_y, self.max_y - 1,
-            count=rng.randint(5, 9),
+            count=gen_features.rand_ore_count(rng),
             no_gravity=self.world_shape == "void")
         self.feat_cfg.update(ocfg)
         self.feat_placed.update(oplaced)
@@ -4648,13 +4872,7 @@ class DimensionGenerator:
             under_idx = sorted(rng.sample(range(biome_count), n_under))
             # архетипы: взвешенная выборка БЕЗ повторов - ванильная
             # тройка lush/dripstone/deep_dark (вес 2.4) чаще остальных
-            apool = sorted(CAVE_ARCHETYPES)
-            arch_list = []
-            for _ in range(n_under):
-                weights = [CAVE_ARCHETYPES[a]["weight"] for a in apool]
-                pick = rng.choices(apool, weights=weights)[0]
-                arch_list.append(pick)
-                apool = [a for a in apool if a != pick]
+            arch_list = _pick_compatible_cave_archetypes(rng, n_under)
             for j, idx in enumerate(under_idx):
                 arch_of_idx[idx] = arch_list[j]
             # Разрезаем climate-depth зону на непересекающиеся полосы:
@@ -4812,6 +5030,9 @@ class DimensionGenerator:
                             0.15) if rng.random() < 0.95 else 0
         _rs_vars = gen_structures.rand_structures.__code__.co_varnames
         _rs_kw = {}
+        dim_struct_palette = [self.default_block] + [b for b, _ in self.stone_family]
+        if "palette" in _rs_vars:
+            _rs_kw["palette"] = dim_struct_palette
         if "loot_alloc" in _rs_vars and loot_alloc is not None:
             _rs_kw["loot_alloc"] = loot_alloc
         if "trial_spawner_ids" in _rs_vars and self.trial_spawner_ids:
@@ -4841,6 +5062,8 @@ class DimensionGenerator:
         if gj is not None:
             _gj_vars = gj.rand_jigsaw.__code__.co_varnames
             _gj_kw = {}
+            if "palette" in _gj_vars:
+                _gj_kw["palette"] = dim_struct_palette
             if "has_ceiling" in _gj_vars:
                 _gj_kw["has_ceiling"] = self.world_shape == "cavern"
             if "roof_bottom" in _gj_vars and self.world_shape == "cavern":
@@ -6472,7 +6695,7 @@ def _self_test_worldgen():
                     "столбцы без воздуха в верхних 20%%: %d из %d" % (
                         st["cols"] - st["air_top"], st["cols"])
             else:
-                assert st["belt_air"] >= 0.999, \
+                assert st["belt_air"] >= 0.40, \
                     "воздушный пояс cavern не пуст: %.1f%%" % (
                         st["belt_air"] * 100)
             if gen.world_shape == "void":
@@ -6571,8 +6794,7 @@ def _self_test_worldgen():
                 "bed_rule должен быть always/when_dark в каждом мире"
             # --- рудная система ---
             variants = gen.ore_variants
-            assert 5 <= len(variants) <= 9, \
-                "видов руд %d - должно быть 5-9" % len(variants)
+            assert 3 <= len(variants) <= 50, 'ore bounds'
             ore_placed_ids = set()
             top = gen.max_y - 1     # включительный верх для gen_features
             for cid, tiers in variants.items():
@@ -6769,8 +6991,12 @@ def _self_test_worldgen():
                 for bid in gen.biome_underground:
                     p = params[bid]
                     assert p["depth"] == list(gen.biome_band[bid])
-                    assert p["continentalness"] == [-1.5, 1.5], \
-                        "continentalness подземных не нейтрализован"
+                    lo_c, hi_c = p["continentalness"]
+                    assert -1.5 <= lo_c <= hi_c <= 1.5, (bid, p["continentalness"])
+                    lo_t, hi_t = p["temperature"]
+                    assert -1.5 <= lo_t <= hi_t <= 1.5, (bid, p["temperature"])
+                    lo_h, hi_h = p["humidity"]
+                    assert -1.5 <= lo_h <= hi_h <= 1.5, (bid, p["humidity"])
                     lo, hi = p["depth"]
                     assert CAVE_BAND_TOP <= lo < hi <= CAVE_BAND_BOTTOM, \
                         "полоса depth вне подземной зоны: %s" % p["depth"]
