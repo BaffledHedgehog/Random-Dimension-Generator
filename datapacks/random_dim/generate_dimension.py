@@ -804,29 +804,36 @@ def _arch_feature_types(arch):
 
 def _pick_compatible_cave_archetypes(rng, n_under):
     include_chaotic = (rng.random() < 0.12)
-    apool = list(CAVE_ARCHETYPES.keys())
-    rng.shuffle(apool)
-    chosen = []
-    
-    if include_chaotic:
-        chaotic_arch = _build_super_chaotic_archetype(rng)
-        CAVE_ARCHETYPES["super_chaotic"] = chaotic_arch
-        chosen.append("super_chaotic")
-        
-    for arch_key in apool:
+    apool = [k for k in CAVE_ARCHETYPES.keys() if k != "super_chaotic"]
+
+    def find_compatible(chosen, candidates):
         if len(chosen) >= n_under:
-            break
-        types = _arch_feature_types(CAVE_ARCHETYPES[arch_key])
-        if all(len(types & _arch_feature_types(CAVE_ARCHETYPES[c])) <= 1 and types != _arch_feature_types(CAVE_ARCHETYPES[c]) for c in chosen):
-            chosen.append(arch_key)
-            
-    if len(chosen) < n_under:
-        for arch_key in apool:
-            if arch_key not in chosen:
-                chosen.append(arch_key)
-                if len(chosen) >= n_under:
-                    break
-    return chosen[:n_under]
+            return chosen
+        for i, arch_key in enumerate(candidates):
+            types = _arch_feature_types(CAVE_ARCHETYPES[arch_key])
+            floor = CAVE_ARCHETYPES[arch_key]["floor"][0]
+            if all(len(types & _arch_feature_types(CAVE_ARCHETYPES[c])) <= 1 and
+                   types != _arch_feature_types(CAVE_ARCHETYPES[c]) and
+                   floor != CAVE_ARCHETYPES[c]["floor"][0]
+                   for c in chosen):
+                res = find_compatible(chosen + [arch_key], candidates[i+1:])
+                if res:
+                    return res
+        return None
+
+    for _ in range(50):
+        cand = list(apool)
+        rng.shuffle(cand)
+        initial = []
+        if include_chaotic:
+            chaotic_arch = _build_super_chaotic_archetype(rng)
+            CAVE_ARCHETYPES["super_chaotic"] = chaotic_arch
+            initial.append("super_chaotic")
+        res = find_compatible(initial, cand)
+        if res and len(res) >= n_under:
+            return res[:n_under]
+    return apool[:n_under]
+
 
 for _ak, _av in CAVE_ARCHETYPES.items():
     assert _av["floor"][0] not in BE_BLOCK_IDS | FALLING_BLOCK_IDS, _ak
@@ -1540,7 +1547,7 @@ _TERRAIN_CHARS = ("flat", "rolling", "mountainous", "chaotic", "terraced",
                   "spiky", "dunes", "canyon", "craters", "strata")
 _PERT_FLAVORS = ("normal", "spire", "strata", "ridge", "wave")
 
-TERRAIN_PRESETS = [
+OPEN_PRESETS = [
     # --- ИНТЕРЕСНЫЕ (~75%): выразительные, узнаваемые архетипы ---
     dict(name="pure_chaos", w=2.0, cat="interesting",
          desc="Полный хаос: непредсказуемая геометрия, мосты, разрывы, вихри",
@@ -1963,10 +1970,425 @@ TERRAIN_PRESETS = [
 ]
 
 
-def _pick_terrain_preset(rng):
-    """Взвешенный выбор пресета рельефа (веса - поле w)."""
+
+# ---------------------------------------------------------------------------
+# Пресеты подземных пещерных миров (CAVERN_PRESETS)
+# Пару десятков разнообразных пресетов: соборы, черви, губка, сталактиты,
+# террасы, жеоды, разломы, опрокинутые горы, колоннады, супер-хаос и др.
+# ---------------------------------------------------------------------------
+CAVERN_PRESETS = [
+    dict(name="cavern_super_chaotic", w=1.4, cat="interesting",
+         desc="Супер-хаотические пещеры: глубокие искажения координат, кубы, квадраты и фолдинги",
+         character="chaotic",
+         b=(0.50, 0.78), p_frac=(0.90, 1.00), layers=(4, 6),
+         cap_hi=(0.32, 0.45),
+         flavors={"normal": 4, "spire": 3, "ridge": 3, "wave": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.85, spline_p=0.7,
+         cavern_style="super_chaotic"),
+    dict(name="cavern_cathedrals", w=1.3, cat="interesting",
+         desc="Пещерные соборы: колоссальные сводчатые залы с мощными аркбутанами",
+         character="mountainous",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 5, "wave": 4, "normal": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         cavern_style="cathedrals"),
+    dict(name="cavern_noodle_tunnels", w=1.3, cat="interesting",
+         desc="Трубчатый лабиринт: трехмерные извивающиеся туннели-черви",
+         character="canyon",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 6, "spire": 3, "wave": 2},
+         env="decay", ops=(3, 2, 5), mix_p=0.50, spline_p=0.8,
+         cavern_style="noodle_tunnels"),
+    dict(name="cavern_sponge_matrix", w=1.2, cat="interesting",
+         desc="Губчатая матрица: пористая швейцарская пещерная губка",
+         character="chaotic",
+         b=(0.45, 0.75), p_frac=(0.95, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"normal": 4, "ridge": 4, "spire": 3},
+         env="decay", ops=(3, 3, 4), mix_p=0.60, spline_p=0.7,
+         cavern_style="sponge"),
+    dict(name="cavern_stalactite_grotto", w=1.3, cat="interesting",
+         desc="Сталактитовый грот: гигантские каменные иглы и сталактиты сверху донизу",
+         character="spiky",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"spire": 8, "ridge": 3, "normal": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.40, spline_p=0.8,
+         cavern_style="stalactites"),
+    dict(name="cavern_terraced_grottos", w=1.2, cat="interesting",
+         desc="Террасированные гроты: ступенчатые подземные уступы и платформы",
+         character="terraced", steps=(4, 8),
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.42),
+         flavors={"strata": 6, "spire": 3, "normal": 2},
+         env="decay", ops=(5, 2, 4), mix_p=0.35, spline_p=0.8,
+         cavern_style="terraces"),
+    dict(name="cavern_crystal_geodes", w=1.2, cat="interesting",
+         desc="Сферические жеоды: сферические полости и круглые залы",
+         character="craters",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"wave": 5, "spire": 3, "normal": 3},
+         env="peak", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         cavern_style="geodes"),
+    dict(name="cavern_magma_trenches", w=1.2, cat="interesting",
+         desc="Магматические разломы: отвесные трещины и глубокие рифты в полу",
+         character="canyon",
+         b=(0.60, 0.90), p_frac=(0.80, 1.00), layers=(2, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 7, "normal": 3, "spire": 2},
+         env="decay", ops=(4, 1, 5), mix_p=0.40, spline_p=0.9,
+         cavern_style="trenches"),
+    dict(name="cavern_inverted_peaks", w=1.2, cat="interesting",
+         desc="Опрокинутые горы: свисающие с потолка горные хребты",
+         character="mountainous",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"ridge": 5, "spire": 4, "wave": 3},
+         env="decay", ops=(4, 2, 4), mix_p=0.40, spline_p=0.8,
+         cavern_style="inverted_peaks"),
+    dict(name="cavern_pillar_forest", w=1.2, cat="interesting",
+         desc="Лес колонн: густая сеть вертикальных монолитных столбов",
+         character="spiky",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"spire": 8, "strata": 3, "ridge": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.40, spline_p=0.7,
+         cavern_style="pillar_forest"),
+    dict(name="cavern_winding_chasm", w=1.2, cat="interesting",
+         desc="Извилистые ущелья: непрерывные змеевидные каньоны во тьме",
+         character="canyon",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 6, "wave": 3, "normal": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         cavern_style="winding_chasm"),
+    dict(name="cavern_layered_strata", w=1.2, cat="interesting",
+         desc="Слоистые пласты: параллельные горизонтальные каменные плиты",
+         character="strata",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.45),
+         flavors={"strata": 7, "spire": 3, "wave": 2},
+         env="decay", ops=(5, 2, 4), mix_p=0.45, spline_p=0.8,
+         cavern_style="layered_strata"),
+    dict(name="cavern_subterranean_dunes", w=1.2, cat="interesting",
+         desc="Подземные дюны: плавные волнистые холмы из монолитного камня",
+         character="dunes",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"wave": 7, "normal": 3, "ridge": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.35, spline_p=0.8,
+         cavern_style="dunes"),
+    dict(name="cavern_bubble_chambers", w=1.2, cat="interesting",
+         desc="Пузырчатые залы: перекрещивающиеся округлые пустоты",
+         character="craters",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"wave": 5, "normal": 4, "spire": 2},
+         env="peak", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         cavern_style="bubbles"),
+    dict(name="cavern_fractal_crevasses", w=1.2, cat="interesting",
+         desc="Фрактальные расселины: острые ветвящиеся трещины с фолдингом",
+         character="chaotic",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"ridge": 6, "spire": 4, "normal": 2},
+         env="decay", ops=(3, 3, 4), mix_p=0.55, spline_p=0.8,
+         cavern_style="fractal_crevasses"),
+    dict(name="cavern_abyssal_sinkholes", w=1.2, cat="interesting",
+         desc="Бездны-провалы: гигантские вертикальные колодцы сквозь уровни",
+         character="canyon",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 6, "normal": 3, "wave": 2},
+         env="decay", ops=(4, 1, 5), mix_p=0.40, spline_p=0.8,
+         cavern_style="sinkholes"),
+    dict(name="cavern_ribbed_arches", w=1.2, cat="interesting",
+         desc="Ребристые своды: периодические костяные арки исполинского скелета",
+         character="rolling",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"wave": 6, "ridge": 4, "normal": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.40, spline_p=0.8,
+         cavern_style="ribbed_arches"),
+    dict(name="cavern_underground_islands", w=1.2, cat="interesting",
+         desc="Подземные острова: парящие глыбы и скалы в центре гигантской полости",
+         character="chaotic",
+         b=(0.45, 0.75), p_frac=(0.90, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"spire": 5, "strata": 4, "normal": 3},
+         env="decay", ops=(4, 2, 4), mix_p=0.50, spline_p=0.7,
+         cavern_style="underground_islands"),
+    dict(name="cavern_cyclopean_vaults", w=1.2, cat="moderate",
+         desc="Циклопические склепы: массивные ступенчатые геометрические блоки",
+         character="terraced", steps=(3, 6),
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.42),
+         flavors={"strata": 6, "ridge": 3, "normal": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.35, spline_p=0.8,
+         cavern_style="cyclopean"),
+    dict(name="cavern_labyrinth", w=1.2, cat="moderate",
+         desc="Пещерный лабиринт: ортогональная сетка ходов и залов",
+         character="canyon",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 6, "normal": 3, "spire": 2},
+         env="decay", ops=(3, 2, 5), mix_p=0.45, spline_p=0.8,
+         cavern_style="labyrinth"),
+    dict(name="cavern_mushroom_grottos", w=1.2, cat="moderate",
+         desc="Грибные гроты: широкие дисковидные ярусы на тонких каменных ножках",
+         character="strata",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.44),
+         flavors={"strata": 6, "spire": 4, "normal": 2},
+         env="decay", ops=(5, 2, 4), mix_p=0.40, spline_p=0.8,
+         cavern_style="mushroom"),
+    dict(name="cavern_dripstone_colonnade", w=1.2, cat="moderate",
+         desc="Колоннады капельников: величественные залы с каннелированными колоннами",
+         character="spiky",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"spire": 7, "ridge": 3, "normal": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.40, spline_p=0.8,
+         cavern_style="colonnade"),
+    dict(name="cavern_smooth_plains", w=1.0, cat="boring",
+         desc="Подземные равнины: широкое плоское подземное пространство",
+         character="rolling",
+         b=(0.60, 0.85), p_frac=(0.75, 0.95), layers=(2, 3),
+         cap_hi=(0.28, 0.42),
+         flavors={"normal": 5, "wave": 4, "strata": 2},
+         env="decay", ops=(6, 2, 3), mix_p=0.25, spline_p=0.8,
+         cavern_style="smooth"),
+    dict(name="cavern_quiet_hollow", w=1.0, cat="boring",
+         desc="Тихий полый зал: спокойная подземная полость без резких рельефов",
+         character="flat",
+         b=(0.65, 0.90), p_frac=(0.65, 0.85), layers=(1, 3),
+         cap_hi=(0.26, 0.40),
+         flavors={"normal": 8, "wave": 2},
+         env="decay", ops=(7, 1, 2), mix_p=0.10, spline_p=0.8,
+         cavern_style="quiet")
+]
+
+# ---------------------------------------------------------------------------
+# Пресеты парящих островов (VOID_PRESETS)
+# Пару десятков разнообразных пресетов: кольца, иглы, мегалиты, пена,
+# цепи, конусы, осколки, мосты, диски, вихри, атоллы, лабиринты и супер-хаос
+# ---------------------------------------------------------------------------
+VOID_PRESETS = [
+    dict(name="void_super_chaotic", w=1.4, cat="interesting",
+         desc="Супер-хаотические острова: глубоко искаженные координаты, кубы и фолдинги",
+         character="chaotic",
+         b=(0.45, 0.75), p_frac=(0.95, 1.00), layers=(4, 6),
+         cap_hi=(0.32, 0.45),
+         flavors={"normal": 4, "spire": 3, "ridge": 3, "wave": 3},
+         env="decay", ops=(4, 2, 4), mix_p=0.85, spline_p=0.7,
+         void_cut=(0.30, 0.85), void_style="super_chaotic"),
+    dict(name="void_sky_rings", w=1.3, cat="interesting",
+         desc="Небесные кольца: тороидальные парящие каменные круги и дуги",
+         character="chaotic",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"wave": 5, "ridge": 4, "spire": 3},
+         env="decay", ops=(4, 2, 4), mix_p=0.50, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="sky_rings"),
+    dict(name="void_crystal_needles", w=1.3, cat="interesting",
+         desc="Кристаллические иглы: сверхтонкие вертикальные парящие пики",
+         character="spiky",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"spire": 8, "ridge": 3, "normal": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.40, spline_p=0.7,
+         void_cut=(0.38, 0.90), void_style="needles"),
+    dict(name="void_floating_megaliths", w=1.2, cat="interesting",
+         desc="Парящие мегалиты: наклонные массивные каменные плиты",
+         character="strata",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.45),
+         flavors={"strata": 7, "spire": 4, "wave": 2},
+         env="decay", ops=(5, 2, 4), mix_p=0.45, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="megaliths"),
+    dict(name="void_cellular_foam", w=1.2, cat="interesting",
+         desc="Клеточная пена: ячеистые пузырчатые парящие острова",
+         character="chaotic",
+         b=(0.45, 0.75), p_frac=(0.95, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"normal": 4, "ridge": 4, "spire": 3},
+         env="decay", ops=(3, 3, 4), mix_p=0.60, spline_p=0.7,
+         void_cut=(0.30, 0.80), void_style="cellular_foam"),
+    dict(name="void_archipelago_chain", w=1.2, cat="interesting",
+         desc="Островная цепь: изгибающаяся цепочка ступенчатых островков",
+         character="rolling",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"wave": 5, "normal": 4, "spire": 2},
+         env="decay", ops=(5, 2, 3), mix_p=0.35, spline_p=0.8,
+         void_cut=(0.40, 0.85), void_style="chain"),
+    dict(name="void_inverted_cones", w=1.3, cat="interesting",
+         desc="Опрокинутые конусы: классические острова с плоским верхом и острым низом",
+         character="mountainous",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"spire": 6, "ridge": 4, "normal": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.40, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="cones"),
+    dict(name="void_shattered_shards", w=1.2, cat="interesting",
+         desc="Осколки пустоты: мириады острых летящих каменных осколков",
+         character="spiky",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"spire": 7, "ridge": 3, "normal": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.35, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="shards"),
+    dict(name="void_sky_bridges", w=1.2, cat="interesting",
+         desc="Небесные мосты: узкие извилистые каменные арки и переправы",
+         character="canyon",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 6, "wave": 3, "spire": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         void_cut=(0.35, 0.80), void_style="bridges"),
+    dict(name="void_planar_discs", w=1.2, cat="interesting",
+         desc="Плоские диски: горизонтальные парящие плиты-кувшинки",
+         character="strata",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.45),
+         flavors={"strata": 8, "wave": 2, "normal": 2},
+         env="decay", ops=(5, 2, 4), mix_p=0.40, spline_p=0.8,
+         void_cut=(0.38, 0.85), void_style="discs"),
+    dict(name="void_gravity_wells", w=1.2, cat="interesting",
+         desc="Гравитационные колодцы: спиральные вихри парящей материи",
+         character="chaotic",
+         b=(0.50, 0.80), p_frac=(0.90, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"wave": 5, "spire": 4, "strata": 3},
+         env="decay", ops=(3, 3, 4), mix_p=0.60, spline_p=0.7,
+         void_cut=(0.35, 0.85), void_style="gravity_wells"),
+    dict(name="void_floating_atolls", w=1.2, cat="interesting",
+         desc="Парящие атоллы: кольцевые рифовые острова с пустотой в центре",
+         character="craters",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"wave": 6, "ridge": 3, "normal": 2},
+         env="peak", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="atolls"),
+    dict(name="void_drift_boulders", w=1.2, cat="interesting",
+         desc="Дрейфующие валуны: массивные астероидоподобные каменные глыбы",
+         character="rolling",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"normal": 5, "spire": 3, "wave": 3},
+         env="decay", ops=(4, 2, 4), mix_p=0.35, spline_p=0.8,
+         void_cut=(0.40, 0.85), void_style="boulders"),
+    dict(name="void_hollow_spheres", w=1.2, cat="interesting",
+         desc="Полые сферы: сферические парящие оболочки с внутренними гротами",
+         character="craters",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"wave": 5, "ridge": 4, "normal": 3},
+         env="peak", ops=(4, 2, 4), mix_p=0.50, spline_p=0.8,
+         void_cut=(0.30, 0.80), void_style="hollow_spheres"),
+    dict(name="void_helix_spires", w=1.2, cat="interesting",
+         desc="Винтовые спирали: закрученные двойные спирали и штопоры",
+         character="spiky",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.32, 0.45),
+         flavors={"spire": 7, "wave": 3, "ridge": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.45, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="helix"),
+    dict(name="void_ribbon_canopy", w=1.2, cat="interesting",
+         desc="Ленточные полотна: волнистые парящие ленты каменной ткани",
+         character="dunes",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"wave": 7, "strata": 3, "normal": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.40, spline_p=0.8,
+         void_cut=(0.35, 0.80), void_style="ribbons"),
+    dict(name="void_fractal_archipelago", w=1.2, cat="interesting",
+         desc="Фрактальный архипелаг: кластеры крупных островов со спутниками",
+         character="chaotic",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"spire": 4, "ridge": 4, "normal": 3},
+         env="decay", ops=(3, 3, 4), mix_p=0.50, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="fractal"),
+    dict(name="void_stepped_mesas", w=1.2, cat="interesting",
+         desc="Ступенчатые месы: многоярусные парящие плато с резкими уступами",
+         character="terraced", steps=(4, 8),
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.28, 0.42),
+         flavors={"strata": 6, "ridge": 4, "normal": 2},
+         env="decay", ops=(5, 2, 4), mix_p=0.35, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="mesas"),
+    dict(name="void_floating_craters", w=1.2, cat="moderate",
+         desc="Парящие кратеры: чашеобразные острова с приподнятыми валами",
+         character="craters",
+         b=(0.55, 0.85), p_frac=(0.80, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.45),
+         flavors={"wave": 5, "ridge": 4, "normal": 2},
+         env="peak", ops=(4, 2, 4), mix_p=0.40, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="craters"),
+    dict(name="void_basalt_columns", w=1.2, cat="moderate",
+         desc="Базальтовые столбы: парящие пучки шестигранных призм",
+         character="spiky",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(2, 4),
+         cap_hi=(0.30, 0.44),
+         flavors={"spire": 7, "strata": 3, "ridge": 2},
+         env="decay", ops=(5, 1, 4), mix_p=0.40, spline_p=0.8,
+         void_cut=(0.38, 0.85), void_style="basalt"),
+    dict(name="void_tendrils", w=1.2, cat="moderate",
+         desc="Щупальца пустоты: вытянутые ветвящиеся каменные нити",
+         character="canyon",
+         b=(0.55, 0.85), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 6, "spire": 4, "normal": 2},
+         env="decay", ops=(4, 2, 4), mix_p=0.45, spline_p=0.8,
+         void_cut=(0.35, 0.80), void_style="tendrils"),
+    dict(name="void_floating_labyrinth", w=1.2, cat="moderate",
+         desc="Парящий лабиринт: трехмерная решетка подвесных мостков",
+         character="chaotic",
+         b=(0.50, 0.80), p_frac=(0.85, 1.00), layers=(3, 5),
+         cap_hi=(0.30, 0.45),
+         flavors={"ridge": 5, "strata": 4, "normal": 3},
+         env="decay", ops=(3, 3, 4), mix_p=0.55, spline_p=0.8,
+         void_cut=(0.35, 0.85), void_style="labyrinth"),
+    dict(name="void_starlit_plateaus", w=1.0, cat="boring",
+         desc="Звездные плато: широкие плоские парящие равнины с обрывами",
+         character="rolling",
+         b=(0.60, 0.85), p_frac=(0.75, 0.95), layers=(2, 3),
+         cap_hi=(0.28, 0.42),
+         flavors={"normal": 5, "strata": 4, "wave": 2},
+         env="decay", ops=(6, 2, 3), mix_p=0.25, spline_p=0.8,
+         void_cut=(0.45, 0.85), void_style="plateaus"),
+    dict(name="void_tranquil_isles", w=1.0, cat="boring",
+         desc="Спокойные островки: редкие небольшие парящие холмы",
+         character="flat",
+         b=(0.65, 0.90), p_frac=(0.65, 0.85), layers=(1, 3),
+         cap_hi=(0.26, 0.40),
+         flavors={"normal": 8, "wave": 2},
+         env="decay", ops=(7, 1, 2), mix_p=0.10, spline_p=0.8,
+         void_cut=(0.50, 0.90), void_style="tranquil")
+]
+
+# Полный каталог пресетов (106 пресетов)
+TERRAIN_PRESETS = OPEN_PRESETS + CAVERN_PRESETS + VOID_PRESETS
+
+
+def _pick_terrain_preset(rng, shape=None):
+    """Взвешенный выбор пресета рельефа с учетом формы мира (open/cavern/void)."""
+    if shape == "cavern":
+        return rng.choices(CAVERN_PRESETS,
+                           weights=[p["w"] for p in CAVERN_PRESETS])[0]
+    elif shape == "void":
+        return rng.choices(VOID_PRESETS,
+                           weights=[p["w"] for p in VOID_PRESETS])[0]
+    elif shape == "open":
+        return rng.choices(OPEN_PRESETS,
+                           weights=[p["w"] for p in OPEN_PRESETS])[0]
     return rng.choices(TERRAIN_PRESETS,
                        weights=[p["w"] for p in TERRAIN_PRESETS])[0]
+
 
 
 def _validate_terrain_presets():
@@ -2398,6 +2820,165 @@ class DimensionGenerator:
 
     # ---------------- final_density ----------------
 
+    def _build_super_chaotic_density(self, shape):
+        """Супер-хаотический пресет: глубоко вложенные математические преобразования
+        плотности через кубы, квадраты, модули, фолдинги, многооктавный 3D шум и
+        искажения координат (shifted_noise), разбитые на отдельные файлы DF
+        через new_df_file во избежание переполнения лимитов рекурсии JSON."""
+        rng = self.rng
+        def cl(x, lo, hi):
+            return {"type": "minecraft:clamp", "input": x, "min": round(lo, 3), "max": round(hi, 3)}
+        def add(a, b):
+            return {"type": "minecraft:add", "argument1": a, "argument2": b}
+        def mulc(c, x):
+            return {"type": "minecraft:mul", "argument1": round(c, 3), "argument2": x}
+
+        warp_scale = 0.02 if shape == "cavern" else 0.025
+        warp_x = self.new_df_file(mulc(18.0, {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.6, 0.3]), "xz_scale": warp_scale, "y_scale": warp_scale}))
+        warp_y = self.new_df_file(mulc(14.0, {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [0.8, 0.5, 0.2]), "xz_scale": warp_scale * 1.2, "y_scale": warp_scale * 1.2}))
+        warp_z = self.new_df_file(mulc(18.0, {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.6, 0.3]), "xz_scale": warp_scale, "y_scale": warp_scale}))
+
+        sn_nid = self._add_octaved_noise(-4, [1.2, 0.8, 0.5, 0.3, 0.15])
+        sn = {"type": "minecraft:shifted_noise", "noise": sn_nid, "xz_scale": 0.035, "y_scale": 0.035, "shift_x": warp_x, "shift_y": warp_y, "shift_z": warp_z}
+        st1 = self.new_df_file(cl(sn, -2.8, 2.8))
+
+        hf_nid = self._add_octaved_noise(-2, [1.0, 0.7, 0.35])
+        hf = {"type": "minecraft:noise", "noise": hf_nid, "xz_scale": 0.07, "y_scale": 0.07}
+        abs_diff = add({"type": "minecraft:abs", "argument": st1}, mulc(-1.0, {"type": "minecraft:abs", "argument": hf}))
+        st2 = self.new_df_file(cl(abs_diff, -2.5, 2.5))
+
+        cb = mulc(0.4, {"type": "minecraft:cube", "argument": st1})
+        sq_diff = mulc(0.35, add({"type": "minecraft:square", "argument": st1}, mulc(-1.0, {"type": "minecraft:square", "argument": hf})))
+        st3 = self.new_df_file(cl(add(cb, sq_diff), -2.5, 2.5))
+
+        composite = cl(add(mulc(1.1, st2), mulc(0.9, st3)), -2.8, 2.8)
+        return self.new_df_file(composite)
+
+    def _build_cavern_preset_density(self, pre):
+        """Генератор характерной плотности пещерного мира в зависимости от пресета:
+        соборы, трубчатые черви, губка, сталактиты, террасы, жеоды, разломы,
+        опрокинутые горы, колоннады, супер-хаос и т.д."""
+        rng = self.rng
+        style = pre.get("cavern_style", "pillars")
+
+        def cl(x, lo, hi):
+            return {"type": "minecraft:clamp", "input": x, "min": round(lo, 3), "max": round(hi, 3)}
+        def add(a, b):
+            return {"type": "minecraft:add", "argument1": a, "argument2": b}
+        def mulc(c, x):
+            return {"type": "minecraft:mul", "argument1": round(c, 3), "argument2": x}
+
+        if style == "super_chaotic":
+            return self._build_super_chaotic_density("cavern")
+        elif style == "cathedrals":
+            nid = self._add_octaved_noise(-4, [1.0, 0.7, 0.3])
+            return mulc(rnd_f(rng, 1.8, 2.4), {"type": "minecraft:noise", "noise": nid, "xz_scale": rnd_f(rng, 0.015, 0.028), "y_scale": rnd_f(rng, 0.006, 0.012)})
+        elif style == "noodle_tunnels":
+            n1 = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.8, 0.4]), "xz_scale": 0.045, "y_scale": 0.035}
+            n2 = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.8, 0.4]), "xz_scale": 0.045, "y_scale": 0.035}
+            sq_diff = add({"type": "minecraft:square", "argument": n1}, mulc(-1.0, {"type": "minecraft:square", "argument": n2}))
+            return mulc(1.6, cl(sq_diff, -2.0, 2.0))
+        elif style == "sponge":
+            n1 = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-2, [1.0, 0.7, 0.35]), "xz_scale": 0.08, "y_scale": 0.08}
+            n2 = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-2, [1.0, 0.7, 0.35]), "xz_scale": 0.08, "y_scale": 0.08}
+            abs_diff = add({"type": "minecraft:abs", "argument": n1}, mulc(-1.0, {"type": "minecraft:abs", "argument": n2}))
+            return mulc(1.7, cl(abs_diff, -2.0, 2.0))
+        elif style == "stalactites":
+            spikes = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.8, 0.4, 0.2]), "xz_scale": rnd_f(rng, 0.05, 0.08), "y_scale": rnd_f(rng, 0.006, 0.012)}
+            return mulc(rnd_f(rng, 1.9, 2.6), spikes)
+        elif style == "terraces":
+            strata = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.6, 0.3]), "xz_scale": rnd_f(rng, 0.02, 0.035), "y_scale": rnd_f(rng, 0.08, 0.16)}
+            return mulc(rnd_f(rng, 1.8, 2.5), strata)
+        elif style == "geodes":
+            n1 = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.3]), "xz_scale": 0.03, "y_scale": 0.025}
+            n2 = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.3]), "xz_scale": 0.03, "y_scale": 0.025}
+            diff = add({"type": "minecraft:square", "argument": n1}, mulc(-1.0, {"type": "minecraft:square", "argument": n2}))
+            return mulc(1.7, cl(diff, -2.0, 2.0))
+        elif style == "trenches":
+            ridge = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.4]), "xz_scale": 0.035, "y_scale": 0.015}
+            hf = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-2, [1.0, 0.5]), "xz_scale": 0.06, "y_scale": 0.03}
+            abs_diff = add({"type": "minecraft:abs", "argument": ridge}, mulc(-1.0, {"type": "minecraft:abs", "argument": hf}))
+            return mulc(1.6, cl(abs_diff, -2.0, 2.0))
+        elif style == "inverted_peaks":
+            peaks = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.8, 0.4]), "xz_scale": 0.03, "y_scale": 0.012}
+            return mulc(rnd_f(rng, 1.8, 2.5), peaks)
+        elif style == "pillar_forest":
+            forest = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-2, [1.0, 0.6, 0.3]), "xz_scale": rnd_f(rng, 0.06, 0.09), "y_scale": rnd_f(rng, 0.004, 0.008)}
+            return mulc(rnd_f(rng, 1.9, 2.6), forest)
+        elif style == "layered_strata":
+            strata = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.3]), "xz_scale": 0.02, "y_scale": 0.14}
+            return mulc(1.8, strata)
+        elif style == "underground_islands":
+            islands = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.8, 0.4]), "xz_scale": 0.04, "y_scale": 0.04}
+            return mulc(2.0, islands)
+        else:
+            def_pillar = {"type": "minecraft:noise", "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.35]), "xz_scale": rnd_f(rng, 0.028, 0.045), "y_scale": rnd_f(rng, 0.010, 0.020)}
+            return mulc(rnd_f(rng, 1.8, 2.5), def_pillar)
+
+    def _build_void_preset_density(self, pre):
+        """Генератор плотности парящих островов в зависимости от пресета:
+        супер-хаос, небесные кольца, кристаллы-иглы, мегалиты, пена, цепи,
+        опрокинутые конусы, осколки, мосты, диски, вихри, атоллы и т.д."""
+        rng = self.rng
+        style = pre.get("void_style", "blobs")
+        sig = rnd_f(rng, 0.65, 0.95)
+
+        def cl(x, lo, hi):
+            return {"type": "minecraft:clamp", "input": x, "min": round(lo, 3), "max": round(hi, 3)}
+        def add(a, b):
+            return {"type": "minecraft:add", "argument1": a, "argument2": b}
+        def mulc(c, x):
+            return {"type": "minecraft:mul", "argument1": round(c, 3), "argument2": x}
+
+        if style == "super_chaotic":
+            return self._build_super_chaotic_density("void"), sig
+
+        scale_map = {
+            "needles": (0.04, 0.10, 0.01, 0.04),
+            "shards": (0.04, 0.12, 0.008, 0.035),
+            "rafts": (0.018, 0.045, 0.015, 0.04),
+            "megaliths": (0.015, 0.035, 0.015, 0.04),
+            "chain": (0.02, 0.045, 0.02, 0.045),
+            "cones": (0.02, 0.045, 0.015, 0.04),
+            "bridges": (0.02, 0.04, 0.012, 0.03),
+            "discs": (0.018, 0.04, 0.05, 0.12),
+            "gravity_wells": (0.02, 0.05, 0.02, 0.05),
+            "atolls": (0.02, 0.045, 0.02, 0.045),
+            "boulders": (0.02, 0.045, 0.02, 0.045),
+            "hollow_spheres": (0.02, 0.045, 0.02, 0.045),
+            "helix": (0.025, 0.06, 0.015, 0.04),
+            "ribbons": (0.018, 0.04, 0.03, 0.08),
+            "fractal": (0.02, 0.05, 0.02, 0.05),
+            "mesas": (0.018, 0.035, 0.04, 0.10),
+            "craters": (0.02, 0.045, 0.02, 0.045),
+            "basalt": (0.03, 0.07, 0.012, 0.03),
+            "tendrils": (0.025, 0.06, 0.02, 0.045),
+            "labyrinth": (0.03, 0.06, 0.03, 0.06),
+            "plateaus": (0.015, 0.035, 0.02, 0.045),
+            "tranquil": (0.015, 0.035, 0.02, 0.045),
+            "cellular_foam": (0.035, 0.07, 0.035, 0.07),
+            "sky_rings": (0.025, 0.05, 0.02, 0.045)
+        }
+
+        sc_range = scale_map.get(style, (0.02, 0.05, 0.02, 0.05))
+        two = rng.random() < 0.6
+        layers = []
+        for _ in range(2 if two else 1):
+            sl = sig / math.sqrt(2.0 if two else 1.0)
+            first = rng.randint(-4, -2)
+            amps = [rnd_f(rng, 0.4, 2.0) for _ in range(rng.randint(2, 6))]
+            k = sl / (0.25 * math.sqrt(sum(a * a for a in amps)))
+            nid = self._add_octaved_noise(first, [round(a * k, 4) for a in amps])
+            xz = rnd_f(rng, sc_range[0], sc_range[1])
+            ys = rnd_f(rng, sc_range[2], sc_range[3])
+            layers.append({"type": "minecraft:noise", "noise": nid, "xz_scale": xz, "y_scale": ys})
+
+        f = layers[0]
+        for lay in layers[1:]:
+            f = add(f, lay)
+        cap = sig * rnd_f(rng, 1.6, 2.4)
+        return cl(f, -cap, cap), sig
+
     def rand_final_density(self):
         """final_density: ГАРАНТИИ ПО КРАЯМ + ПРЕСЕТЫ РЕЛЬЕФА.
 
@@ -2478,7 +3059,7 @@ class DimensionGenerator:
         # ~15% / скучные <=10%). Выбирается ЗДЕСЬ - ПОСЛЕ подготовки
         # climate-каналов в _prepare_climate: rng-поток каналов не
         # сдвигается, находимость биомов не меняется
-        pre = _pick_terrain_preset(rng)
+        pre = _pick_terrain_preset(rng, shape=self.world_shape)
         self.terrain_preset = pre["name"]
         # характер базы - из пресета (строка или взвешенный список)
         chs = pre["character"]
@@ -2789,7 +3370,7 @@ class DimensionGenerator:
             # пустота: острова из нормализованных шумов с порогом от ?
             # (окно порога - из пресета: архипелаг - реже и крупнее,
             # небесные плоты - гуще); оба края - гарантированная пустота
-            field, sig = island_field()
+            field, sig = self._build_void_preset_density(pre)
             cut = sig * rnd_f(rng, *pre.get("void_cut", (0.35, 0.9)))
             wild = add(field, -cut)
             if spline_df:
@@ -2855,12 +3436,8 @@ class DimensionGenerator:
             # высоте мира, без рельефа над ней») - см. roof_cap/
             # floor_cap выше; градиенты сильнее любого шума
             # 3D subterranean pillars, arches and natural cavern terrain
-            pillar_noise = {"type": "minecraft:noise",
-                            "noise": self._add_octaved_noise(-3, [1.0, 0.7, 0.35]),
-                            "xz_scale": rnd_f(rng, 0.028, 0.045),
-                            "y_scale": rnd_f(rng, 0.010, 0.020)}
-            pillar_field = mulc(rnd_f(rng, 2.0, 3.0), pillar_noise)
-            wild = add(wild, pillar_field)
+            cavern_field = self._build_cavern_preset_density(pre)
+            wild = add(wild, cavern_field)
             core = {"type": "minecraft:max", "argument1": wild,
                     "argument2": floor_cap()}
             core = {"type": "minecraft:max", "argument1": core,
@@ -3472,6 +4049,11 @@ class DimensionGenerator:
                         and blk[0] in FALLING_BLOCK_IDS:
                     blk = (("minecraft:stone", None)
                            if blk[0] not in _PALETTE_EXCLUDE else blk)
+                if blk[0] in used_top:
+                    for alt in spec.get("sub", []) + [spec["stone"]]:
+                        if alt[0] not in used_top and (self.world_shape != "void" or alt[0] not in FALLING_BLOCK_IDS):
+                            blk = alt
+                            break
                 arch_floor[bid] = blk
                 used_top.add(blk[0])
                 if spec["ceiling"] is not None:

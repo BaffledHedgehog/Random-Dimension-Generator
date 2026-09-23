@@ -2544,10 +2544,16 @@ class _CaveRecipeTypeDict(dict):
     def __getitem__(self, key):
         if key in self:
             return super().__getitem__(key)
-        if key.endswith("_boulder"):
+        if key.endswith("_boulder") or key.endswith("_blobs"):
             return "minecraft:block_blob"
         if key.endswith("_veins"):
             return "minecraft:netherrack_replace_blobs"
+        if key.endswith("_pile") or key.endswith("_piles"):
+            return "minecraft:block_pile"
+        if key.endswith("_spikes"):
+            return "minecraft:spike"
+        if key.endswith("_roots") or key.endswith("_vines"):
+            return "minecraft:block_column"
         return "minecraft:simple_block"
     def get(self, key, default=None):
         try:
@@ -2567,6 +2573,11 @@ _CAVE_RECIPE_TYPE = _CaveRecipeTypeDict({
     "pointed_dripstone": "minecraft:simple_random_selector",
     "large_dripstone": "minecraft:large_dripstone",
     "calcite_veins": "minecraft:netherrack_replace_blobs",
+    "bone_pile": "minecraft:block_pile",
+    "sand_piles": "minecraft:block_pile",
+    "hanging_roots": "minecraft:block_column",
+    "prismarine_spikes": "minecraft:spike",
+    "sea_lantern_blobs": "minecraft:block_blob",
     "crying_obsidian_veins": "minecraft:netherrack_replace_blobs",
     "sculk_vein": "minecraft:multiface_growth",
     "sculk_patch": "minecraft:sculk_patch",
@@ -2860,9 +2871,6 @@ def _cave_recipe(factory, rname, ctx):
         cfg = {"type": "minecraft:block_blob", "config": {"can_place_on": _replaceable(), "state": block_state((blk, None))}}
     elif rname == "crying_obsidian_veins":
         cfg = _blobs("minecraft:crying_obsidian")
-        cfg = {"type": "minecraft:block_blob", "config": {
-            "can_place_on": _replaceable(),
-            "state": block_state(("minecraft:mossy_cobblestone", None))}}
     elif rname == "dripstone_cluster":
         # ванильный dripstone_cluster.json с джиттером параметров
         hmin = rng.randint(2, 4)
@@ -3132,6 +3140,7 @@ def _cave_recipe(factory, rname, ctx):
             "redstone": "redstone_ore",
             "amethyst": "amethyst_block",
             "sea_lantern": "sea_lantern",
+            "quartz": "quartz_block",
         }
         bname = blk_map.get(blk_raw, blk_raw)
         cfg = _blobs("minecraft:" + bname)
@@ -3141,17 +3150,42 @@ def _cave_recipe(factory, rname, ctx):
         cfg = {"type": "minecraft:block_blob", "config": {
             "can_place_on": _replaceable(),
             "state": block_state(("minecraft:" + bname, None))}}
-    elif rname.endswith("_pile"):
-        blk_raw = rname[:-5]
+    elif rname.endswith("_pile") or rname.endswith("_piles"):
+        blk_raw = rname[:-6] if rname.endswith("_piles") else rname[:-5]
         bname = "bone_block" if blk_raw == "bone" else blk_raw
+        bid = "minecraft:" + bname
+        if factory.no_gravity and bid in _gd().FALLING_BLOCK_IDS:
+            bid = "minecraft:sandstone" if "sand" in bname else "minecraft:stone"
         cfg = {"type": "minecraft:block_pile", "config": {
-            "state_provider": _sp(("minecraft:" + bname, None))}}
-    elif rname.endswith("_blob"):
-        blk_raw = rname[:-5]
+            "state_provider": _sp((bid, None))}}
+    elif rname.endswith("_blob") or rname.endswith("_blobs"):
+        blk_raw = rname[:-6] if rname.endswith("_blobs") else rname[:-5]
         bname = "sea_lantern" if blk_raw == "sea_lantern" else blk_raw
-        cfg = _blobs("minecraft:" + bname)
+        cfg = {"type": "minecraft:block_blob", "config": {
+            "can_place_on": _replaceable(),
+            "state": block_state(("minecraft:" + bname, None))}}
     elif rname.endswith("_spikes"):
-        cfg = {"type": "minecraft:spike", "config": {}}
+        blk_raw = rname[:-7]
+        cfg = {"type": "minecraft:spike", "config": {
+            "state": block_state(("minecraft:" + blk_raw, None)),
+            "can_place_on": _replaceable(),
+            "can_replace": {"type": "minecraft:matching_block_tag",
+                            "tag": "minecraft:air"}}}
+    elif rname.endswith("_roots"):
+        cfg = {"type": "minecraft:block_column", "config": {
+            "allowed_placement": {"type": "minecraft:matching_block_tag",
+                                  "tag": "minecraft:air"},
+            "direction": "down",
+            "layers": [{"height": rng.randint(2, 6),
+                        "provider": _sp(("minecraft:hanging_roots", None))}],
+            "prioritize_tip": True}}
+    elif rname.endswith("_spikes"):
+        blk_raw = rname[:-7]
+        cfg = {"type": "minecraft:spike", "config": {
+            "state": block_state(("minecraft:" + blk_raw, None)),
+            "can_place_on": _replaceable(),
+            "can_replace": {"type": "minecraft:matching_block_tag",
+                            "tag": "minecraft:air"}}}
     else:
         cfg = {"type": "minecraft:simple_block", "config": {
             "to_place": _sp(("minecraft:" + rname.replace("_patch", ""), None))}}
